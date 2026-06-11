@@ -1,25 +1,28 @@
 'use client'
 import { use, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { interviewQuestions } from '@/lib/script/flow'
+import { visibleQuestions } from '@/lib/script/flow'
 import { breatherAfter, type BreatherStep } from '@/lib/script/breathers'
 import { InterviewScreen } from '@/components/InterviewScreen'
+import { ProjectiveScreen } from '@/components/ProjectiveScreen'
 import { Breather } from '@/components/Breather'
 import { BrowserVoice } from '@/lib/voice/browser-voice'
+import type { Answers } from '@/lib/script/types'
 
 export default function InterviewPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params)
   const router = useRouter()
-  const questions = interviewQuestions()
   const [i, setI] = useState(0)
-  const [saved, setSaved] = useState<Record<string, { rawText: string; imageChoice?: string }>>({})
+  const [saved, setSaved] = useState<Answers>({})
   const [breather, setBreather] = useState<BreatherStep | null>(null)
   const finishing = useRef(false)
-  const q = questions[i]
   const voice = useMemo(() => new BrowserVoice(), [])
 
+  const questions = visibleQuestions(saved)
+  const q = questions[i]
+
   async function finish() {
-    if (finishing.current) return // guard contra doble-click en el cierre
+    if (finishing.current) return
     finishing.current = true
     await fetch(`/api/sessions/${sessionId}/complete`, { method: 'POST' })
     router.push('/gracias')
@@ -31,10 +34,9 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ questionId: q.id, ...a }),
     })
-    const human = i + 1
-    const step = breatherAfter(human, questions.length)
-    if (step) { setBreather(step); return }            // respiro o cierre
-    setI(i + 1)                                        // sin respiro: avanza
+    const step = breatherAfter(i + 1, questions.length)
+    if (step) { setBreather(step); return }   // respiro o cierre
+    setI(i + 1)
   }
 
   if (breather) {
@@ -46,8 +48,13 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
       }} />
   }
 
-  return <InterviewScreen
-    question={q} index={i + 1} total={questions.length} voice={voice}
-    initial={saved[q.id]} canGoBack={i > 0} onBack={() => setI(Math.max(0, i - 1))}
-    onAnswer={answer} />
+  const common = {
+    question: q, index: i + 1, total: questions.length,
+    initial: saved[q.id], canGoBack: i > 0,
+    onBack: () => setI(Math.max(0, i - 1)), onAnswer: answer,
+  }
+
+  return q.type === 'open'
+    ? <InterviewScreen {...common} voice={voice} />
+    : <ProjectiveScreen {...common} />
 }

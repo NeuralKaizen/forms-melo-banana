@@ -4,7 +4,6 @@ import type { Question } from '@/lib/script/types'
 import type { VoiceAdapter } from '@/lib/voice/types'
 import { ProgressDots } from './ProgressDots'
 import { MicButton } from './MicButton'
-import { ImageGrid } from './ImageGrid'
 import { Wordmark } from './Brand'
 
 function withHighlight(prompt: string, highlight?: string) {
@@ -16,13 +15,12 @@ function withHighlight(prompt: string, highlight?: string) {
 export function InterviewScreen({ question, index, total, voice, initial, canGoBack, onBack, onAnswer }: {
   question: Question; index: number; total: number
   voice?: VoiceAdapter
-  initial?: { rawText: string; imageChoice?: string }
+  initial?: { rawText: string }
   canGoBack?: boolean
   onBack?: () => void
-  onAnswer: (a: { rawText: string; imageChoice?: string }) => void
+  onAnswer: (a: { rawText: string }) => void
 }) {
   const [text, setText] = useState('')
-  const [choice, setChoice] = useState<string | undefined>()
   const [listening, setListening] = useState(false)
   const textRef = useRef('')
   const busy = useRef(false)
@@ -32,16 +30,12 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
   useEffect(() => {
     // Reset intencional al cambiar de pregunta (carga la respuesta guardada si se vuelve atrás).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setText(initial?.rawText ?? ''); setChoice(initial?.imageChoice); setListening(false)
+    setText(initial?.rawText ?? ''); setListening(false)
     return () => { void voice?.stop() } // corta el micro al cambiar de pregunta/desmontar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question.id])
 
   const supported = !!voice?.isSTTSupported()
-
-  function canSubmit(t: string, c?: string) {
-    return question.type === 'image-grid' ? !!c && !!t.trim() : !!t.trim()
-  }
 
   function startListening() {
     setText(''); setListening(true)
@@ -55,9 +49,7 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
       if (listening) {
         const final = await voice.stop()
         setListening(false)
-        const next = final || textRef.current
-        setText(next)
-        if (canSubmit(next, choice)) onAnswer({ rawText: next.trim(), imageChoice: choice }) // avanza solo
+        setText(final || textRef.current) // solo llena el texto; NO avanza
       } else {
         startListening()
       }
@@ -82,9 +74,6 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
           <h2 className="mt-8 font-serif text-[28px] font-medium leading-snug text-ink md:mt-10 md:text-4xl">
             {withHighlight(question.prompt, question.highlight)}
           </h2>
-          {question.type === 'image-grid' && question.options && (
-            <div className="mt-6"><ImageGrid options={question.options} selected={choice} onSelect={setChoice} /></div>
-          )}
         </div>
         <div className="flex flex-col items-center gap-6 pt-4">
           {supported && (
@@ -115,8 +104,8 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
                 Regrabar
               </button>
             )}
-            <button disabled={!canSubmit(text, choice)}
-              onClick={() => onAnswer({ rawText: text.trim(), imageChoice: choice })}
+            <button disabled={!text.trim()}
+              onClick={() => onAnswer({ rawText: text.trim() })}
               className="group flex items-center gap-2 rounded-xl bg-[var(--ink)] px-6 py-3 font-semibold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:active:scale-100">
               {index === total ? 'Finalizar' : 'Siguiente'}
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2"
