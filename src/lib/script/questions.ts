@@ -16,11 +16,9 @@ export const SCRIPT: Section[] = [
   {
     key: 'project', title: 'Contexto del proyecto',
     questions: [
-      open('descripcion', 'Haz una breve descripción de la compañía o proyecto.', 'descripción'),
-      open('historia', '¿Cuál es la historia de la compañía o del proyecto?', 'historia'),
+      open('empresa_historia', 'Haz una breve descripción de la compañía o proyecto, incluyendo su historia.', 'compañía o proyecto'),
       open('productos', '¿Qué productos o servicios ofrece?', 'productos o servicios'),
-      open('porque_ahora', '¿Por qué es importante evolucionar la marca justo ahora?', 'evolucionar la marca'),
-      open('si_nada', '¿Qué pasaría si no se hace nada?', 'si no se hace nada'),
+      open('porque_ahora', '¿Por qué es importante evolucionar la marca justo ahora, y qué pasaría si no se hace nada?', 'evolucionar la marca'),
       open('estrategia', '¿Cuál es la estrategia de negocio detrás del brief?', 'estrategia de negocio'),
       open('competencia_hace', '¿Qué está o qué no está haciendo la competencia?', 'la competencia'),
       open('kpis', '¿Cuáles son los KPI del proyecto?', 'KPI'),
@@ -32,9 +30,7 @@ export const SCRIPT: Section[] = [
     questions: [
       open('problema', '¿Cuál es el problema clave que se resuelve para el consumidor?', 'problema clave'),
       open('target', '¿Quién es el target?', 'target'),
-      open('piensan', '¿Qué piensan los consumidores de la marca?', 'piensan'),
-      open('relacion', '¿Cómo se relacionan hoy los consumidores con la marca? (si aplica)', 'se relacionan'),
-      open('uso', '¿Cómo usan el producto o servicio? (si aplica)', 'usan'),
+      open('percepcion', '¿Qué piensan hoy los consumidores de la marca y cómo se relacionan con ella o la usan? (si aplica)', 'piensan hoy'),
       open('cambio', '¿Cuál es el cambio clave que se busca en el consumidor?', 'cambio clave'),
     ],
   },
