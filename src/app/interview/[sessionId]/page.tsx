@@ -1,8 +1,9 @@
 'use client'
-import { use, useState } from 'react'
+import { use, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { allQuestions } from '@/lib/script/flow'
 import { InterviewScreen } from '@/components/InterviewScreen'
+import { BrowserVoice } from '@/lib/voice/browser-voice'
 
 export default function InterviewPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params)
@@ -10,6 +11,7 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
   const questions = allQuestions().filter(q => q.id !== 'nombre' && q.id !== 'empresa' && q.id !== 'cargo' && q.id !== 'email')
   const [i, setI] = useState(0)
   const q = questions[i]
+  const voice = useMemo(() => new BrowserVoice(), [])
 
   async function answer(a: { rawText: string; imageChoice?: string }) {
     await fetch(`/api/sessions/${sessionId}/answers`, {
@@ -23,5 +25,5 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
     }
   }
 
-  return <InterviewScreen question={q} index={i + 1} total={questions.length} onAnswer={answer} />
+  return <InterviewScreen question={q} index={i + 1} total={questions.length} voice={voice} onAnswer={answer} />
 }
