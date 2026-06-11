@@ -6,9 +6,11 @@ describe('FakeVoice', () => {
     const v = new FakeVoice('hola mundo', ['hola', 'hola mundo'])
     const onPartial = vi.fn()
     v.start(onPartial)
+    expect(v.started).toBe(true)
     expect(onPartial).toHaveBeenNthCalledWith(1, 'hola')
     expect(onPartial).toHaveBeenNthCalledWith(2, 'hola mundo')
     expect(await v.stop()).toBe('hola mundo')
+    expect(v.started).toBe(false)
   })
 
   it('reports STT supported', () => {
