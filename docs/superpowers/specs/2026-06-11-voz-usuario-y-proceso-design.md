@@ -129,6 +129,23 @@ Cambios en `src/lib/script/questions.ts`: editar prompts/ids de los 3 grupos fus
 
 ---
 
+## Respiros e cierre (anti-fatiga)
+
+Pantallas interstitiales a pantalla completa para dar micro-descansos durante las 15
+preguntas. Formato: emoji/wordmark + frase cálida (serif) + botón "Seguir →". **Sin**
+subtexto tipo "pausa de 3 segundos". No cuentan en el "X de 15" ni en los dots de progreso.
+
+- **Tras la pregunta 7:** *"Vamos por la mitad de camino. Recuerda tomarte el tiempo que necesites."*
+- **Tras la pregunta 12:** *"Doce preguntas y contando. Ya casi lo tenemos."*
+- **Tras la pregunta 15 (cierre):** mensaje cálido de cierre antes de `/gracias`, p. ej.
+  *"¡Eso es todo! Gracias por compartir tu visión con nosotros."* (copy final ajustable).
+
+Copy en español neutro (sin voseo). Implementación: un paso interstitial en el flujo de
+`interview/[sessionId]/page.tsx` que se intercala después de los índices 7 y 12 (y el
+cierre tras la 15), sin tocar el modelo de datos ni `SCRIPT`.
+
+---
+
 ## Orden de implementación
 
 1. Guion reducido (questions.ts) — aislado, sin riesgo.
