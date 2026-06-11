@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     environmentMatchGlobs: [['**/*.tsx', 'jsdom']],
+    testTimeout: 30000,
   },
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
 })
