@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Question } from '@/lib/script/types'
 import type { VoiceAdapter } from '@/lib/voice/types'
 import { ProgressDots } from './ProgressDots'
@@ -24,9 +24,15 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
   const [text, setText] = useState('')
   const [choice, setChoice] = useState<string | undefined>()
   const [listening, setListening] = useState(false)
+  const textRef = useRef('')
+  const busy = useRef(false)
+
+  useEffect(() => { textRef.current = text }, [text])
 
   useEffect(() => {
     setText(initial?.rawText ?? ''); setChoice(initial?.imageChoice); setListening(false)
+    return () => { void voice?.stop() } // corta el micro al cambiar de pregunta/desmontar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question.id])
 
   const supported = !!voice?.isSTTSupported()
@@ -35,24 +41,32 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
     return question.type === 'image-grid' ? !!c && !!t.trim() : !!t.trim()
   }
 
+  function startListening() {
+    setText(''); setListening(true)
+    voice!.start(p => setText(p))
+  }
+
   async function toggle() {
-    if (!voice || !supported) return
-    if (listening) {
-      const final = await voice.stop()
-      setListening(false)
-      const next = final || text
-      setText(next)
-      if (canSubmit(next, choice)) onAnswer({ rawText: next.trim(), imageChoice: choice }) // avanza solo
-    } else {
-      setText(''); setListening(true)
-      voice.start(p => setText(p))
+    if (!voice || !supported || busy.current) return
+    busy.current = true
+    try {
+      if (listening) {
+        const final = await voice.stop()
+        setListening(false)
+        const next = final || textRef.current
+        setText(next)
+        if (canSubmit(next, choice)) onAnswer({ rawText: next.trim(), imageChoice: choice }) // avanza solo
+      } else {
+        startListening()
+      }
+    } finally {
+      busy.current = false
     }
   }
 
   function regrabar() {
     if (!voice || !supported) return
-    setText(''); setListening(true)
-    voice.start(p => setText(p))
+    startListening()
   }
 
   return (
@@ -83,6 +97,7 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
             <span className="h-px flex-1 bg-black/10" /> {supported ? 'o escribe' : 'escribe'} <span className="h-px flex-1 bg-black/10" />
           </div>
           <textarea value={text} onChange={(e) => setText(e.target.value)}
+            aria-label="Tu respuesta"
             placeholder="Escribe tu respuesta aquí…"
             className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-[var(--banana)] focus:ring-2 focus:ring-[var(--banana)]/40" rows={2} />
           <div className="mt-1 flex w-full items-center justify-center gap-3">
