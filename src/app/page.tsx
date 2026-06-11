@@ -11,7 +11,5 @@ export default function Home() {
     const { id } = await res.json()
     router.push(`/interview/${id}`)
   }
-  return <main className="grid min-h-screen place-items-center bg-cream">
-    <IdentityForm onSubmit={start} />
-  </main>
+  return <IdentityForm onSubmit={start} />
 }
