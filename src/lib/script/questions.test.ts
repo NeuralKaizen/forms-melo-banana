@@ -11,11 +11,20 @@ describe('SCRIPT', () => {
       'identity', 'project', 'consumer', 'design', 'projective',
     ])
   })
-  it('image-grid questions declare 2+ options, open questions declare none', () => {
+  it('opciones coinciden con el tipo de pregunta', () => {
     for (const s of SCRIPT) for (const q of s.questions) {
-      if (q.type === 'image-grid') expect(q.options!.length).toBeGreaterThanOrEqual(2)
-      else expect(q.options).toBeUndefined()
+      if (q.type === 'open') { expect(q.options).toBeUndefined() }
+      else { expect(q.options!.length).toBeGreaterThanOrEqual(2) }
+      if (q.type === 'image-grid') for (const o of q.options!) expect(o.src).toBeTruthy()
+      if (q.type === 'color-grid') for (const o of q.options!) expect((o.colors ?? []).length).toBeGreaterThanOrEqual(2)
     }
+  })
+
+  it('la sección proyectiva tiene las 7 preguntas', () => {
+    const proj = SCRIPT.find(s => s.key === 'projective')!
+    expect(proj.questions.map(q => q.id)).toEqual([
+      'animal', 'color', 'genero', 'edad_hombre', 'edad_mujer', 'olor', 'ciudad',
+    ])
   })
   it('every question has a non-empty prompt and audio path', () => {
     for (const s of SCRIPT) for (const q of s.questions) {

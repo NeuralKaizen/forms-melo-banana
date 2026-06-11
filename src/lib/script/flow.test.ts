@@ -21,9 +21,9 @@ describe('flow', () => {
 })
 
 describe('interviewQuestions', () => {
-  it('excludes the 4 identity questions, leaving 15', () => {
+  it('excludes the 4 identity questions, leaving 21', () => {
     const qs = interviewQuestions()
-    expect(qs).toHaveLength(15)
+    expect(qs).toHaveLength(21)
     for (const id of ['nombre', 'empresa', 'cargo', 'email']) {
       expect(qs.find(q => q.id === id)).toBeUndefined()
     }
