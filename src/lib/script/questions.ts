@@ -5,10 +5,10 @@ const open = (id: string, prompt: string, highlight?: string) =>
 
 export const SCRIPT: Section[] = [
   {
-    key: 'identity', title: 'Quién sos',
+    key: 'identity', title: 'Quién eres',
     questions: [
-      open('nombre', 'Para arrancar, ¿cómo te llamás?', 'cómo te llamás'),
-      open('empresa', '¿En qué empresa trabajás?', 'empresa'),
+      open('nombre', 'Para empezar, ¿cómo te llamas?', 'cómo te llamas'),
+      open('empresa', '¿En qué empresa trabajas?', 'empresa'),
       open('cargo', '¿Y cuál es tu cargo?', 'cargo'),
       open('email', '¿A qué email te escribimos?', 'email'),
     ],
@@ -16,7 +16,7 @@ export const SCRIPT: Section[] = [
   {
     key: 'project', title: 'Contexto del proyecto',
     questions: [
-      open('descripcion', 'Hacé una breve descripción de la compañía o proyecto.', 'descripción'),
+      open('descripcion', 'Haz una breve descripción de la compañía o proyecto.', 'descripción'),
       open('historia', '¿Cuál es la historia de la compañía o del proyecto?', 'historia'),
       open('productos', '¿Qué productos o servicios ofrece?', 'productos o servicios'),
       open('porque_ahora', '¿Por qué es importante evolucionar la marca justo ahora?', 'evolucionar la marca'),
