@@ -1,16 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import { breatherAfter } from './breathers'
+import { closingAfter, sectionIntro } from './breathers'
 
-describe('breatherAfter', () => {
-  it('da un respiro tras la 7 y la 12', () => {
-    expect(breatherAfter(7, 15)).toEqual({ message: 'Vamos por la mitad de camino. Recuerda tomarte el tiempo que necesites.', closing: false })
-    expect(breatherAfter(12, 15)).toEqual({ message: 'Doce preguntas y contando. Ya casi lo tenemos.', closing: false })
-  })
+describe('closingAfter', () => {
   it('da el cierre tras la última', () => {
-    expect(breatherAfter(15, 15)).toEqual({ message: '¡Eso es todo! Gracias por compartir tu visión con nosotros.', closing: true })
+    expect(closingAfter(15, 15)).toEqual({ message: '¡Eso es todo! Gracias por compartir tu visión con nosotros.', closing: true })
   })
-  it('no da nada en otras posiciones', () => {
-    expect(breatherAfter(3, 15)).toBeNull()
-    expect(breatherAfter(8, 15)).toBeNull()
+  it('no da nada antes del final', () => {
+    expect(closingAfter(7, 15)).toBeNull()
+    expect(closingAfter(12, 15)).toBeNull()
+    expect(closingAfter(3, 15)).toBeNull()
+  })
+})
+
+describe('sectionIntro', () => {
+  it('abre cada sección del flujo de voz con su transición', () => {
+    expect(sectionIntro('empresa_historia')?.emoji).toBe('🏢')
+    expect(sectionIntro('problema')?.emoji).toBe('👥')
+    expect(sectionIntro('objetivos')?.emoji).toBe('🎨')
+    expect(sectionIntro('animal')?.emoji).toBe('✨')
+  })
+  it('la primera sección trae CTA propio', () => {
+    expect(sectionIntro('empresa_historia')?.cta).toBe('Empezar')
+  })
+  it('no devuelve intro para preguntas que no abren sección', () => {
+    expect(sectionIntro('productos')).toBeNull()
+    expect(sectionIntro('color')).toBeNull()
   })
 })

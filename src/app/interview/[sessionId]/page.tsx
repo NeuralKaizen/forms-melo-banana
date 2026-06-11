@@ -2,7 +2,7 @@
 import { use, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { visibleQuestions } from '@/lib/script/flow'
-import { breatherAfter, type BreatherStep } from '@/lib/script/breathers'
+import { closingAfter, sectionIntro, type BreatherStep } from '@/lib/script/breathers'
 import { InterviewScreen } from '@/components/InterviewScreen'
 import { ProjectiveScreen } from '@/components/ProjectiveScreen'
 import { Breather } from '@/components/Breather'
@@ -15,6 +15,7 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
   const [i, setI] = useState(0)
   const [saved, setSaved] = useState<Answers>({})
   const [breather, setBreather] = useState<BreatherStep | null>(null)
+  const [introduced, setIntroduced] = useState<Set<string>>(() => new Set())
   const finishing = useRef(false)
   const voice = useMemo(() => new BrowserVoice(), [])
 
@@ -34,8 +35,8 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ questionId: q.id, ...a }),
     })
-    const step = breatherAfter(i + 1, questions.length)
-    if (step) { setBreather(step); return }   // respiro o cierre
+    const step = closingAfter(i + 1, questions.length)
+    if (step) { setBreather(step); return }   // cierre
     setI(i + 1)
   }
 
@@ -46,6 +47,13 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
         if (breather.closing) void finish()
         else setI(i + 1)
       }} />
+  }
+
+  // Transición antes de la primera pregunta de cada sección (una sola vez).
+  const intro = sectionIntro(q.id)
+  if (intro && !introduced.has(q.id)) {
+    return <Breather message={intro.message} closing={false} emoji={intro.emoji} cta={intro.cta}
+      onContinue={() => setIntroduced(prev => new Set(prev).add(q.id))} />
   }
 
   const common = {
