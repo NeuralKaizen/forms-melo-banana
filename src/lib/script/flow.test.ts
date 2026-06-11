@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { allQuestions, firstQuestionId, nextQuestionId, progress } from './flow'
+import { allQuestions, firstQuestionId, nextQuestionId, progress, interviewQuestions } from './flow'
 
 describe('flow', () => {
   it('flattens questions in section order', () => {
@@ -17,5 +17,15 @@ describe('flow', () => {
   })
   it('progress is 1-based index and total', () => {
     expect(progress('nombre')).toEqual({ index: 1, total: allQuestions().length })
+  })
+})
+
+describe('interviewQuestions', () => {
+  it('excludes the 4 identity questions, leaving 15', () => {
+    const qs = interviewQuestions()
+    expect(qs).toHaveLength(15)
+    for (const id of ['nombre', 'empresa', 'cargo', 'email']) {
+      expect(qs.find(q => q.id === id)).toBeUndefined()
+    }
   })
 })

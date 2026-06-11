@@ -1,15 +1,19 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { FakeVoice } from './fake-voice'
 
 describe('FakeVoice', () => {
-  it('records played urls and returns scripted transcripts', async () => {
-    const v = new FakeVoice(['hola', 'mundo'])
-    await v.play('/audio/nombre.mp3')
-    expect(v.played).toEqual(['/audio/nombre.mp3'])
-    expect(await v.listen()).toBe('hola')
-    expect(await v.listen()).toBe('mundo')
+  it('emits partials on start and resolves the final on stop', async () => {
+    const v = new FakeVoice('hola mundo', ['hola', 'hola mundo'])
+    const onPartial = vi.fn()
+    v.start(onPartial)
+    expect(v.started).toBe(true)
+    expect(onPartial).toHaveBeenNthCalledWith(1, 'hola')
+    expect(onPartial).toHaveBeenNthCalledWith(2, 'hola mundo')
+    expect(await v.stop()).toBe('hola mundo')
+    expect(v.started).toBe(false)
   })
+
   it('reports STT supported', () => {
-    expect(new FakeVoice([]).isSTTSupported()).toBe(true)
+    expect(new FakeVoice('').isSTTSupported()).toBe(true)
   })
 })

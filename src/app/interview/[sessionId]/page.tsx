@@ -1,18 +1,29 @@
 'use client'
-import { use, useState, useMemo } from 'react'
+import { use, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { allQuestions } from '@/lib/script/flow'
+import { interviewQuestions } from '@/lib/script/flow'
+import { breatherAfter, type BreatherStep } from '@/lib/script/breathers'
 import { InterviewScreen } from '@/components/InterviewScreen'
+import { Breather } from '@/components/Breather'
 import { BrowserVoice } from '@/lib/voice/browser-voice'
 
 export default function InterviewPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params)
   const router = useRouter()
-  const questions = allQuestions().filter(q => q.id !== 'nombre' && q.id !== 'empresa' && q.id !== 'cargo' && q.id !== 'email')
+  const questions = interviewQuestions()
   const [i, setI] = useState(0)
   const [saved, setSaved] = useState<Record<string, { rawText: string; imageChoice?: string }>>({})
+  const [breather, setBreather] = useState<BreatherStep | null>(null)
+  const finishing = useRef(false)
   const q = questions[i]
   const voice = useMemo(() => new BrowserVoice(), [])
+
+  async function finish() {
+    if (finishing.current) return // guard contra doble-click en el cierre
+    finishing.current = true
+    await fetch(`/api/sessions/${sessionId}/complete`, { method: 'POST' })
+    router.push('/gracias')
+  }
 
   async function answer(a: { rawText: string; imageChoice?: string }) {
     setSaved(prev => ({ ...prev, [q.id]: a }))
@@ -20,11 +31,19 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ questionId: q.id, ...a }),
     })
-    if (i + 1 < questions.length) setI(i + 1)
-    else {
-      await fetch(`/api/sessions/${sessionId}/complete`, { method: 'POST' })
-      router.push('/gracias')
-    }
+    const human = i + 1
+    const step = breatherAfter(human, questions.length)
+    if (step) { setBreather(step); return }            // respiro o cierre
+    setI(i + 1)                                        // sin respiro: avanza
+  }
+
+  if (breather) {
+    return <Breather message={breather.message} closing={breather.closing}
+      onContinue={() => {
+        setBreather(null)
+        if (breather.closing) void finish()
+        else setI(i + 1)
+      }} />
   }
 
   return <InterviewScreen

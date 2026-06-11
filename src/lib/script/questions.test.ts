@@ -23,4 +23,13 @@ describe('SCRIPT', () => {
       expect(q.audio).toMatch(/^\/audio\/.+\.mp3$/)
     }
   })
+  it('applies the approved merges', () => {
+    const ids = SCRIPT.flatMap(s => s.questions.map(q => q.id))
+    expect(ids).toContain('empresa_historia')
+    expect(ids).toContain('porque_ahora')
+    expect(ids).toContain('percepcion')
+    for (const gone of ['descripcion', 'historia', 'si_nada', 'piensan', 'relacion', 'uso']) {
+      expect(ids).not.toContain(gone)
+    }
+  })
 })

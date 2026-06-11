@@ -1,11 +1,15 @@
 import type { VoiceAdapter } from './types'
 
 export class FakeVoice implements VoiceAdapter {
-  played: string[] = []
-  private queue: string[]
-  constructor(transcripts: string[]) { this.queue = [...transcripts] }
-  async play(url: string) { this.played.push(url) }
-  async listen() { return this.queue.shift() ?? '' }
+  started = false
+  constructor(private finalText: string, private partials: string[] = []) {}
+  start(onPartial: (text: string) => void) {
+    this.started = true
+    for (const p of this.partials) onPartial(p)
+  }
+  async stop() {
+    this.started = false
+    return this.finalText
+  }
   isSTTSupported() { return true }
-  stop() {}
 }

@@ -5,6 +5,13 @@ export function allQuestions(): Question[] {
   return SCRIPT.flatMap(s => s.questions)
 }
 
+const IDENTITY_IDS = new Set(['nombre', 'empresa', 'cargo', 'email'])
+
+/** Preguntas que se hacen en el flujo de voz (sin las de identidad). */
+export function interviewQuestions(): Question[] {
+  return allQuestions().filter(q => !IDENTITY_IDS.has(q.id))
+}
+
 export function firstQuestionId(): string {
   return allQuestions()[0].id
 }
