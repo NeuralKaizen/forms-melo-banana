@@ -1,5 +1,5 @@
 import { SCRIPT } from './questions'
-import type { Question } from './types'
+import type { Question, Answers } from './types'
 
 export function allQuestions(): Question[] {
   return SCRIPT.flatMap(s => s.questions)
@@ -30,4 +30,9 @@ export function nextQuestionId(id: string): string | null {
 export function progress(id: string): { index: number; total: number } {
   const qs = allQuestions()
   return { index: qs.findIndex(q => q.id === id) + 1, total: qs.length }
+}
+
+/** Preguntas visibles según las respuestas (aplica branching vía showIf). */
+export function visibleQuestions(answers: Answers): Question[] {
+  return interviewQuestions().filter(q => !q.showIf || q.showIf(answers))
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { allQuestions, firstQuestionId, nextQuestionId, progress, interviewQuestions } from './flow'
+import { allQuestions, firstQuestionId, nextQuestionId, progress, interviewQuestions, visibleQuestions } from './flow'
+import type { Answers } from './types'
 
 describe('flow', () => {
   it('flattens questions in section order', () => {
@@ -27,5 +28,21 @@ describe('interviewQuestions', () => {
     for (const id of ['nombre', 'empresa', 'cargo', 'email']) {
       expect(qs.find(q => q.id === id)).toBeUndefined()
     }
+  })
+})
+
+describe('visibleQuestions', () => {
+  it('muestra edad_hombre por defecto y oculta edad_mujer (total 20)', () => {
+    const qs = visibleQuestions({})
+    expect(qs).toHaveLength(20)
+    expect(qs.find(q => q.id === 'edad_hombre')).toBeDefined()
+    expect(qs.find(q => q.id === 'edad_mujer')).toBeUndefined()
+  })
+  it('con género mujer muestra edad_mujer y oculta edad_hombre (total 20)', () => {
+    const answers: Answers = { genero: { rawText: '', imageChoice: 'mujer' } }
+    const qs = visibleQuestions(answers)
+    expect(qs).toHaveLength(20)
+    expect(qs.find(q => q.id === 'edad_mujer')).toBeDefined()
+    expect(qs.find(q => q.id === 'edad_hombre')).toBeUndefined()
   })
 })
