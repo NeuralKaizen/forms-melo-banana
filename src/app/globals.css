@@ -3,7 +3,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --cream: #fffdf2;
+  --ink: #1a1510;
+  --banana: #ffd400;
 }
+.bg-cream { background: var(--cream); }
+.text-ink { color: var(--ink); }
+.underline-banana { box-shadow: inset 0 -0.36em 0 var(--banana); }
 
 @theme inline {
   --color-background: var(--background);
