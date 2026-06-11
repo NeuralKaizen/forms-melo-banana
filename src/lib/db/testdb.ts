@@ -19,7 +19,8 @@ export async function makeTestDb() {
       question_id text NOT NULL,
       raw_text text NOT NULL,
       image_choice text,
-      created_at timestamp NOT NULL DEFAULT now()
+      created_at timestamp NOT NULL DEFAULT now(),
+      UNIQUE (session_id, question_id)
     );
     CREATE TABLE briefs (
       session_id uuid PRIMARY KEY REFERENCES sessions(id),

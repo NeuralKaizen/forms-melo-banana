@@ -23,4 +23,14 @@ describe('store', () => {
     expect(done.status).toBe('completed')
     expect(done.completedAt).toBeTruthy()
   })
+
+  it('re-answering the same question updates in place (no duplicate)', async () => {
+    const db = await makeTestDb()
+    const s = await createSession(db, {})
+    await saveAnswer(db, s.id, { questionId: 'nombre', rawText: 'primera' })
+    await saveAnswer(db, s.id, { questionId: 'nombre', rawText: 'corregida' })
+    const full = await getSessionWithAnswers(db, s.id)
+    expect(full!.answers).toHaveLength(1)
+    expect(full!.answers[0].rawText).toBe('corregida')
+  })
 })

@@ -13,7 +13,15 @@ export async function createSession(db: AnyDb, info: {
 export async function saveAnswer(db: AnyDb, sessionId: string, a: {
   questionId: string; rawText: string; imageChoice?: string
 }) {
-  const [row] = await db.insert(answers).values({ sessionId, ...a }).returning()
+  // Upsert on (session_id, question_id) so revisiting/editing a question updates
+  // the same row instead of creating a duplicate.
+  const [row] = await db.insert(answers)
+    .values({ sessionId, questionId: a.questionId, rawText: a.rawText, imageChoice: a.imageChoice ?? null })
+    .onConflictDoUpdate({
+      target: [answers.sessionId, answers.questionId],
+      set: { rawText: a.rawText, imageChoice: a.imageChoice ?? null },
+    })
+    .returning()
   return row
 }
 

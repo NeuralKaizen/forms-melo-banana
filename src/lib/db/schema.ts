@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, jsonb, unique } from 'drizzle-orm/pg-core'
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -18,7 +18,7 @@ export const answers = pgTable('answers', {
   rawText: text('raw_text').notNull(),
   imageChoice: text('image_choice'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (t) => [unique('answers_session_question').on(t.sessionId, t.questionId)])
 
 export const briefs = pgTable('briefs', {
   sessionId: uuid('session_id').primaryKey().references(() => sessions.id),
