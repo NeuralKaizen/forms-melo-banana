@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { buildBriefView } from './answers-view'
 
 // Date con constructor local (TZ-independiente): 11 jun 2026
-const session = { name: 'Lucía', company: 'Frutaria', role: 'CMO', completedAt: new Date(2026, 5, 11) }
+const session = { name: 'Lucía', company: 'Frutaria', role: 'CMO', email: 'lucia@frutaria.com', completedAt: new Date(2026, 5, 11) }
 
 describe('buildBriefView', () => {
   it('mapea encabezado, secciones de texto (faltante → —) y chips proyectivos', () => {
@@ -18,6 +18,7 @@ describe('buildBriefView', () => {
 
     expect(v.company).toBe('Frutaria')
     expect(v.contact).toBe('Lucía · CMO')
+    expect(v.email).toBe('lucia@frutaria.com')
     expect(v.date).toBe('11 jun 2026')
 
     const proj = v.sections.find(s => s.title === 'Contexto del proyecto')!
@@ -35,9 +36,10 @@ describe('buildBriefView', () => {
   })
 
   it('empresa vacía y sin fecha degradan limpio', () => {
-    const v = buildBriefView({ name: null, company: null, role: null, completedAt: null }, [])
+    const v = buildBriefView({ name: null, company: null, role: null, email: null, completedAt: null }, [])
     expect(v.company).toBe('(sin empresa)')
     expect(v.contact).toBe('')
+    expect(v.email).toBe('')
     expect(v.date).toBe('')
     expect(v.projective).toEqual([])
   })

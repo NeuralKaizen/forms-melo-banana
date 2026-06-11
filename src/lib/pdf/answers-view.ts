@@ -5,6 +5,7 @@ export interface Chip { label: string; value: string; swatch?: string }
 export interface BriefView {
   company: string
   contact: string
+  email: string
   date: string
   sections: { title: string; items: TextItem[] }[]
   projective: Chip[]
@@ -22,7 +23,7 @@ const CHIP_LABEL: Record<string, string> = {
 }
 
 export function buildBriefView(
-  session: { name?: string | null; company?: string | null; role?: string | null; completedAt?: Date | null },
+  session: { name?: string | null; company?: string | null; role?: string | null; email?: string | null; completedAt?: Date | null },
   answers: { questionId: string; rawText: string; imageChoice?: string | null }[],
 ): BriefView {
   const byId = new Map(answers.map(a => [a.questionId, a]))
@@ -60,6 +61,7 @@ export function buildBriefView(
   return {
     company: session.company || '(sin empresa)',
     contact: [session.name, session.role].filter(Boolean).join(' · '),
+    email: session.email || '',
     date: fmtDate(session.completedAt ?? null),
     sections,
     projective,

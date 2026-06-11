@@ -12,7 +12,7 @@ const s = StyleSheet.create({
   logoTxt: { fontFamily: 'Times-Roman', fontSize: 8, color: '#ffffff', textAlign: 'center' },
   title: { fontFamily: 'Times-Roman', fontSize: 20 },
   subtitle: { color: C.gray, fontSize: 10, marginTop: 2 },
-  metaRow: { flexDirection: 'row', gap: 24, marginBottom: 4 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 24, marginBottom: 4 },
   metaLabel: { color: C.gray, fontSize: 9 },
   metaVal: { fontSize: 12 },
   secTitle: { fontFamily: 'Times-Roman', fontSize: 12, color: C.secGray, textTransform: 'uppercase', letterSpacing: 1, borderBottomWidth: 1, borderBottomColor: C.border, paddingBottom: 4, marginTop: 18, marginBottom: 4 },
@@ -43,6 +43,7 @@ export function BriefDocument({ view }: { view: BriefView }) {
           <View style={s.metaRow}>
             <View><Text style={s.metaLabel}>Empresa</Text><Text style={s.metaVal}>{view.company}</Text></View>
             {!!view.contact && <View><Text style={s.metaLabel}>Contacto</Text><Text style={s.metaVal}>{view.contact}</Text></View>}
+            {!!view.email && <View><Text style={s.metaLabel}>Correo</Text><Text style={s.metaVal}>{view.email}</Text></View>}
             {!!view.date && <View><Text style={s.metaLabel}>Fecha</Text><Text style={s.metaVal}>{view.date}</Text></View>}
           </View>
 
