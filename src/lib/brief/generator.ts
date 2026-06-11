@@ -13,7 +13,7 @@ export async function generateBrief(
   answers: { questionId: string; rawText: string; imageChoice: string | null }[],
 ): Promise<Brief> {
   const res = await client.messages.create({
-    model: 'claude-sonnet-4-6',
+    model: 'anthropic/claude-sonnet-4.6',
     max_tokens: 2000,
     messages: [{ role: 'user', content: buildBriefPrompt(session, answers) }],
   })
