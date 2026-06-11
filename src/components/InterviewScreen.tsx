@@ -30,6 +30,8 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
   useEffect(() => { textRef.current = text }, [text])
 
   useEffect(() => {
+    // Reset intencional al cambiar de pregunta (carga la respuesta guardada si se vuelve atrás).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setText(initial?.rawText ?? ''); setChoice(initial?.imageChoice); setListening(false)
     return () => { void voice?.stop() } // corta el micro al cambiar de pregunta/desmontar
     // eslint-disable-next-line react-hooks/exhaustive-deps

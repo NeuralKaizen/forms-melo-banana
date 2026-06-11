@@ -1,5 +1,5 @@
 'use client'
-import { use, useState, useMemo } from 'react'
+import { use, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { interviewQuestions } from '@/lib/script/flow'
 import { breatherAfter, type BreatherStep } from '@/lib/script/breathers'
@@ -14,10 +14,13 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
   const [i, setI] = useState(0)
   const [saved, setSaved] = useState<Record<string, { rawText: string; imageChoice?: string }>>({})
   const [breather, setBreather] = useState<BreatherStep | null>(null)
+  const finishing = useRef(false)
   const q = questions[i]
   const voice = useMemo(() => new BrowserVoice(), [])
 
   async function finish() {
+    if (finishing.current) return // guard contra doble-click en el cierre
+    finishing.current = true
     await fetch(`/api/sessions/${sessionId}/complete`, { method: 'POST' })
     router.push('/gracias')
   }
