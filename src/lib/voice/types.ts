@@ -1,10 +1,8 @@
 export interface VoiceAdapter {
-  /** Play the agent's question audio; resolves when finished (or immediately if unavailable). */
-  play(audioUrl: string): Promise<void>
-  /** Listen to the user; resolves with the transcript, or rejects if STT unsupported/denied. */
-  listen(): Promise<string>
-  /** Whether speech-to-text is available in this environment. */
+  /** Empieza a escuchar; llama onPartial con el texto acumulado en vivo. */
+  start(onPartial: (text: string) => void): void
+  /** Corta la escucha y resuelve con el texto final acumulado. */
+  stop(): Promise<string>
+  /** Si el STT está disponible; si no, la UI degrada a teclado. */
   isSTTSupported(): boolean
-  /** Stop any in-progress playback or listening. */
-  stop(): void
 }
