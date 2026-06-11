@@ -14,7 +14,13 @@ export default async function Detail({ params }: { params: Promise<{ sessionId: 
   if (!full) return <main className="p-8">No encontrado.</main>
   const b = brief?.content as any
   return <main className="mx-auto max-w-2xl space-y-8 p-8">
-    <h1 className="text-2xl font-bold text-ink">{full.company} · {full.name}</h1>
+    <div className="flex items-center justify-between gap-4">
+      <h1 className="text-2xl font-bold text-ink">{full.company} · {full.name}</h1>
+      <a href={`/api/sessions/${sessionId}/pdf`}
+        className="shrink-0 rounded-xl bg-[var(--ink)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+        Descargar PDF
+      </a>
+    </div>
     {b && <section className="rounded-2xl bg-[var(--cream)] p-5">
       <h2 className="mb-2 font-bold">Brief</h2>
       <p className="mb-3">{b.resumen}</p>
