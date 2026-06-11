@@ -1,10 +1,13 @@
-export type QuestionType = 'open' | 'image-grid'
+export type QuestionType = 'open' | 'image-grid' | 'color-grid' | 'gender'
 
-export interface ImageOption {
+export interface Option {
   id: string
   label: string
-  src: string // path under /public, e.g. /projective/animal/lion.jpg
+  src?: string       // image-grid: ruta bajo /public
+  colors?: string[]  // color-grid: rampa de shades CSS (claro→oscuro)
 }
+
+export type Answers = Record<string, { rawText: string; imageChoice?: string }>
 
 export interface Question {
   id: string
@@ -13,7 +16,9 @@ export interface Question {
   /** key idea to underline in the UI (substring of prompt) */
   highlight?: string
   audio: string // /audio/<id>.mp3
-  options?: ImageOption[] // only for image-grid
+  options?: Option[]
+  /** Si está y devuelve false, la pregunta se omite del flujo (branching). */
+  showIf?: (answers: Answers) => boolean
 }
 
 export interface Section {

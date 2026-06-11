@@ -1,7 +1,7 @@
-import type { ImageOption } from '@/lib/script/types'
+import type { Option } from '@/lib/script/types'
 
 export function ImageGrid({ options, selected, onSelect }: {
-  options: ImageOption[]; selected?: string; onSelect: (id: string) => void
+  options: Option[]; selected?: string; onSelect: (id: string) => void
 }) {
   return (
     <div className="grid grid-cols-3 gap-2.5 px-2">
