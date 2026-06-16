@@ -5,7 +5,7 @@ import { BriefDocument } from './BriefDocument'
 import type { BriefView } from './answers-view'
 
 const view: BriefView = {
-  company: 'Frutaria', contact: 'Lucía · CMO', date: '11 jun 2026',
+  company: 'Frutaria', contact: 'Lucía · CMO', email: 'lucia@frutaria.com', date: '11 jun 2026',
   sections: [{ title: 'Contexto del proyecto', items: [
     { prompt: '¿Historia?', answer: 'Desde 2018' },
     { prompt: '¿KPIs?', answer: '—' },
