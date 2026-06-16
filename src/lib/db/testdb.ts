@@ -18,6 +18,7 @@ export async function makeTestDb() {
       session_id uuid NOT NULL REFERENCES sessions(id),
       question_id text NOT NULL,
       raw_text text NOT NULL,
+      normalized_text text,
       image_choice text,
       created_at timestamp NOT NULL DEFAULT now(),
       UNIQUE (session_id, question_id)
