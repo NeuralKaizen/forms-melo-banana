@@ -1,6 +1,6 @@
 'use client'
 import type { SectionView } from '@/lib/script/flow'
-import { Wordmark, BananaGlyph } from './Brand'
+import { Wordmark } from './Brand'
 
 export function SectionNav({ sections, currentIndex, answeredIds, onJump }: {
   sections: SectionView[]
@@ -17,7 +17,7 @@ export function SectionNav({ sections, currentIndex, answeredIds, onJump }: {
       {/* Desktop: riel vertical */}
       <nav aria-label="Navegación por preguntas" className="hidden md:flex md:flex-col md:gap-6">
         <div className="flex items-center gap-2">
-          <BananaGlyph size={22} />
+          <span aria-hidden="true" className="text-xl leading-none">🍌</span>
           <Wordmark className="text-sm text-ink" />
         </div>
         {sections.map(section => (
@@ -89,7 +89,7 @@ export function SectionNav({ sections, currentIndex, answeredIds, onJump }: {
         {active && (
           <div className="mt-2 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink">
-              <BananaGlyph size={14} /> {active.title}
+              <span aria-hidden="true" className="text-sm leading-none">🍌</span> {active.title}
             </span>
             <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#bcb29c]">
               {activeLocal} de {active.questions.length}
