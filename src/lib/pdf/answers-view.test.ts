@@ -35,6 +35,18 @@ describe('buildBriefView', () => {
     expect(edades[0].value).toBe("30's")
   })
 
+  it('usa normalizedText cuando está presente, con fallback a rawText', () => {
+    const v = buildBriefView({ company: 'Acme' }, [
+      { questionId: 'productos', rawText: 'cafe sin puntuacion', normalizedText: 'Café, con puntuación.' },
+      { questionId: 'estrategia', rawText: 'solo cruda' },
+    ])
+    const proj = v.sections.find(s => s.title === 'Contexto del proyecto')!
+    const productos = proj.items.find(i => i.prompt.includes('productos o servicios'))!
+    const estrategia = proj.items.find(i => i.prompt.includes('estrategia de negocio'))!
+    expect(productos.answer).toBe('Café, con puntuación.')
+    expect(estrategia.answer).toBe('solo cruda')
+  })
+
   it('empresa vacía y sin fecha degradan limpio', () => {
     const v = buildBriefView({ name: null, company: null, role: null, email: null, completedAt: null }, [])
     expect(v.company).toBe('(sin empresa)')

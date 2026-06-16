@@ -24,7 +24,7 @@ const CHIP_LABEL: Record<string, string> = {
 
 export function buildBriefView(
   session: { name?: string | null; company?: string | null; role?: string | null; email?: string | null; completedAt?: Date | null },
-  answers: { questionId: string; rawText: string; imageChoice?: string | null }[],
+  answers: { questionId: string; rawText: string; normalizedText?: string | null; imageChoice?: string | null }[],
 ): BriefView {
   const byId = new Map(answers.map(a => [a.questionId, a]))
   const genero = byId.get('genero')?.imageChoice ?? undefined
@@ -54,7 +54,10 @@ export function buildBriefView(
 
     const items: TextItem[] = sec.questions
       .filter(q => q.type === 'open')
-      .map(q => ({ prompt: q.prompt, answer: (byId.get(q.id)?.rawText ?? '').trim() || '—' }))
+      .map(q => {
+        const a = byId.get(q.id)
+        return { prompt: q.prompt, answer: ((a?.normalizedText ?? a?.rawText) ?? '').trim() || '—' }
+      })
     sections.push({ title: sec.title, items })
   }
 
