@@ -48,10 +48,20 @@ export function BriefDocument({ view }: { view: BriefView }) {
           </View>
 
           {view.sections.map((sec, i) => (
-            <View key={i} wrap={false}>
-              <Text style={s.secTitle}>{sec.title}</Text>
-              {sec.items.map((it, j) => (
-                <View key={j}>
+            <View key={i}>
+              {/* Título + primera pregunta juntos: el título nunca queda huérfano al pie.
+                  El resto de las preguntas fluye libremente entre páginas. */}
+              <View wrap={false}>
+                <Text style={s.secTitle}>{sec.title}</Text>
+                {sec.items[0] && (
+                  <View>
+                    <Text style={s.q}>{sec.items[0].prompt}</Text>
+                    <Text style={s.a}>{sec.items[0].answer}</Text>
+                  </View>
+                )}
+              </View>
+              {sec.items.slice(1).map((it, j) => (
+                <View key={j} wrap={false}>
                   <Text style={s.q}>{it.prompt}</Text>
                   <Text style={s.a}>{it.answer}</Text>
                 </View>
