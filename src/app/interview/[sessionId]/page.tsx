@@ -1,10 +1,11 @@
 'use client'
 import { use, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { visibleQuestions } from '@/lib/script/flow'
+import { visibleQuestions, visibleSections } from '@/lib/script/flow'
 import { closingAfter, sectionIntro, type BreatherStep } from '@/lib/script/breathers'
 import { InterviewScreen } from '@/components/InterviewScreen'
 import { ProjectiveScreen } from '@/components/ProjectiveScreen'
+import { InterviewLayout } from '@/components/InterviewLayout'
 import { Breather } from '@/components/Breather'
 import { BrowserVoice } from '@/lib/voice/browser-voice'
 import type { Answers } from '@/lib/script/types'
@@ -21,6 +22,8 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
 
   const questions = visibleQuestions(saved)
   const q = questions[i]
+  const sections = visibleSections(saved)
+  const answeredIds = new Set(Object.keys(saved))
 
   async function finish() {
     if (finishing.current) return
@@ -62,7 +65,11 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
     onBack: () => setI(Math.max(0, i - 1)), onAnswer: answer,
   }
 
-  return q.type === 'open'
-    ? <InterviewScreen {...common} voice={voice} />
-    : <ProjectiveScreen {...common} />
+  return (
+    <InterviewLayout sections={sections} currentIndex={i} answeredIds={answeredIds} onJump={setI}>
+      {q.type === 'open'
+        ? <InterviewScreen {...common} voice={voice} />
+        : <ProjectiveScreen {...common} />}
+    </InterviewLayout>
+  )
 }
