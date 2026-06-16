@@ -6,6 +6,7 @@ import { db } from '@/lib/db/client'
 import { getSessionWithAnswers } from '@/lib/db/store'
 import { buildBriefView } from '@/lib/pdf/answers-view'
 import { BriefDocument } from '@/lib/pdf/BriefDocument'
+import { ensureNormalized } from '@/lib/normalize/service'
 
 export const runtime = 'nodejs'
 
@@ -22,7 +23,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
   const full = await getSessionWithAnswers(db, id)
   if (!full) return new Response('No encontrado', { status: 404 })
-  const view = buildBriefView(full, full.answers)
+  const answers = await ensureNormalized(db, id)
+  const view = buildBriefView(full, answers)
   const buffer = await renderToBuffer(createElement(BriefDocument, { view }) as ReactElement<DocumentProps>)
   return new Response(new Uint8Array(buffer), {
     headers: {
