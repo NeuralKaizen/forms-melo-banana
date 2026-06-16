@@ -1,5 +1,5 @@
 import { SCRIPT } from './questions'
-import type { Question, Answers } from './types'
+import type { Question, Answers, Section } from './types'
 
 export function allQuestions(): Question[] {
   return SCRIPT.flatMap(s => s.questions)
@@ -35,4 +35,31 @@ export function progress(id: string): { index: number; total: number } {
 /** Preguntas visibles según las respuestas (aplica branching vía showIf). */
 export function visibleQuestions(answers: Answers): Question[] {
   return interviewQuestions().filter(q => !q.showIf || q.showIf(answers))
+}
+
+export interface SectionView {
+  key: Section['key']
+  title: string
+  questions: { question: Question; index: number; localNumber: number }[]
+}
+
+/** Preguntas visibles agrupadas por sección del flujo de voz (identity excluida). */
+export function visibleSections(answers: Answers): SectionView[] {
+  let globalIndex = 0
+  const views: SectionView[] = []
+  for (const section of SCRIPT) {
+    if (section.key === 'identity') continue
+    const visible = section.questions.filter(q => !q.showIf || q.showIf(answers))
+    if (visible.length === 0) continue
+    views.push({
+      key: section.key,
+      title: section.title,
+      questions: visible.map((question, i) => ({
+        question,
+        index: globalIndex++,
+        localNumber: i + 1,
+      })),
+    })
+  }
+  return views
 }

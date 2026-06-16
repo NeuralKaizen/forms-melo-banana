@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { allQuestions, firstQuestionId, nextQuestionId, progress, interviewQuestions, visibleQuestions } from './flow'
+import { allQuestions, firstQuestionId, nextQuestionId, progress, interviewQuestions, visibleQuestions, visibleSections } from './flow'
 import type { Answers } from './types'
 
 describe('flow', () => {
@@ -44,5 +44,27 @@ describe('visibleQuestions', () => {
     expect(qs).toHaveLength(20)
     expect(qs.find(q => q.id === 'edad_mujer')).toBeDefined()
     expect(qs.find(q => q.id === 'edad_hombre')).toBeUndefined()
+  })
+})
+
+describe('visibleSections', () => {
+  it('agrupa por sección (excluye identity) con numeración local y global', () => {
+    const secs = visibleSections({})
+    expect(secs.map(s => s.key)).toEqual(['project', 'consumer', 'design', 'projective'])
+    expect(secs[0].title).toBe('Contexto del proyecto')
+    expect(secs[0].questions[0]).toMatchObject({ index: 0, localNumber: 1 })
+    expect(secs[0].questions[0].question.id).toBe('empresa_historia')
+    expect(secs[0].questions.map(q => q.localNumber)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    const allIdx = secs.flatMap(s => s.questions.map(q => q.index))
+    expect(allIdx).toEqual([...Array(20).keys()])
+  })
+
+  it('respeta el branching de género en la numeración', () => {
+    const secs = visibleSections({ genero: { rawText: '', imageChoice: 'mujer' } })
+    const projective = secs.find(s => s.key === 'projective')!
+    const ids = projective.questions.map(q => q.question.id)
+    expect(ids).toContain('edad_mujer')
+    expect(ids).not.toContain('edad_hombre')
+    expect(projective.questions.map(q => q.localNumber)).toEqual([1, 2, 3, 4, 5, 6])
   })
 })
