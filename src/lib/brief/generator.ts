@@ -10,7 +10,7 @@ export interface Brief {
 export async function generateBrief(
   client: Anthropic,
   session: { name?: string; company?: string },
-  answers: { questionId: string; rawText: string; imageChoice: string | null }[],
+  answers: { questionId: string; rawText: string; normalizedText?: string | null; imageChoice: string | null }[],
 ): Promise<Brief> {
   const res = await client.messages.create({
     model: 'anthropic/claude-sonnet-4.6',

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { makeTestDb } from './testdb'
-import { createSession, saveAnswer, getSessionWithAnswers, completeSession } from './store'
+import { createSession, saveAnswer, getSessionWithAnswers, completeSession, setNormalized } from './store'
 import { answers } from './schema'
 
 type AnswerRow = typeof answers.$inferSelect
@@ -35,5 +35,16 @@ describe('store', () => {
     const full = await getSessionWithAnswers(db, s.id)
     expect(full!.answers).toHaveLength(1)
     expect(full!.answers[0].rawText).toBe('corregida')
+  })
+
+  it('setNormalized guarda normalized_text sin tocar raw_text', async () => {
+    const db = await makeTestDb()
+    const s = await createSession(db, {})
+    const a = await saveAnswer(db, s.id, { questionId: 'nombre', rawText: 'hola me llamo ana' })
+    await setNormalized(db, a.id, 'Hola, me llamo Ana.')
+    const full = await getSessionWithAnswers(db, s.id)
+    const row = full!.answers.find((r: AnswerRow) => r.id === a.id)!
+    expect(row.normalizedText).toBe('Hola, me llamo Ana.')
+    expect(row.rawText).toBe('hola me llamo ana')
   })
 })

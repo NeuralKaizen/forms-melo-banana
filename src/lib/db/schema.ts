@@ -16,6 +16,7 @@ export const answers = pgTable('answers', {
   sessionId: uuid('session_id').notNull().references(() => sessions.id),
   questionId: text('question_id').notNull(),
   rawText: text('raw_text').notNull(),
+  normalizedText: text('normalized_text'),
   imageChoice: text('image_choice'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => [unique('answers_session_question').on(t.sessionId, t.questionId)])

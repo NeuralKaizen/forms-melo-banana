@@ -11,4 +11,12 @@ describe('buildBriefPrompt', () => {
     expect(p).toContain('evolucionar la marca') // from the question prompt
     expect(p).toContain('Para crecer')
   })
+
+  it('usa normalizedText en el prompt cuando existe', () => {
+    const out = buildBriefPrompt({ company: 'Acme' }, [
+      { questionId: 'productos', rawText: 'cafe crudo', normalizedText: 'Café normalizado.', imageChoice: null },
+    ])
+    expect(out).toContain('Café normalizado.')
+    expect(out).not.toContain('cafe crudo')
+  })
 })

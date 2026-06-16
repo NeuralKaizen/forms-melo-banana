@@ -25,6 +25,10 @@ export async function saveAnswer(db: AnyDb, sessionId: string, a: {
   return row
 }
 
+export async function setNormalized(db: AnyDb, answerId: string, text: string) {
+  await db.update(answers).set({ normalizedText: text }).where(eq(answers.id, answerId))
+}
+
 export async function getSessionWithAnswers(db: AnyDb, id: string) {
   const [s] = await db.select().from(sessions).where(eq(sessions.id, id))
   if (!s) return null
