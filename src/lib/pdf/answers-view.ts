@@ -9,6 +9,8 @@ export interface BriefView {
   date: string
   sections: { title: string; items: TextItem[] }[]
   projective: Chip[]
+  /** El "¿por qué?" de cada proyectiva que el usuario explicó (vacías se omiten). */
+  projectiveReasons: TextItem[]
 }
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -31,6 +33,7 @@ export function buildBriefView(
 
   const sections: { title: string; items: TextItem[] }[] = []
   const projective: Chip[] = []
+  const projectiveReasons: TextItem[] = []
 
   for (const sec of SCRIPT) {
     if (sec.key === 'identity') continue
@@ -48,6 +51,11 @@ export function buildBriefView(
           chip.swatch = opt.colors[Math.floor(opt.colors.length / 2)]
         }
         projective.push(chip)
+
+        const why = ((a.normalizedText ?? a.rawText) ?? '').trim()
+        if (why) {
+          projectiveReasons.push({ prompt: `${chip.label} · ${chip.value}`, answer: why })
+        }
       }
       continue
     }
@@ -68,5 +76,6 @@ export function buildBriefView(
     date: fmtDate(session.completedAt ?? null),
     sections,
     projective,
+    projectiveReasons,
   }
 }

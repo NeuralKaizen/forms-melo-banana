@@ -17,6 +17,8 @@ export interface Question {
   highlight?: string
   audio: string // /audio/<id>.mp3
   options?: Option[]
+  /** Proyectivas: pregunta guía que aparece al elegir una opción ("¿por qué?"). */
+  followUp?: string
   /** Si está y devuelve false, la pregunta se omite del flujo (branching). */
   showIf?: (answers: Answers) => boolean
 }

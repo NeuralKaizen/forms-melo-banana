@@ -70,18 +70,26 @@ export function BriefDocument({ view }: { view: BriefView }) {
           ))}
 
           {view.projective.length > 0 && (
-            <View wrap={false}>
-              <Text style={s.secTitle}>Ejercicio proyectivo</Text>
-              <View style={s.chips}>
-                {view.projective.map((c, i) => (
-                  <View key={i} style={s.chip}>
-                    <Text style={s.chipLabel}>{c.label}</Text>
-                    {!!c.swatch && <View style={[s.swatch, { backgroundColor: c.swatch }]} />}
-                    <Text style={s.chipVal}>{c.value}</Text>
-                  </View>
-                ))}
+            <>
+              <View wrap={false}>
+                <Text style={s.secTitle}>Ejercicio proyectivo</Text>
+                <View style={s.chips}>
+                  {view.projective.map((c, i) => (
+                    <View key={i} style={s.chip}>
+                      <Text style={s.chipLabel}>{c.label}</Text>
+                      {!!c.swatch && <View style={[s.swatch, { backgroundColor: c.swatch }]} />}
+                      <Text style={s.chipVal}>{c.value}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+              {view.projectiveReasons.map((r, i) => (
+                <View key={i} wrap={false}>
+                  <Text style={s.q}>{r.prompt}</Text>
+                  <Text style={s.a}>{r.answer}</Text>
+                </View>
+              ))}
+            </>
           )}
         </View>
 

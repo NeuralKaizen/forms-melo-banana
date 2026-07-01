@@ -66,7 +66,7 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
   }
 
   return (
-    <InterviewLayout sections={sections} currentIndex={i} answeredIds={answeredIds} onJump={setI}>
+    <InterviewLayout sections={sections} currentIndex={i} answeredIds={answeredIds} onJump={setI} wide={q.type !== 'open'}>
       {q.type === 'open'
         ? <InterviewScreen {...common} voice={voice} />
         : <ProjectiveScreen {...common} />}

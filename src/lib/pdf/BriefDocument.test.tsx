@@ -14,6 +14,9 @@ const view: BriefView = {
     { label: 'Animal', value: 'León' },
     { label: 'Color', value: 'Amarillo', swatch: '#EAB308' },
   ],
+  projectiveReasons: [
+    { prompt: 'Animal · León', answer: 'Transmite fuerza y liderazgo.' },
+  ],
 }
 
 describe('BriefDocument', () => {

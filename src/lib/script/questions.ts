@@ -48,6 +48,7 @@ export const SCRIPT: Section[] = [
       {
         id: 'animal', type: 'image-grid', highlight: 'animal', audio: '/audio/animal.mp3',
         prompt: 'Si la compañía fuera un animal, ¿cuál sería?',
+        followUp: '¿Por qué ese animal? ¿Qué refleja de la marca?',
         options: [
           { id: 'conejo', label: 'Conejo', src: '/projective/animal/conejo.jpg' },
           { id: 'caballo', label: 'Caballo', src: '/projective/animal/caballo.jpg' },
@@ -63,6 +64,7 @@ export const SCRIPT: Section[] = [
       {
         id: 'color', type: 'color-grid', highlight: 'color', audio: '/audio/color.mp3',
         prompt: 'Si la compañía fuera un color, ¿cuál sería?',
+        followUp: '¿Por qué ese color?',
         options: [
           { id: 'amarillo', label: 'Amarillo', colors: ['#FEF9C3', '#FDE047', '#EAB308', '#CA8A04', '#854D0E'] },
           { id: 'violeta', label: 'Violeta', colors: ['#F3E8FF', '#D8B4FE', '#A855F7', '#7E22CE', '#581C87'] },
@@ -78,6 +80,7 @@ export const SCRIPT: Section[] = [
       {
         id: 'genero', type: 'gender', highlight: 'género', audio: '/audio/genero.mp3',
         prompt: 'Si la compañía tuviera un género, ¿cuál sería?',
+        followUp: '¿Por qué ese género?',
         options: [
           { id: 'hombre', label: 'Hombre' },
           { id: 'mujer', label: 'Mujer' },
@@ -86,6 +89,7 @@ export const SCRIPT: Section[] = [
       {
         id: 'edad_hombre', type: 'image-grid', highlight: 'edad', audio: '/audio/edad_hombre.mp3',
         prompt: 'Si la compañía tuviera una edad, ¿cuál sería?',
+        followUp: '¿Por qué esa edad?',
         showIf: (a) => a['genero']?.imageChoice !== 'mujer',
         options: [
           { id: '20s', label: "20's", src: '/projective/edad-hombre/20s.jpg' },
@@ -98,6 +102,7 @@ export const SCRIPT: Section[] = [
       {
         id: 'edad_mujer', type: 'image-grid', highlight: 'edad', audio: '/audio/edad_mujer.mp3',
         prompt: 'Si la compañía tuviera una edad, ¿cuál sería?',
+        followUp: '¿Por qué esa edad?',
         showIf: (a) => a['genero']?.imageChoice === 'mujer',
         options: [
           { id: '20s', label: "20's", src: '/projective/edad-mujer/20s.jpg' },
@@ -110,6 +115,7 @@ export const SCRIPT: Section[] = [
       {
         id: 'olor', type: 'image-grid', highlight: 'olor', audio: '/audio/olor.mp3',
         prompt: 'Si la compañía tuviera un olor, ¿cuál sería?',
+        followUp: '¿Por qué ese olor?',
         options: [
           { id: 'cerezo', label: 'Cerezo', src: '/projective/olor/cerezo.jpg' },
           { id: 'pina', label: 'Piña', src: '/projective/olor/pina.jpg' },
@@ -125,6 +131,7 @@ export const SCRIPT: Section[] = [
       {
         id: 'ciudad', type: 'image-grid', highlight: 'ciudad', audio: '/audio/ciudad.mp3',
         prompt: 'Si la compañía fuera una ciudad, ¿cuál sería?',
+        followUp: '¿Por qué esa ciudad? ¿Qué refleja de la marca?',
         options: [
           { id: 'bali', label: 'Bali', src: '/projective/ciudad/bali.jpg' },
           { id: 'ny', label: 'New York', src: '/projective/ciudad/ny.jpg' },

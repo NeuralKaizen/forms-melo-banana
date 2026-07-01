@@ -47,6 +47,15 @@ describe('buildBriefView', () => {
     expect(estrategia.answer).toBe('solo cruda')
   })
 
+  it('incluye el "por qué" de las proyectivas explicadas y omite las vacías', () => {
+    const v = buildBriefView({ company: 'Acme' }, [
+      { questionId: 'animal', rawText: 'transmite fuerza', normalizedText: 'Transmite fuerza.', imageChoice: 'leon' },
+      { questionId: 'color', rawText: '', imageChoice: 'amarillo' }, // sin por qué → se omite
+    ])
+    // usa normalizedText y prefija con la elección; la vacía no aparece
+    expect(v.projectiveReasons).toEqual([{ prompt: 'Animal · León', answer: 'Transmite fuerza.' }])
+  })
+
   it('empresa vacía y sin fecha degradan limpio', () => {
     const v = buildBriefView({ name: null, company: null, role: null, email: null, completedAt: null }, [])
     expect(v.company).toBe('(sin empresa)')
