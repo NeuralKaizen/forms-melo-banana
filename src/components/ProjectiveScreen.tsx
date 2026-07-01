@@ -28,7 +28,7 @@ export function ProjectiveScreen({ question, index, total, initial, canGoBack, o
 
   return (
     <>
-      <div key={question.id} className="animate-q md:my-auto">
+      <div key={question.id} className="animate-q mx-auto w-full max-w-3xl md:my-auto">
         <h2 className="text-center font-serif text-[26px] font-medium leading-snug text-ink md:text-3xl">
           {question.prompt}
         </h2>

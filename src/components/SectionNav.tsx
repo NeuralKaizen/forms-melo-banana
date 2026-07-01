@@ -14,50 +14,82 @@ export function SectionNav({ sections, currentIndex, answeredIds, onJump }: {
 
   return (
     <>
-      {/* Desktop: riel vertical */}
-      <nav aria-label="Navegación por preguntas" className="hidden md:flex md:flex-col md:gap-6">
-        <div className="flex items-center gap-2">
+      {/* Desktop: stepper vertical — modo principal para moverse por la entrevista */}
+      <nav aria-label="Navegación por preguntas" className="hidden md:flex md:flex-col">
+        <div className="mb-11 flex items-center gap-2">
           <span aria-hidden="true" className="text-xl leading-none">🍌</span>
           <Wordmark className="text-sm text-ink" />
         </div>
-        {sections.map(section => (
-          <div key={section.key}>
-            <p
-              aria-current={section.key === activeKey ? 'step' : undefined}
-              className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${
-                section.key === activeKey ? 'text-ink' : 'text-[#bcb29c]'
-              }`}
-            >
-              {section.title}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {section.questions.map(({ question, index, localNumber }) => {
-                const isCurrent = index === currentIndex
-                const clickable = answeredIds.has(question.id) && !isCurrent
-                return (
-                  <button
-                    key={question.id}
-                    type="button"
-                    disabled={!clickable && !isCurrent}
-                    aria-current={isCurrent ? 'step' : undefined}
-                    aria-label={`${section.title}: pregunta ${localNumber}`}
-                    onClick={() => { if (clickable) onJump(index) }}
-                    className={[
-                      'grid h-7 w-7 place-items-center rounded-full text-xs font-bold transition',
-                      isCurrent
-                        ? 'bg-[var(--banana)] text-ink'
-                        : clickable
-                          ? 'bg-black/[0.06] text-ink hover:bg-black/10 active:scale-95'
-                          : 'cursor-not-allowed bg-black/[0.03] text-[#cfc7b4]',
-                    ].join(' ')}
-                  >
-                    {localNumber}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
+        <ol className="flex flex-col">
+          {sections.map((section, si) => {
+            const isActive = section.key === activeKey
+            const answered = section.questions.filter(q => answeredIds.has(q.question.id)).length
+            const total = section.questions.length
+            const isDone = answered === total && !isActive
+            const isLast = si === sections.length - 1
+            return (
+              <li key={section.key} className="relative flex gap-3 pb-9 last:pb-0">
+                {/* Conector vertical del stepper (sin animación) */}
+                {!isLast && (
+                  <span aria-hidden="true" className="absolute left-[11px] top-7 bottom-1 w-px bg-black/10" />
+                )}
+                <span
+                  aria-hidden="true"
+                  className={`relative z-10 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold transition ${
+                    isActive
+                      ? 'bg-[var(--banana)] text-ink'
+                      : isDone
+                        ? 'bg-[var(--ink)] text-white'
+                        : 'bg-black/[0.06] text-[#cfc7b4]'
+                  }`}
+                >
+                  {isDone ? '✓' : si + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p
+                      aria-current={isActive ? 'step' : undefined}
+                      className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                        isActive ? 'text-ink' : 'text-[#bcb29c]'
+                      }`}
+                    >
+                      {section.title}
+                    </p>
+                    <span className="shrink-0 text-[10px] font-semibold tabular-nums text-[#cfc7b4]">
+                      {answered}/{total}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {section.questions.map(({ question, index, localNumber }) => {
+                      const isCurrent = index === currentIndex
+                      const clickable = answeredIds.has(question.id) && !isCurrent
+                      return (
+                        <button
+                          key={question.id}
+                          type="button"
+                          disabled={!clickable && !isCurrent}
+                          aria-current={isCurrent ? 'step' : undefined}
+                          aria-label={`${section.title}: pregunta ${localNumber}`}
+                          onClick={() => { if (clickable) onJump(index) }}
+                          className={[
+                            'grid h-8 w-8 place-items-center rounded-lg text-xs font-bold transition',
+                            isCurrent
+                              ? 'bg-[var(--banana)] text-ink shadow-sm'
+                              : clickable
+                                ? 'bg-black/[0.06] text-ink hover:bg-black/10 active:scale-95'
+                                : 'cursor-not-allowed bg-black/[0.03] text-[#cfc7b4]',
+                          ].join(' ')}
+                        >
+                          {localNumber}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
       </nav>
 
       {/* Móvil: tira de segmentos por sección */}
@@ -87,14 +119,43 @@ export function SectionNav({ sections, currentIndex, answeredIds, onJump }: {
           })}
         </div>
         {active && (
-          <div className="mt-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink">
-              <span aria-hidden="true" className="text-sm leading-none">🍌</span> {active.title}
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#bcb29c]">
-              {activeLocal} de {active.questions.length}
-            </span>
-          </div>
+          <>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink">
+                <span aria-hidden="true" className="text-sm leading-none">🍌</span> {active.title}
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#bcb29c]">
+                {activeLocal} de {active.questions.length}
+              </span>
+            </div>
+            {/* Puntos de la sección activa: tocar una respondida te devuelve a ella */}
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {active.questions.map(({ question, index, localNumber }) => {
+                const isCurrent = index === currentIndex
+                const clickable = answeredIds.has(question.id) && !isCurrent
+                return (
+                  <button
+                    key={question.id}
+                    type="button"
+                    disabled={!clickable && !isCurrent}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    aria-label={`${active.title}: pregunta ${localNumber}`}
+                    onClick={() => { if (clickable) onJump(index) }}
+                    className={[
+                      'grid h-8 w-8 place-items-center rounded-lg text-xs font-bold transition',
+                      isCurrent
+                        ? 'bg-[var(--banana)] text-ink shadow-sm'
+                        : clickable
+                          ? 'bg-black/[0.06] text-ink active:scale-95'
+                          : 'cursor-not-allowed bg-black/[0.03] text-[#cfc7b4]',
+                    ].join(' ')}
+                  >
+                    {localNumber}
+                  </button>
+                )
+              })}
+            </div>
+          </>
         )}
       </nav>
     </>

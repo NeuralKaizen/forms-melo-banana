@@ -63,12 +63,12 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
 
   return (
     <>
-      <div key={question.id} className="animate-q text-center md:my-auto">
+      <div key={question.id} className="animate-q mx-auto w-full max-w-2xl text-center md:my-auto">
         <h2 className="font-serif text-[28px] font-medium leading-snug text-ink md:text-4xl">
           {withHighlight(question.prompt, question.highlight)}
         </h2>
       </div>
-      <div key={`${question.id}-controls`} className="animate-q-late flex flex-col items-center gap-6 pt-8">
+      <div key={`${question.id}-controls`} className="animate-q-late mx-auto flex w-full max-w-2xl flex-col items-center gap-6 pt-8">
         {supported && (
           <div className="flex flex-col items-center gap-2.5">
             <MicButton active={listening} onClick={toggle} />
@@ -83,7 +83,7 @@ export function InterviewScreen({ question, index, total, voice, initial, canGoB
         <textarea value={text} onChange={(e) => setText(e.target.value)}
           aria-label="Tu respuesta"
           placeholder="Escribe tu respuesta aquí…"
-          className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-[var(--banana)] focus:ring-2 focus:ring-[var(--banana)]/40" rows={2} />
+          className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3.5 text-[15px] leading-relaxed text-ink outline-none transition focus:border-[var(--banana)] focus:ring-2 focus:ring-[var(--banana)]/40" rows={5} />
         <div className="mt-1 flex w-full items-center justify-center gap-3">
           {canGoBack && (
             <button onClick={onBack}
