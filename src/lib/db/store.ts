@@ -1,5 +1,5 @@
 import { eq, asc } from 'drizzle-orm'
-import { sessions, answers, briefs } from './schema'
+import { sessions, answers, projects, deliverables } from './schema'
 
 type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter seam
 
@@ -43,16 +43,49 @@ export async function completeSession(db: AnyDb, id: string) {
   return row
 }
 
-export async function saveBrief(db: AnyDb, sessionId: string, content: unknown) {
-  await db.insert(briefs).values({ sessionId, content })
-    .onConflictDoUpdate({ target: briefs.sessionId, set: { content, createdAt: new Date() } })
-}
-
 export async function listCompleted(db: AnyDb) {
   return db.select().from(sessions).where(eq(sessions.status, 'completed')).orderBy(asc(sessions.completedAt))
 }
 
-export async function getBrief(db: AnyDb, sessionId: string) {
-  const [b] = await db.select().from(briefs).where(eq(briefs.sessionId, sessionId))
-  return b ?? null
+export function normalizeCompanyName(name: string): string {
+  return (name ?? '').toLowerCase().trim().replace(/\s+/g, ' ')
+}
+
+export async function findOrCreateProject(db: AnyDb, name: string) {
+  const normalizedName = normalizeCompanyName(name)
+  const [existing] = await db.select().from(projects).where(eq(projects.normalizedName, normalizedName))
+  if (existing) return existing
+  const [row] = await db.insert(projects)
+    .values({ name: name.trim(), normalizedName })
+    .onConflictDoNothing({ target: projects.normalizedName })
+    .returning()
+  if (row) return row
+  const [after] = await db.select().from(projects).where(eq(projects.normalizedName, normalizedName))
+  return after
+}
+
+export async function assignSessionToProject(db: AnyDb, sessionId: string, projectId: string) {
+  await db.update(sessions).set({ projectId }).where(eq(sessions.id, sessionId))
+}
+
+export async function listProjects(db: AnyDb) {
+  return db.select({ id: projects.id, name: projects.name }).from(projects).orderBy(asc(projects.name))
+}
+
+export async function getProjectWithSessions(db: AnyDb, projectId: string) {
+  const [p] = await db.select().from(projects).where(eq(projects.id, projectId))
+  if (!p) return null
+  const ss = await db.select().from(sessions)
+    .where(eq(sessions.projectId, projectId)).orderBy(asc(sessions.createdAt))
+  return { ...p, sessions: ss }
+}
+
+export async function saveDeliverable(db: AnyDb, projectId: string, content: unknown) {
+  await db.insert(deliverables).values({ projectId, content })
+    .onConflictDoUpdate({ target: deliverables.projectId, set: { content, updatedAt: new Date() } })
+}
+
+export async function getDeliverable(db: AnyDb, projectId: string) {
+  const [d] = await db.select().from(deliverables).where(eq(deliverables.projectId, projectId))
+  return d ?? null
 }
