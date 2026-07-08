@@ -44,4 +44,16 @@ describe('generateDeliverable', () => {
   it('only con dependencia ausente lanza error', async () => {
     await expect(generateDeliverable(fakeClient(), R, { only: 'perfil', prev: {} })).rejects.toThrow()
   })
+  it('run completo con prev bueno conserva competencia previa si el paso fresco falla', async () => {
+    const prev = await generateDeliverable(fakeClient(), R)
+    const d = await generateDeliverable(fakeClient({ failCompetencia: true }), R, { prev })
+    expect(d.competencia!.data).not.toBeNull()
+    expect(d.competencia).toEqual(prev.competencia)
+  })
+  it('only=competencia con prev bueno conserva la previa si falla', async () => {
+    const prev = await generateDeliverable(fakeClient(), R)
+    const d = await generateDeliverable(fakeClient({ failCompetencia: true }), R, { only: 'competencia', prev })
+    expect(d.competencia!.data).not.toBeNull()
+    expect(d.competencia).toEqual(prev.competencia)
+  })
 })

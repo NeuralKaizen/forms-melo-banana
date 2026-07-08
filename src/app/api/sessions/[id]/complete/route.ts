@@ -5,11 +5,15 @@ import { completeSession, getSessionWithAnswers, findOrCreateProject, assignSess
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const s = await completeSession(db, id)
-  const full = await getSessionWithAnswers(db, id)
-  const company = full?.company?.trim()
-  if (company) {
-    const project = await findOrCreateProject(db, company)
-    await assignSessionToProject(db, id, project.id)
+  try {
+    const full = await getSessionWithAnswers(db, id)
+    const company = full?.company?.trim()
+    if (company) {
+      const project = await findOrCreateProject(db, company)
+      await assignSessionToProject(db, id, project.id)
+    }
+  } catch (e) {
+    console.error('auto-assign de proyecto falló:', e)
   }
   return NextResponse.json({ status: s.status })
 }

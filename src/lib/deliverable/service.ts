@@ -9,18 +9,20 @@ export async function generateProjectDeliverable(projectId: string, opts: { part
   const project = await getProjectWithSessions(db, projectId)
   if (!project) throw new Error('proyecto no encontrado')
 
-  const respondents: RespondentInput[] = []
-  for (const s of project.sessions as { id: string; name?: string | null; role?: string | null }[]) {
+  const built = await Promise.all((project.sessions as { id: string; name?: string | null; role?: string | null }[]).map(async (s) => {
     await ensureNormalized(db, s.id)
     const full = await getSessionWithAnswers(db, s.id)
-    if (!full) continue
-    respondents.push({
+    if (!full) return null
+    return {
       respondentName: s.name ?? '',
       role: s.role ?? '',
       answers: (full.answers as { questionId: string; rawText: string; normalizedText?: string | null; imageChoice?: string | null }[])
         .map(a => ({ questionId: a.questionId, text: a.normalizedText ?? a.rawText, imageChoice: a.imageChoice ?? null })),
-    })
-  }
+    }
+  }))
+  const respondents: RespondentInput[] = built.filter(Boolean) as RespondentInput[]
+
+  if (respondents.length === 0) throw new Error('el proyecto no tiene respondientes')
 
   const client = new Anthropic({
     authToken: process.env.OPENROUTER_API_KEY!,
@@ -29,7 +31,8 @@ export async function generateProjectDeliverable(projectId: string, opts: { part
   })
 
   const prev = (await getDeliverable(db, projectId))?.content as Deliverable | undefined
-  const content = await generateDeliverable(client, respondents, opts.part ? { only: opts.part, prev: prev ?? {} } : {})
+  const content = await generateDeliverable(client, respondents,
+    opts.part ? { only: opts.part, prev: prev ?? {} } : { prev: prev ?? {} })
   await saveDeliverable(db, projectId, content)
   return content
 }
