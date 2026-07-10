@@ -29,7 +29,7 @@ Espejo mini de `IdentityForm`:
 
 ### 3. Lista de proyectos (`/admin`)
 
-- `AdminBar` arriba; eyebrow "Panel interno" + título Fraunces "Proyectos" con subrayado banana.
+- `AdminBar` arriba; título Fraunces "Proyectos" con subrayado banana (sin eyebrow de página: la pill "Panel interno" de la barra ya cumple ese rol en esta pantalla).
 - Cada proyecto: card blanca `rounded-2xl`, borde `black/5`, sombra suave, nombre + chevron a la derecha. Hover: borde banana sutil (transición de color, cero movimiento).
 - Estado vacío: mensaje centrado, tono cálido, mismo copy actual.
 
