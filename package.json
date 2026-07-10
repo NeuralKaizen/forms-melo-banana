@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:push": "drizzle-kit push",
-    "gen:audio": "tsx scripts/generate-audio.ts"
+    "gen:audio": "tsx scripts/generate-audio.ts",
+    "seed:caso-prueba": "node scripts/seed-caso-prueba.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",

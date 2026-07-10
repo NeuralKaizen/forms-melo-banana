@@ -10,6 +10,16 @@ describe('paso competencia', () => {
     expect(p).toMatch(/competidor/i); expect(p).toMatch(/eje/i)
     expect(p).toMatch(/posición.*ideal/i); expect(p).toMatch(/equipo/i)
   })
+  // Regresión: el prompt decía `Item[]` sin describir el tipo, y el modelo devolvía
+  // {"nombre": ...} o {"descripcion": ...}. validateCompetencia lo rechazaba y la parte
+  // fallaba SIEMPRE, incluso tras el reintento. Verificado contra el modelo real.
+  it('el prompt describe la forma del Item, porque el modelo no conoce el tipo', () => {
+    const p = buildCompetenciaPrompt(R)
+    expect(p).toContain('"texto"')
+    expect(p).toContain('"origen"')
+    expect(p).toContain('"cita"')
+  })
+
   it('validateCompetencia acepta forma correcta con 2 ejes', () => {
     const ok = {
       competidores: [{ texto: 'Platzi', origen: 'cliente' }],

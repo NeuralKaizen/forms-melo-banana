@@ -13,7 +13,7 @@ const GUIA = [
   '  las trae: si faltan, proponelas marcadas como "equipo".',
   '- ejes: EXACTAMENTE 2 ejes de comparación. Casi nunca vienen en el formulario: proponelos',
   '  a partir de lo que el cliente valora, marcados como "equipo".',
-  '- posicionActual y posicionIdeal: dónde está hoy la marca y a dónde debería moverse (texto).',
+  '- posicionActual y posicionIdeal: dónde está hoy la marca y a dónde debería moverse (un Item).',
   '  La posición ideal suele ser aporte del equipo.',
 ].join('\n')
 
@@ -21,7 +21,9 @@ export function buildCompetenciaPrompt(respondents: RespondentInput[]): string {
   return [
     PREAMBULO, '', GUIA, '', ORIGEN_Y_TRIANGULACION, '',
     '## Respuestas de los respondientes', formatRespondents(respondents), '',
-    'Devolvé SOLO JSON con esta forma:',
+    // El modelo no conoce el tipo Item: si no se le describe, inventa los nombres de
+    // campo ("nombre", "descripcion") y el validador rechaza la respuesta.
+    'Devolvé SOLO JSON con esta forma (cada Item: {"texto": string, "origen": "cliente"|"equipo"|"pendiente", "cita"?: string}):',
     '{"competidores": Item[], "otrosReferentes": [{"marca": string, "tipo": string, "origen": Origen}],',
     ' "ejes": [{"nombre": string, "extremoIzquierdo": string, "extremoDerecho": string, "origen": Origen}],',
     ' "posicionActual": Item, "posicionIdeal": Item}',
