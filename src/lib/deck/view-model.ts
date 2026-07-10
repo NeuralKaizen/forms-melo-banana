@@ -16,13 +16,19 @@ function fmtFecha(d: Date): string {
 
 const PENDIENTE: DeckItem = { texto: 'Pendiente del taller', origen: 'pendiente', cita: null }
 
-/** Verifica las citas y, si la lista quedó vacía, deja un ítem pendiente. */
+/**
+ * Verifica las citas y descarta los ítems cuyo texto esté vacío o sea sólo
+ * espacios (el análisis los puede generar como huecos). Si la lista queda
+ * vacía tras el descarte, deja un ítem pendiente.
+ */
 function items(list: Item[] | undefined, corpus: string[]): DeckItem[] {
-  const out = (list ?? []).map(i => ({
-    texto: i.texto,
-    origen: i.origen,
-    cita: citaVerificada(i.cita, corpus),
-  }))
+  const out = (list ?? [])
+    .filter(i => (i?.texto ?? '').trim().length > 0)
+    .map(i => ({
+      texto: i.texto,
+      origen: i.origen,
+      cita: citaVerificada(i.cita, corpus),
+    }))
   return out.length ? out : [PENDIENTE]
 }
 
@@ -83,8 +89,13 @@ export function buildDeckView(input: {
   // Parte 3 — Perfil de usuario y Propuesta de Valor
   const perf = d.perfil?.data
   const pv = d.propuestaValor?.data
-  // La sección 3 falla si falla cualquiera de sus dos insumos.
-  const err3 = errorDe(d.perfil) ?? errorDe(d.propuestaValor)
+  // La sección 3 falla si falla cualquiera de sus dos insumos; si fallan los
+  // dos, se muestran ambos errores en vez de descartar uno.
+  const errPerfil = errorDe(d.perfil)
+  const errPropuestaValor = errorDe(d.propuestaValor)
+  const err3 = errPerfil && errPropuestaValor
+    ? `${errPerfil} ${errPropuestaValor}`
+    : (errPerfil ?? errPropuestaValor)
   const f = pv?.formula
   const sintesis = f ? `En ${f.marca}, ${f.verbo} ${f.razonDeSer}. Somos ${f.beneficioCentral}.` : undefined
   const s3 = seccion(3, 'Perfil de usuario y Propuesta de Valor', err3, [

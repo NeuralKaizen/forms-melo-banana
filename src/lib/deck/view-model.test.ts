@@ -120,6 +120,40 @@ describe('buildDeckView', () => {
     expect(v.fecha).toBe('10 jul 2026')
   })
 
+  it('posicionActual con texto en blanco cae al ítem pendiente, no una línea vacía', () => {
+    const posicionEnBlanco: Deliverable = {
+      ...COMPLETO,
+      competencia: ok({ ...COMPLETO.competencia!.data!, posicionActual: item('   ') }),
+    }
+    const v = buildDeckView({ projectName: 'X', deliverable: posicionEnBlanco, corpus: CORPUS, now: NOW })
+    const bloque = v.secciones[1].blocks.find(b => b.titulo === 'Posición actual')!
+    expect(bloque.items).toEqual([{ texto: 'Pendiente del taller', origen: 'pendiente', cita: null }])
+  })
+
+  it('descarta ítems en blanco dentro de una lista, conservando los válidos', () => {
+    const conItemEnBlanco: Deliverable = {
+      ...COMPLETO,
+      competencia: ok({
+        ...COMPLETO.competencia!.data!,
+        competidores: [item('Starbucks'), item('   ')],
+      }),
+    }
+    const v = buildDeckView({ projectName: 'X', deliverable: conItemEnBlanco, corpus: CORPUS, now: NOW })
+    const bloque = v.secciones[1].blocks.find(b => b.titulo === 'Competidores principales')!
+    expect(bloque.items).toEqual([{ texto: 'Starbucks', origen: 'cliente', cita: null }])
+  })
+
+  it('combina los errores de perfil y propuestaValor cuando ambos fallan', () => {
+    const ambosRotos: Deliverable = {
+      ...COMPLETO,
+      perfil: fail('Error: 402 sin crédito'),
+      propuestaValor: fail('Error: 500 timeout'),
+    }
+    const v = buildDeckView({ projectName: 'X', deliverable: ambosRotos, corpus: CORPUS, now: NOW })
+    expect(v.secciones[2].error).toContain('402')
+    expect(v.secciones[2].error).toContain('500')
+  })
+
   it('un entregable vacío no rompe: tres secciones, todas en error', () => {
     const v = buildDeckView({ projectName: 'X', deliverable: {}, corpus: [], now: NOW })
     expect(v.completo).toBe(false)
