@@ -5,7 +5,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { writeFile, mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer, Document, Page, View, Text } from '@react-pdf/renderer'
 import { DeckDocument } from './DeckDocument'
 import { buildDeckView } from './view-model'
 import type { Deliverable } from '@/lib/deliverable/schema'
@@ -90,6 +90,8 @@ describe('DeckDocument', () => {
       }),
     }
 
+    const contarPaginas = (buf: Buffer) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
+
     const viewCorto = buildDeckView({ projectName: 'Cafe Lunar', deliverable: D, corpus: CORPUS, now: NOW })
     const viewLargo = buildDeckView({ projectName: 'Cafe Lunar', deliverable: conFilaLarga, corpus: CORPUS, now: NOW })
 
@@ -101,11 +103,53 @@ describe('DeckDocument', () => {
     expect(bufferLargo.subarray(0, 4).toString()).toBe('%PDF')
 
     // Sin wrap={false} en la fila, react-pdf puede partir el contenido entre
-    // páginas y no emite este warning de recorte.
+    // páginas y no emite este warning de recorte. Esta aserción depende de un
+    // string interno de @react-pdf/renderer: el test canario de más abajo
+    // ("react-pdf sigue avisando...") existe para detectar si esa librería
+    // deja de emitirlo, y así evitar que este `not.toContain` quede pasando
+    // en falso silencio.
     expect(warnSpy.mock.calls.flat().join(' ')).not.toContain("can't wrap between pages")
     warnSpy.mockRestore()
 
-    const contarPaginas = (buf: Buffer) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
-    expect(contarPaginas(bufferLargo)).toBeGreaterThan(contarPaginas(bufferCorto))
+    // El conteo de páginas por sí solo no discriminaba el bug: se verificó
+    // empíricamente que tanto con el fix (11 páginas) como reintroduciendo el
+    // bug con wrap={false} (8 páginas) el conteo de la fila larga superaba al
+    // de la fila corta (7 páginas) — un simple `toBeGreaterThan` pasaba en
+    // ambos casos. La diferencia real está en la magnitud: cuando la fila no
+    // puede partirse (wrap={false}), react-pdf la desplaza a una página nueva
+    // y la dibuja completa ahí (recortada visualmente), lo que agrega
+    // exactamente 1 página sin importar cuán largo sea el párrafo. Cuando sí
+    // puede partirse, agrega tantas páginas como haga falta para fluir todo
+    // el texto (4 en este caso). Por eso exigimos más de 1 página extra: eso
+    // sí distingue "se recortó en una página" de "se repartió en varias".
+    const paginasExtra = contarPaginas(bufferLargo) - contarPaginas(bufferCorto)
+    expect(paginasExtra).toBeGreaterThan(1)
+  })
+
+  it('canario: react-pdf sigue avisando cuando un wrap={false} no entra en una página', async () => {
+    // Este test no ejercita DeckDocument: renderiza a propósito un documento
+    // mínimo con un <View wrap={false}> más alto que una página entera, algo
+    // que @react-pdf/renderer hoy considera inválido y reporta con
+    // console.warn. Existe únicamente para blindar el test anterior: ese test
+    // afirma `not.toContain("can't wrap between pages")`, una aserción que
+    // depende de un string interno de esta librería. Si una futura versión de
+    // @react-pdf/renderer cambia la redacción del warning, lo manda a otro
+    // canal o directamente deja de emitirlo, este canario se pone en rojo acá
+    // y avisa que hay que revisar y actualizar ambas aserciones a la vez, en
+    // vez de dejar que el test real pase en silencio sin detectar nada.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await renderToBuffer(
+      <Document>
+        <Page size="A4">
+          <View wrap={false} style={{ height: 2000 }}>
+            <Text>contenido más alto que una página</Text>
+          </View>
+        </Page>
+      </Document>,
+    )
+
+    expect(warnSpy.mock.calls.flat().join(' ')).toContain("can't wrap between pages")
+    warnSpy.mockRestore()
   })
 })
