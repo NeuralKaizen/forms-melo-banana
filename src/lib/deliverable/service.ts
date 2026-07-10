@@ -26,7 +26,8 @@ export async function generateProjectDeliverable(projectId: string, opts: { part
 
   const client = new Anthropic({
     authToken: process.env.OPENROUTER_API_KEY!,
-    baseURL: 'https://openrouter.ai/api/v1',
+    // el SDK añade /v1/messages; el baseURL NO debe incluir /v1 o pega a /api/v1/v1
+    baseURL: 'https://openrouter.ai/api',
     defaultHeaders: { 'X-Title': 'Melo & Banana' },
   })
 
