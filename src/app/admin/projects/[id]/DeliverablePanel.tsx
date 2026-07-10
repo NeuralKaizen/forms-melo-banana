@@ -21,7 +21,7 @@ function ItemList({ items }: { items: Item[] }) {
   return <ul className="space-y-1">{items.map((i, k) => (
     <li key={k} className="flex gap-2 text-sm">
       <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge(i.origen)}`}>{badgeLabel(i.origen)}</span>
-      <span>{i.texto}{i.cita ? <em className="text-[#8a8170]"> — "{i.cita}"</em> : null}</span>
+      <span>{i.texto}{i.cita ? <em className="text-[#8a8170]"> — “{i.cita}”</em> : null}</span>
     </li>
   ))}</ul>
 }
