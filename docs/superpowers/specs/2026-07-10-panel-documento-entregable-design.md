@@ -35,7 +35,7 @@ Card discreta al final del documento, plegada con `<details>`/`<summary>` nativo
 
 - Botón fantasma en el encabezado de cada sección (estilo actual del botón "Regenerar"). Sección 3 lleva dos: "Regenerar perfil" y "Regenerar propuesta de valor".
 - Estado ocupado por parte como hoy (`busy: PartKey | 'full' | null`); los botones se deshabilitan mientras hay una generación en curso.
-- Sin entregable guardado (`view === null`): estado vacío actual ("Sin generar." / botón "Generar entregable").
+- Sin entregable guardado (`view === null`): estado vacío con copy "Todavía no hay entregable. Genera el documento cuando las entrevistas estén completas." (el botón "Generar entregable" vive arriba, en la card de respondientes).
 
 ## Respondientes
 

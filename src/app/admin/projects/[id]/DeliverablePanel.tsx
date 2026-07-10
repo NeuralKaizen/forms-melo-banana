@@ -87,7 +87,10 @@ export function DeliverablePanel({ projectId, view, personalidad, sessions, proj
       </ul>
     </section>
 
-    {error && <div className="animate-fade rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+    {error && (
+      <div role="alert" ref={el => el?.scrollIntoView({ block: 'nearest' })}
+        className="animate-fade rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+    )}
 
     {view
       ? <DeliverableDocument view={view} busy={busy} onRegenerate={k => generate(k)} />
@@ -100,7 +103,10 @@ export function DeliverablePanel({ projectId, view, personalidad, sessions, proj
     {!!view && (
       <details className="rounded-2xl border border-[#e6dfd0] bg-white px-6 py-4 shadow-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-[#6b6155]">
-          Personalidad (insumo interno)
+          <span className="flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            Personalidad (insumo interno)
+          </span>
           <button onClick={e => { e.preventDefault(); generate('personalidad') }} disabled={busy !== null}
             className="rounded-lg border border-black/10 px-3 py-1 text-xs font-medium text-[#6b6155] transition-colors hover:border-[var(--ink)]/30 hover:text-ink disabled:opacity-50">
             {busy === 'personalidad' ? 'Regenerando…' : 'Regenerar'}

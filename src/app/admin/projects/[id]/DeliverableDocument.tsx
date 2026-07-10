@@ -66,9 +66,9 @@ function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSecti
       <table className="mt-3 w-full text-left">
         <thead>
           <tr className="border-b border-[var(--ink)]">
-            <th className={`w-[30%] ${th}`}>Job to be done</th>
-            <th className={`w-[30%] ${th}`}>Solución</th>
-            <th className={`w-[40%] ${th} pr-0`}>Cómo se resuelve</th>
+            <th scope="col" className={`w-[30%] ${th}`}>Job to be done</th>
+            <th scope="col" className={`w-[30%] ${th}`}>Solución</th>
+            <th scope="col" className={`w-[40%] ${th} pr-0`}>Cómo se resuelve</th>
           </tr>
         </thead>
         <tbody>
