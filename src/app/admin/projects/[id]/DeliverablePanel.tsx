@@ -60,10 +60,20 @@ export function DeliverablePanel({ projectId, initial, sessions, projects }: {
     <section className="rounded-2xl bg-[var(--cream)] p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-bold">Respondientes ({sessions.length})</h2>
-        <button onClick={() => generate()} disabled={busy !== null}
-          className="rounded-xl bg-[var(--ink)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-          {busy === 'full' ? 'Generando…' : d ? 'Regenerar todo' : 'Generar entregable'}
-        </button>
+        <div className="flex items-center gap-3">
+          {!!d && (
+            <a
+              href={`/api/projects/${projectId}/deck`}
+              style={{ textDecoration: 'underline' }}
+            >
+              Descargar PDF del taller
+            </a>
+          )}
+          <button onClick={() => generate()} disabled={busy !== null}
+            className="rounded-xl bg-[var(--ink)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            {busy === 'full' ? 'Generando…' : d ? 'Regenerar todo' : 'Generar entregable'}
+          </button>
+        </div>
       </div>
       <ul className="space-y-2">
         {sessions.map(s => (
