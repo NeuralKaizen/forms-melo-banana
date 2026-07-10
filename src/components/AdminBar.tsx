@@ -2,9 +2,9 @@ import Link from 'next/link'
 import { Wordmark } from './Brand'
 
 /** Barra superior mínima de las páginas autenticadas del admin. Quieta: sin sticky, sin sombra, sin motion. */
-export function AdminBar() {
+export function AdminBar({ wide = false }: { wide?: boolean }) {
   return (
-    <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-8 pt-6">
+    <header className={`mx-auto flex w-full items-center justify-between px-8 pt-6 ${wide ? 'max-w-5xl' : 'max-w-3xl'}`}>
       <Link href="/admin" className="text-lg font-medium text-ink">
         <Wordmark />
       </Link>
