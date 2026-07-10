@@ -6,9 +6,16 @@ export async function makeTestDb() {
   const client = new PGlite()
   const db = drizzle(client, { schema })
   await client.exec(`
+    CREATE TABLE projects (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      name text NOT NULL,
+      normalized_name text NOT NULL UNIQUE,
+      created_at timestamp NOT NULL DEFAULT now()
+    );
     CREATE TABLE sessions (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       name text, company text, role text, email text,
+      project_id uuid REFERENCES projects(id),
       status text NOT NULL DEFAULT 'in_progress',
       created_at timestamp NOT NULL DEFAULT now(),
       completed_at timestamp
@@ -23,10 +30,10 @@ export async function makeTestDb() {
       created_at timestamp NOT NULL DEFAULT now(),
       UNIQUE (session_id, question_id)
     );
-    CREATE TABLE briefs (
-      session_id uuid PRIMARY KEY REFERENCES sessions(id),
+    CREATE TABLE deliverables (
+      project_id uuid PRIMARY KEY REFERENCES projects(id),
       content jsonb NOT NULL,
-      created_at timestamp NOT NULL DEFAULT now()
+      updated_at timestamp NOT NULL DEFAULT now()
     );
   `)
   return db
