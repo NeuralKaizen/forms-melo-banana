@@ -76,7 +76,12 @@ function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSecti
             <tr key={i} className="border-b border-[#e6dfd0] align-top">
               <td className="py-2.5 pr-3 text-sm leading-relaxed text-ink">{f.job}</td>
               <td className="py-2.5 pr-3 text-sm leading-relaxed text-ink">{f.solucion}</td>
-              <td className="py-2.5 text-sm leading-relaxed text-ink">{f.comoSeResuelve}</td>
+              <td className="py-2.5 text-sm leading-relaxed text-ink">
+                {f.comoSeResuelve}
+                {!!ORIGEN_LABEL[f.origen] && (
+                  <span className="mt-1 block text-[10px] tracking-[0.08em] text-[#6b6155]">{ORIGEN_LABEL[f.origen]}</span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -121,7 +126,7 @@ function Section({ sec, busy, onRegenerate }: {
       <SectionHeader sec={sec} busy={busy} onRegenerate={onRegenerate} />
       <div className="rounded-2xl border border-[#e6dfd0] bg-white p-6 shadow-sm">
         {sec.error
-          ? <ErrorBox text={`Esta sección no se pudo generar: ${sec.error}`} />
+          ? <ErrorBox text={`Esta parte no se pudo generar: ${sec.error}`} />
           : (
             <>
               {sec.blocks.map((b, i) => <Block key={i} b={b} />)}
