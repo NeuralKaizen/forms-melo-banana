@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/client'
 import { getProjectWithSessions, getDeliverable, listProjects } from '@/lib/db/store'
 import type { Deliverable } from '@/lib/deliverable/schema'
+import { buildProjectDeckView } from '@/lib/deck/service'
 import { AdminBar } from '@/components/AdminBar'
 import { DeliverablePanel } from './DeliverablePanel'
 
@@ -14,6 +15,7 @@ export default async function ProjectView({ params }: { params: Promise<{ id: st
     <main className="mx-auto max-w-3xl p-8 pt-24 text-center text-[15px] text-[#8a8170]">Proyecto no encontrado.</main>
   </>
   const deliverable = (await getDeliverable(db, id))?.content as Deliverable | null
+  const deckView = await buildProjectDeckView(id)
   const allProjects = await listProjects(db) as { id: string; name: string }[]
   const sessions = (project.sessions as { id: string; name?: string | null; role?: string | null }[])
     .map(s => ({ id: s.id, name: s.name ?? '—', role: s.role ?? '—' }))
@@ -27,7 +29,8 @@ export default async function ProjectView({ params }: { params: Promise<{ id: st
       </header>
       <DeliverablePanel
         projectId={id}
-        initial={deliverable ?? null}
+        view={deckView}
+        personalidad={deliverable?.personalidad ?? null}
         sessions={sessions}
         projects={allProjects}
       />
