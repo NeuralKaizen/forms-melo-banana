@@ -19,7 +19,7 @@ function ItemRow({ it }: { it: DeckItem }) {
       <div>
         <p className={`text-[15px] leading-relaxed ${pend ? 'text-[#6b6155]' : 'text-ink'}`}>{it.texto}</p>
         {!!it.cita && (
-          <p className="mt-1.5 border-l-2 border-[var(--banana)] pl-2.5 text-sm leading-relaxed text-[#6b6155]">“{it.cita}”</p>
+          <p className="mt-1.5 border-l-2 border-[var(--banana)] pl-2.5 text-sm leading-relaxed text-[#6b6155]">"{it.cita}"</p>
         )}
         {!!ORIGEN_LABEL[it.origen] && (
           <p className="mt-1 text-[10px] tracking-[0.08em] text-[#6b6155]">{ORIGEN_LABEL[it.origen]}</p>
@@ -30,12 +30,12 @@ function ItemRow({ it }: { it: DeckItem }) {
 }
 
 function BlockTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="border-b border-[#e6dfd0] pb-1.5 font-serif text-base font-medium text-ink">{children}</h3>
+  return <h3 className="font-serif text-base font-medium text-ink">{children}</h3>
 }
 
-function Block({ b }: { b: DeckBlock }) {
+function Block({ b, wide = false }: { b: DeckBlock; wide?: boolean }) {
   return (
-    <div className="mt-6 first:mt-0">
+    <div className={`rounded-xl bg-[#fbf8ee] p-5${wide ? ' md:col-span-2' : ''}`}>
       <BlockTitle>{b.titulo}</BlockTitle>
       {b.error
         ? <ErrorBox text={`Esta parte no se pudo generar: ${b.error}`} />
@@ -52,7 +52,7 @@ function Block({ b }: { b: DeckBlock }) {
 function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSection['tablaError'] }) {
   if (error) {
     return (
-      <div className="mt-6">
+      <div className="rounded-xl bg-[#fbf8ee] p-5 md:col-span-2">
         <BlockTitle>Cómo lo resolvemos, trabajo por trabajo</BlockTitle>
         <ErrorBox text={`La tabla de JTBD no se pudo generar: ${error}`} />
       </div>
@@ -61,7 +61,7 @@ function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSecti
   if (!filas.length) return null
   const th = 'py-2 pr-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#6b6155]'
   return (
-    <div className="mt-6">
+    <div className="rounded-xl bg-[#fbf8ee] p-5 md:col-span-2">
       <BlockTitle>Cómo lo resolvemos, trabajo por trabajo</BlockTitle>
       <table className="mt-3 w-full text-left">
         <thead>
@@ -121,6 +121,7 @@ function Section({ sec, busy, onRegenerate }: {
   busy: PartKey | 'full' | null
   onRegenerate: (part: PartKey) => void
 }) {
+  const impar = sec.blocks.length % 2 === 1
   return (
     <section className="space-y-3">
       <SectionHeader sec={sec} busy={busy} onRegenerate={onRegenerate} />
@@ -128,10 +129,12 @@ function Section({ sec, busy, onRegenerate }: {
         {sec.error
           ? <ErrorBox text={`Esta parte no se pudo generar: ${sec.error}`} />
           : (
-            <>
-              {sec.blocks.map((b, i) => <Block key={i} b={b} />)}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-x-8">
+              {sec.blocks.map((b, i) => (
+                <Block key={i} b={b} wide={impar && i === sec.blocks.length - 1} />
+              ))}
               <Tabla filas={sec.tabla} error={sec.tablaError} />
-            </>
+            </div>
           )}
       </div>
     </section>
