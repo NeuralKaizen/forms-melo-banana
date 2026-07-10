@@ -255,7 +255,7 @@ git commit -m "feat(admin): header de proyecto con eyebrow y Fraunces"
 
 - [ ] **Step 1: Reemplazar el contenido completo de `src/app/admin/projects/[id]/DeliverablePanel.tsx`**
 
-Solo cambian classNames, el link del deck (pasa a botón secundario con icono) y los bloques de error/badges. Toda la lógica queda byte a byte igual.
+Solo cambian classNames, el link del deck (pasa a botón secundario con icono) y los bloques de error/badges. Toda la lógica queda byte a byte igual. **Importante:** el commit `fafa4dc` (de otra sesión) agregó el link de cada respondiente a `/admin/${s.id}` — el código de abajo lo preserva, restilizado; no debe perderse al reescribir el archivo.
 
 ```tsx
 'use client'
@@ -339,7 +339,10 @@ export function DeliverablePanel({ projectId, initial, sessions, projects }: {
       <ul className="divide-y divide-black/5">
         {sessions.map(s => (
           <li key={s.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-            <span className="text-ink">{s.name} · <span className="text-[#8a8170]">{s.role}</span></span>
+            <span>
+              <a href={`/admin/${s.id}`} className="font-medium text-ink underline decoration-black/20 underline-offset-2 transition-colors hover:decoration-[var(--banana)]">{s.name}</a>
+              {' · '}<span className="text-[#8a8170]">{s.role}</span>
+            </span>
             <select defaultValue="" onChange={e => reassign(s.id, e.target.value)}
               className="rounded-lg border border-black/10 bg-white px-2 py-1 text-xs text-[#8a8170] outline-none transition focus:border-[var(--banana)]">
               <option value="">mover a…</option>
