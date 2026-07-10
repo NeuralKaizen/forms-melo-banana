@@ -54,9 +54,9 @@ Espejo mini de `IdentityForm`:
 
 ## Restricciones
 
-- **Motion mínimo:** solo fades (`animate-fade`) y transiciones de color. Nada se traslada ni pulsa. Se respeta `prefers-reduced-motion` (ya cubierto en `globals.css`).
+- **Motion mínimo:** solo fades (`animate-fade`) y transiciones de color. Nada se traslada ni pulsa. Se respeta `prefers-reduced-motion` (ya cubierto en `globals.css`). Excepción heredada del patrón público: el feedback táctil de presión (`active:scale-[0.98]`) en botones primarios, idéntico al de IdentityForm.
 - **Español neutro** en todo copy (tuteo: "intenta", no "intentá").
-- **Sin funciones nuevas:** no se agregan links de navegación (el detalle de sesión sigue sin link desde el proyecto — queda para una fase 2), ni métricas, ni gestión de proyectos.
+- **Sin funciones nuevas:** no se agregan links de navegación (nota: el link respondiente→detalle llegó por el commit fafa4dc de otra sesión y se preserva), ni métricas, ni gestión de proyectos.
 - Sin cambios en rutas, APIs, datos, auth ni lógica de generación.
 
 ## Manejo de errores

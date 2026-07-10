@@ -64,10 +64,10 @@ export function DeliverablePanel({ projectId, initial, sessions, projects }: {
           {!!d && (
             <a href={`/api/projects/${projectId}/deck`}
               className="flex items-center gap-1.5 rounded-xl border border-[var(--ink)]/20 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-[var(--ink)]">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" />
               </svg>
-              PDF del taller
+              Descargar PDF del taller
             </a>
           )}
           <button onClick={() => generate()} disabled={busy !== null}

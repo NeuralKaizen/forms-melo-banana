@@ -14,13 +14,13 @@ export default async function Detail({ params }: { params: Promise<{ sessionId: 
   const full = await getSessionWithAnswers(db, sessionId)
   if (!full) return <>
     <AdminBar />
-    <main className="mx-auto max-w-2xl p-8 pt-24 text-center text-[15px] text-[#8a8170]">No encontrado.</main>
+    <main className="mx-auto max-w-3xl p-8 pt-24 text-center text-[15px] text-[#8a8170]">No encontrado.</main>
   </>
   await ensureNormalized(db, sessionId)
   const fresh = await getSessionWithAnswers(db, sessionId)
   return <>
     <AdminBar />
-    <main className="mx-auto w-full max-w-2xl space-y-8 p-8">
+    <main className="mx-auto w-full max-w-3xl space-y-8 p-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <header>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">Respondiente</p>
@@ -28,7 +28,7 @@ export default async function Detail({ params }: { params: Promise<{ sessionId: 
         </header>
         <a href={`/api/sessions/${sessionId}/pdf`}
           className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--ink)]/20 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-[var(--ink)]">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" />
           </svg>
           Descargar PDF
