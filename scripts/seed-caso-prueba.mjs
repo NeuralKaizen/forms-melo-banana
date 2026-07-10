@@ -2,8 +2,13 @@
 // deliberada entre ellos (la fundadora quiere lentitud y comunidad; el socio quiere
 // escalar y competir por volumen). El análisis debería NOMBRAR esa tensión, no promediarla.
 //
-// Uso: node seed-caso-prueba.mjs http://localhost:3001
-const BASE = process.argv[2] ?? 'http://localhost:3001'
+// SOLO PARA DESARROLLO. Crea entrevistas reales en la base a la que apunte BASE y
+// dispara la normalización de texto por IA al completarlas: cuesta dinero. No lo
+// corras contra producción.
+//
+// Uso: npm run seed:caso-prueba            (contra http://localhost:3000)
+//      node scripts/seed-caso-prueba.mjs http://localhost:3001
+const BASE = process.argv[2] ?? 'http://localhost:3000'
 
 const ANA = {
   perfil: { name: 'Ana Restrepo', company: 'Cafe Lunar', role: 'Fundadora', email: 'ana@cafelunar.co' },

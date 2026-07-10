@@ -78,7 +78,10 @@ export function DeliverablePanel({ projectId, initial, sessions, projects }: {
       <ul className="space-y-2">
         {sessions.map(s => (
           <li key={s.id} className="flex items-center justify-between gap-3 text-sm">
-            <span>{s.name} · <span className="text-black/50">{s.role}</span></span>
+            <span>
+              <a href={`/admin/${s.id}`} className="underline hover:no-underline">{s.name}</a>
+              {' · '}<span className="text-black/50">{s.role}</span>
+            </span>
             <select defaultValue="" onChange={e => reassign(s.id, e.target.value)}
               className="rounded border px-2 py-1 text-xs">
               <option value="">mover a…</option>
