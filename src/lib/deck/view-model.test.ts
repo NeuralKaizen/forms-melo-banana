@@ -100,7 +100,7 @@ describe('buildDeckView', () => {
     const refs = v.secciones[1].blocks.find(b => b.titulo === 'Otros referentes')!
     expect(refs.items[0]).toEqual({ texto: 'Aesop — referente visual', origen: 'equipo', cita: null })
     const ejes = v.secciones[1].blocks.find(b => b.titulo === 'Variables de comparación')!
-    expect(ejes.items[0]).toEqual({ texto: 'cercanía: frío ↔ cálido', origen: 'equipo', cita: null })
+    expect(ejes.items[0]).toEqual({ texto: 'cercanía: de frío a cálido', origen: 'equipo', cita: null })
   })
 
   it('compone la fórmula de la propuesta de valor como párrafo', () => {

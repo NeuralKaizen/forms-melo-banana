@@ -2,7 +2,7 @@
 // Smoke test + preview: renderiza el deck completo y lo escribe a disco.
 //   npx vitest run src/lib/deck/preview.test.tsx
 // Salida: tmp/deck-completo.pdf
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { writeFile, mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { renderToBuffer } from '@react-pdf/renderer'
@@ -70,5 +70,42 @@ describe('DeckDocument', () => {
     const view = buildDeckView({ projectName: 'Cafe Lunar', deliverable: roto, corpus: CORPUS, now: NOW })
     const buffer = await renderToBuffer(<DeckDocument view={view} />)
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF')
+  })
+
+  it('una fila de la tabla JTBD con un párrafo muy largo desborda a una página nueva en vez de recortarse', async () => {
+    // `comoSeResuelve` es texto libre generado por un LLM, sin tope de longitud.
+    // La fila no debe usar wrap={false}: si lo hiciera, un párrafo más alto que
+    // una página entera no podría partirse y react-pdf lo recortaría (y avisa
+    // con el warning "can't wrap between pages ... bigger than available page
+    // height"). Repetimos el texto lo suficiente como para superar el alto de
+    // una página completa, no sólo el espacio restante de la página actual.
+    const parrafoLargo = 'El local se diseña para la charla larga, no para la rotación. '.repeat(150)
+    const conFilaLarga: Deliverable = {
+      ...D,
+      propuestaValor: ok({
+        ...D.propuestaValor!.data!,
+        filas: [
+          { job: 'Quedarme a conversar sin apuro', solucion: 'Mesas comunales y sin límite de tiempo', comoSeResuelve: parrafoLargo, origen: 'cliente' as const },
+        ],
+      }),
+    }
+
+    const viewCorto = buildDeckView({ projectName: 'Cafe Lunar', deliverable: D, corpus: CORPUS, now: NOW })
+    const viewLargo = buildDeckView({ projectName: 'Cafe Lunar', deliverable: conFilaLarga, corpus: CORPUS, now: NOW })
+
+    const bufferCorto = await renderToBuffer(<DeckDocument view={viewCorto} />)
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const bufferLargo = await renderToBuffer(<DeckDocument view={viewLargo} />)
+
+    expect(bufferLargo.subarray(0, 4).toString()).toBe('%PDF')
+
+    // Sin wrap={false} en la fila, react-pdf puede partir el contenido entre
+    // páginas y no emite este warning de recorte.
+    expect(warnSpy.mock.calls.flat().join(' ')).not.toContain("can't wrap between pages")
+    warnSpy.mockRestore()
+
+    const contarPaginas = (buf: Buffer) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length
+    expect(contarPaginas(bufferLargo)).toBeGreaterThan(contarPaginas(bufferCorto))
   })
 })

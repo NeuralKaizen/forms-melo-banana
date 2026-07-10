@@ -76,7 +76,9 @@ export function buildDeckView(input: {
     texto: `${r.marca} — ${r.tipo}`, origen: r.origen, cita: null,
   }))
   const ejes: DeckItem[] = (c?.ejes ?? []).map(e => ({
-    texto: `${e.nombre}: ${e.extremoIzquierdo} ↔ ${e.extremoDerecho}`, origen: e.origen, cita: null,
+    // Sin flechas ni símbolos fuera de WinAnsi/cp1252: el carácter ↔ (U+2194)
+    // no existe en Helvetica/Times sin registrar y se imprime como comilla basura.
+    texto: `${e.nombre}: de ${e.extremoIzquierdo} a ${e.extremoDerecho}`, origen: e.origen, cita: null,
   }))
   const s2 = seccion(2, 'Panorama de la categoría', errorDe(d.competencia), [
     bloque('Competidores principales', items(c?.competidores, corpus)),

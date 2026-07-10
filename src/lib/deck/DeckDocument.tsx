@@ -1,5 +1,6 @@
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import type { DeckView, DeckSection, DeckBlock, DeckItem } from './view-model'
+import type { Origen } from '@/lib/deliverable/schema'
 
 const C = {
   banana: '#ffd400',
@@ -9,7 +10,7 @@ const C = {
   border: '#e6dfd0',
 }
 
-const ORIGEN_LABEL: Record<string, string> = {
+const ORIGEN_LABEL: Partial<Record<Origen, string>> = {
   equipo: 'propuesta del equipo',
   pendiente: 'pendiente del taller',
 }
@@ -102,7 +103,11 @@ function Tabla({ filas }: { filas: DeckSection['tabla'] }) {
         <Text style={[s.th, s.c3]}>CÓMO SE RESUELVE</Text>
       </View>
       {filas.map((f, i) => (
-        <View key={i} style={s.row} wrap={false}>
+        // Sin wrap={false}: `comoSeResuelve` es texto libre generado por un LLM,
+        // sin tope de longitud. Si la fila no pudiera partirse entre páginas y
+        // no entrara en el espacio restante, react-pdf la recorta en vez de
+        // fluirla a la página siguiente.
+        <View key={i} style={s.row}>
           <Text style={[s.cell, s.c1]}>{f.job}</Text>
           <Text style={[s.cell, s.c2]}>{f.solucion}</Text>
           <View style={s.c3}>
