@@ -19,7 +19,7 @@ function ItemRow({ it }: { it: DeckItem }) {
       <div>
         <p className={`text-[15px] leading-relaxed ${pend ? 'text-[#6b6155]' : 'text-ink'}`}>{it.texto}</p>
         {!!it.cita && (
-          <p className="mt-1.5 border-l-2 border-[var(--banana)] pl-2.5 text-sm leading-relaxed text-[#6b6155]">"{it.cita}"</p>
+          <p className="mt-1.5 border-l-2 border-[var(--banana)] pl-2.5 text-sm leading-relaxed text-[#6b6155]">“{it.cita}”</p>
         )}
         {!!ORIGEN_LABEL[it.origen] && (
           <p className="mt-1 text-[10px] tracking-[0.08em] text-[#6b6155]">{ORIGEN_LABEL[it.origen]}</p>
