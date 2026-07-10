@@ -72,6 +72,18 @@ describe('DeckDocument', () => {
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF')
   })
 
+  it('renderiza la sección 3 con error parcial: el perfil sobrevive aunque propuestaValor haya fallado', async () => {
+    const soloPropuestaValorRota: Deliverable = {
+      ...D,
+      propuestaValor: { data: null, meta: { generatedAt: NOW.toISOString(), error: 'Error: 402 sin crédito' } },
+    }
+    const view = buildDeckView({ projectName: 'Cafe Lunar', deliverable: soloPropuestaValorRota, corpus: CORPUS, now: NOW })
+    // La sección 3 no debe quedar marcada como errada: el perfil se generó bien.
+    expect(view.secciones[2].error).toBeNull()
+    const buffer = await renderToBuffer(<DeckDocument view={view} />)
+    expect(buffer.subarray(0, 4).toString()).toBe('%PDF')
+  })
+
   it('una fila de la tabla JTBD con un párrafo muy largo desborda a una página nueva en vez de recortarse', async () => {
     // `comoSeResuelve` es texto libre generado por un LLM, sin tope de longitud.
     // La fila no debe usar wrap={false}: si lo hiciera, un párrafo más alto que

@@ -74,8 +74,14 @@ function Block({ b }: { b: DeckBlock }) {
   return (
     <View>
       <Text style={s.blockTitle} wrap={false}>{b.titulo}</Text>
-      {!!b.parrafo && <Text style={s.parrafo}>{b.parrafo}</Text>}
-      {b.items.map((it, i) => <ItemRow key={i} it={it} />)}
+      {b.error
+        ? <Text style={s.error}>{`Esta parte no se pudo generar: ${b.error}`}</Text>
+        : (
+          <>
+            {!!b.parrafo && <Text style={s.parrafo}>{b.parrafo}</Text>}
+            {b.items.map((it, i) => <ItemRow key={i} it={it} />)}
+          </>
+        )}
     </View>
   )
 }
@@ -92,7 +98,10 @@ function Divider({ sec }: { sec: DeckSection }) {
   )
 }
 
-function Tabla({ filas }: { filas: DeckSection['tabla'] }) {
+function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSection['tablaError'] }) {
+  if (error) {
+    return <Text style={s.error}>{`La tabla de JTBD no se pudo generar: ${error}`}</Text>
+  }
   if (!filas.length) return null
   return (
     <View>
@@ -143,7 +152,7 @@ export function DeckDocument({ view }: { view: DeckView }) {
               : (
                 <>
                   {sec.blocks.map((b, i) => <Block key={i} b={b} />)}
-                  <Tabla filas={sec.tabla} />
+                  <Tabla filas={sec.tabla} error={sec.tablaError} />
                 </>
               )}
           </View>
