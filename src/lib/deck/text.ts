@@ -1,12 +1,20 @@
 /** Longitud mínima (ya normalizada) para que una cita se considere significativa. */
 const MIN_CITA = 12
 
-/** minúsculas, sin tildes, espacios colapsados. */
+/**
+ * Puntuación que se descarta al comparar citas: los LLM omiten o mueven
+ * comas, puntos y comillas constantemente, y eso no debería invalidar una
+ * cita real del cliente. Incluye comillas rectas y tipográficas, y guiones.
+ */
+const PUNTUACION = /[,.;:!?¡¿"'“”‘’—–-]/g
+
+/** minúsculas, sin tildes, sin puntuación, espacios colapsados. */
 export function normalizarTexto(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
+    .replace(PUNTUACION, '')
     .replace(/\s+/g, ' ')
     .trim()
 }

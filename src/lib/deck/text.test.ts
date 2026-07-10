@@ -14,6 +14,12 @@ describe('normalizarTexto', () => {
   it('devuelve cadena vacía para entrada vacía', () => {
     expect(normalizarTexto('')).toBe('')
   })
+
+  it('elimina puntuación (comas, puntos, comillas tipográficas, guiones) y luego colapsa espacios', () => {
+    expect(normalizarTexto('Acompañada, no vendida.')).toBe('acompanada no vendida')
+    expect(normalizarTexto('“Acompañada” — ¿no vendida?; ¡claro!'))
+      .toBe('acompanada no vendida claro')
+  })
 })
 
 describe('citaVerificada', () => {
@@ -33,6 +39,22 @@ describe('citaVerificada', () => {
 
   it('rechaza una cita que mezcla dos respuestas distintas', () => {
     expect(citaVerificada('no vendida. Nuestro margen real', CORPUS)).toBeNull()
+  })
+
+  it('acepta una cita que difiere del corpus sólo en una coma', () => {
+    // El corpus dice "acompañada, no vendida." (con coma); el LLM cita sin ella.
+    expect(citaVerificada('acompañada no vendida', CORPUS)).toBe('acompañada no vendida')
+  })
+
+  it('acepta una cita que difiere del corpus sólo en un punto', () => {
+    const corpusConPuntoInterno = ['El café tiene que sentirse como en casa. Eso es lo que buscamos.']
+    // El LLM cita a través del punto que separa las dos oraciones, omitiéndolo.
+    expect(citaVerificada('sentirse como en casa Eso es lo que buscamos', corpusConPuntoInterno))
+      .toBe('sentirse como en casa Eso es lo que buscamos')
+  })
+
+  it('sigue rechazando una cita inventada tras normalizar la puntuación', () => {
+    expect(citaVerificada('somos líderes del mercado, sin dudas.', CORPUS)).toBeNull()
   })
 
   it('devuelve null para null, undefined o vacío', () => {
