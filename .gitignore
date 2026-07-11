@@ -52,3 +52,7 @@ next-env.d.ts
 
 # artefactos generados (previews de PDF, etc.)
 tmp/
+
+# Material de referencia de clientes (nunca al repo)
+docs/mbanana_*/
+docs/analisis-entrevista-proyectiva/references/*.pdf
