@@ -46,11 +46,17 @@ const s = StyleSheet.create({
   cita: { fontSize: 10, color: C.gray, marginTop: 3, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: C.banana, lineHeight: 1.4 },
   tag: { fontSize: 8, color: C.gray, marginTop: 3, letterSpacing: 0.4 },
 
-  // Tabla JTBD
-  row: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: C.border, paddingVertical: 7 },
-  th: { fontFamily: 'Helvetica-Bold', fontSize: 8.5, color: C.gray, letterSpacing: 0.6 },
-  cell: { fontSize: 10, lineHeight: 1.4, paddingRight: 8 },
-  c1: { width: '30%' }, c2: { width: '30%' }, c3: { width: '40%' },
+  // Jobs to be done: un bloque por trabajo, a ancho completo.
+  // No es una tabla: `comoSeResuelve` son párrafos de 80-120 palabras y en una
+  // columna quedaban ilegibles, con las otras dos celdas casi vacías al lado.
+  jtbd: { marginTop: 16, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border },
+  jtbdHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  jtbdNumBox: { width: 20, height: 20, backgroundColor: C.banana, alignItems: 'center', justifyContent: 'center' },
+  jtbdNum: { fontFamily: 'Helvetica-Bold', fontSize: 10, color: C.ink },
+  jtbdJob: { flex: 1, fontFamily: 'Times-Roman', fontSize: 13.5, lineHeight: 1.35, paddingTop: 1 },
+  jtbdSol: { fontSize: 10.5, lineHeight: 1.45, color: C.ink, marginTop: 8, marginLeft: 30,
+    paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: C.banana },
+  jtbdComo: { fontSize: 11, lineHeight: 1.5, marginTop: 8, marginLeft: 30 },
 
   error: { backgroundColor: '#fff4f4', borderWidth: 1, borderColor: '#f0d0d0', padding: 12, fontSize: 10, color: '#8a3a3a', marginTop: 16 },
   foot: { position: 'absolute', bottom: 18, left: 44, right: 44, flexDirection: 'row', justifyContent: 'space-between', fontSize: 9, color: C.gray },
@@ -106,23 +112,23 @@ function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSecti
   return (
     <View>
       <Text style={s.blockTitle} wrap={false}>Cómo lo resolvemos, trabajo por trabajo</Text>
-      <View style={[s.row, { borderBottomColor: C.ink }]} wrap={false}>
-        <Text style={[s.th, s.c1]}>JOB TO BE DONE</Text>
-        <Text style={[s.th, s.c2]}>SOLUCIÓN</Text>
-        <Text style={[s.th, s.c3]}>CÓMO SE RESUELVE</Text>
-      </View>
       {filas.map((f, i) => (
-        // Sin wrap={false}: `comoSeResuelve` es texto libre generado por un LLM,
-        // sin tope de longitud. Si la fila no pudiera partirse entre páginas y
-        // no entrara en el espacio restante, react-pdf la recorta en vez de
-        // fluirla a la página siguiente.
-        <View key={i} style={s.row}>
-          <Text style={[s.cell, s.c1]}>{f.job}</Text>
-          <Text style={[s.cell, s.c2]}>{f.solucion}</Text>
-          <View style={s.c3}>
-            <Text style={s.cell}>{f.comoSeResuelve}</Text>
-            {!!ORIGEN_LABEL[f.origen] && <Text style={s.tag}>{ORIGEN_LABEL[f.origen]}</Text>}
+        // El bloque entero es partible: `comoSeResuelve` es texto libre del LLM, sin
+        // tope de longitud, y si no pudiera fluir a la página siguiente react-pdf lo
+        // recorta. La cabecera (número + job + solución) sí va junta: un job separado
+        // de su solución no se entiende.
+        <View key={i} style={s.jtbd}>
+          <View wrap={false}>
+            <View style={s.jtbdHead}>
+              <View style={s.jtbdNumBox}>
+                <Text style={s.jtbdNum}>{String(i + 1).padStart(2, '0')}</Text>
+              </View>
+              <Text style={s.jtbdJob}>{f.job}</Text>
+            </View>
+            <Text style={s.jtbdSol}>{f.solucion}</Text>
+            {!!ORIGEN_LABEL[f.origen] && <Text style={[s.tag, { marginLeft: 30 }]}>{ORIGEN_LABEL[f.origen]}</Text>}
           </View>
+          <Text style={s.jtbdComo}>{f.comoSeResuelve}</Text>
         </View>
       ))}
     </View>
