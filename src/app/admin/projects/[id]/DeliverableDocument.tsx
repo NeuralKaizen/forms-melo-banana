@@ -49,6 +49,42 @@ function Block({ b, wide = false }: { b: DeckBlock; wide?: boolean }) {
   )
 }
 
+// La solución del canvas viene con prefijo de tipo ("pain reliever: …" / "gain creator: …").
+// Lo separamos para mostrarlo como tag de color y que se pueda escanear pain vs gain de un vistazo.
+const TIPO_TAG: Record<'pain' | 'gain', string> = {
+  pain: 'bg-[#f3e7df] text-[#8a5a3d]',   // clay cálido: alivia un dolor
+  gain: 'bg-[#fbeecb] text-[#8a6d0f]',   // banana suave: crea un beneficio
+}
+function partirSolucion(s: string): { tipo: 'pain' | 'gain' | null; etiqueta: string; texto: string } {
+  const m = s.match(/^\s*(pain reliever|gain creator)\s*:\s*([\s\S]*)$/i)
+  if (!m) return { tipo: null, etiqueta: '', texto: s.trim() }
+  return { tipo: /pain/i.test(m[1]) ? 'pain' : 'gain', etiqueta: m[1].toLowerCase(), texto: m[2].trim() }
+}
+
+function FilaCard({ f, n }: { f: DeckSection['tabla'][number]; n: number }) {
+  const { tipo, etiqueta, texto } = partirSolucion(f.solucion)
+  return (
+    <li className="rounded-xl border border-[#ece3d0] bg-white p-5 shadow-[0_1px_2px_rgba(26,21,16,0.03)]">
+      <div className="flex gap-3.5">
+        <span aria-hidden="true" className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--banana)]/25 font-serif text-[13px] font-medium text-ink">{n}</span>
+        <div className="min-w-0 flex-1">
+          <h4 className="font-serif text-[17px] font-medium leading-snug text-ink">{f.job}</h4>
+          <div className="mt-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            {tipo && (
+              <span className={`inline-block shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${TIPO_TAG[tipo]}`}>{etiqueta}</span>
+            )}
+            <span className="text-[14px] font-medium leading-relaxed text-[#5a5245]">{texto}</span>
+          </div>
+          <p className="mt-3 border-t border-[#efe7d6] pt-3 text-[14px] leading-[1.75] text-[#4a4238]">{f.comoSeResuelve}</p>
+          {!!ORIGEN_LABEL[f.origen] && (
+            <p className="mt-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#a59c89]">{ORIGEN_LABEL[f.origen]}</p>
+          )}
+        </div>
+      </div>
+    </li>
+  )
+}
+
 function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSection['tablaError'] }) {
   if (error) {
     return (
@@ -59,33 +95,15 @@ function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSecti
     )
   }
   if (!filas.length) return null
-  const th = 'py-2 pr-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#6b6155]'
   return (
     <div className="rounded-xl bg-[#fbf8ee] p-5 md:col-span-2">
-      <BlockTitle>Cómo lo resolvemos, trabajo por trabajo</BlockTitle>
-      <table className="mt-3 w-full text-left">
-        <thead>
-          <tr className="border-b border-[var(--ink)]">
-            <th scope="col" className={`w-[30%] ${th}`}>Job to be done</th>
-            <th scope="col" className={`w-[30%] ${th}`}>Solución</th>
-            <th scope="col" className={`w-[40%] ${th} pr-0`}>Cómo se resuelve</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((f, i) => (
-            <tr key={i} className="border-b border-[#e6dfd0] align-top">
-              <td className="py-2.5 pr-3 text-sm leading-relaxed text-ink">{f.job}</td>
-              <td className="py-2.5 pr-3 text-sm leading-relaxed text-ink">{f.solucion}</td>
-              <td className="py-2.5 text-sm leading-relaxed text-ink">
-                {f.comoSeResuelve}
-                {!!ORIGEN_LABEL[f.origen] && (
-                  <span className="mt-1 block text-[10px] tracking-[0.08em] text-[#6b6155]">{ORIGEN_LABEL[f.origen]}</span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <BlockTitle>Cómo lo resolvemos, trabajo por trabajo</BlockTitle>
+        <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#a59c89]">{filas.length} {filas.length === 1 ? 'trabajo' : 'trabajos'}</span>
+      </div>
+      <ul className="mt-4 space-y-3">
+        {filas.map((f, i) => <FilaCard key={i} f={f} n={i + 1} />)}
+      </ul>
     </div>
   )
 }
