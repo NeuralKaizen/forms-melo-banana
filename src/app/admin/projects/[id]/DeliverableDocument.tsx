@@ -106,7 +106,7 @@ function SectionHeader({ sec, busy, onRegenerate }: {
         <div className="flex flex-wrap gap-2">
           {partsOfSection(sec.numero as SectionNumber).map(({ key, label }) => (
             <button key={key} onClick={() => onRegenerate(key)} disabled={busy !== null}
-              className="rounded-lg border border-[var(--ink)]/25 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-[var(--ink)] disabled:opacity-50">
+              className="rounded-lg border border-[var(--ink)]/25 bg-[var(--ink)]/0 px-3 py-1 text-xs font-medium text-ink transition-colors duration-200 hover:border-[var(--ink)]/60 hover:bg-[var(--ink)]/5 disabled:opacity-45">
               {busy === key ? 'Regenerando…' : label}
             </button>
           ))}

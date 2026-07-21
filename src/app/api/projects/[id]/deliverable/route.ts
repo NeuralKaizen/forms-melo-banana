@@ -4,9 +4,10 @@ import type { PartKey } from '@/lib/deliverable/schema'
 
 const PARTS: PartKey[] = ['personalidad', 'problema', 'competencia', 'perfil', 'propuestaValor']
 
-// El entregable completo son 5 llamadas al modelo encadenadas: medido en prod, ~270s.
-// Con 300 el margen era de 33s y un día lento del proveedor lo tumbaba.
-export const maxDuration = 800
+// Cada request genera UNA parte (una sola llamada al modelo, ~30-60s). El entregable
+// completo son 5 requests encadenados desde el cliente (ver DeliverablePanel), así que
+// ninguna función sola se acerca al tope de 300s del plan.
+export const maxDuration = 300
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
