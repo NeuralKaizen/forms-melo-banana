@@ -52,5 +52,5 @@ export function validateCompetencia(o: unknown): Competencia {
 }
 
 export function runCompetencia(client: Anthropic, respondents: RespondentInput[]): Promise<Competencia> {
-  return callJson(client, buildCompetenciaPrompt(respondents), 3000, validateCompetencia)
+  return callJson(client, buildCompetenciaPrompt(respondents), 8000, validateCompetencia)
 }

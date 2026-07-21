@@ -20,4 +20,10 @@ describe('callJson', () => {
     const c = fakeClient(['nope', 'tampoco'])
     await expect(callJson(c, 'p', 100, validate)).rejects.toThrow()
   })
+  it('ante truncado por max_tokens falla claro y sin reintentar', async () => {
+    let calls = 0
+    const c = { messages: { create: async () => { calls++; return { content: [{ type: 'text', text: '{"ok": tr' }], stop_reason: 'max_tokens' } } } } as any
+    await expect(callJson(c, 'p', 100, validate)).rejects.toThrow(/trunc|max_tokens/i)
+    expect(calls).toBe(1) // reintentar con el mismo tope volvería a truncar: no tiene sentido
+  })
 })

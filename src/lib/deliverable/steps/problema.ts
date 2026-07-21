@@ -48,5 +48,5 @@ export function validateProblema(o: unknown): Problema {
 }
 
 export function runProblema(client: Anthropic, respondents: RespondentInput[], personalidad: Personalidad): Promise<Problema> {
-  return callJson(client, buildProblemaPrompt(respondents, personalidad), 3000, validateProblema)
+  return callJson(client, buildProblemaPrompt(respondents, personalidad), 8000, validateProblema)
 }

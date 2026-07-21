@@ -40,5 +40,5 @@ export function validatePropuestaValor(o: unknown): PropuestaValor {
 }
 
 export function runPropuestaValor(client: Anthropic, respondents: RespondentInput[], problema: Problema, perfil: Perfil): Promise<PropuestaValor> {
-  return callJson(client, buildPropuestaValorPrompt(respondents, problema, perfil), 3000, validatePropuestaValor)
+  return callJson(client, buildPropuestaValorPrompt(respondents, problema, perfil), 8000, validatePropuestaValor)
 }

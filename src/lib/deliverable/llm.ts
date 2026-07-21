@@ -17,6 +17,10 @@ export async function callJson<T>(
   const messages: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: prompt }]
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await client.messages.create({ model: MODEL, max_tokens: maxTokens, messages })
+    // Truncado por límite de tokens: el JSON queda cortado a la mitad. Reintentar con el
+    // mismo tope volvería a truncar, así que fallamos claro en vez de tirar un SyntaxError.
+    if (res.stop_reason === 'max_tokens')
+      throw new Error(`salida truncada por max_tokens (${maxTokens}); subí max_tokens para este paso`)
     const text = res.content.map((b: any) => (b.type === 'text' ? b.text : '')).join('')
     try {
       return validate(extractJson(text))

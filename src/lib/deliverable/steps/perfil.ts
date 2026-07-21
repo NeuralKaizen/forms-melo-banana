@@ -32,5 +32,5 @@ export function validatePerfil(o: unknown): Perfil {
 }
 
 export function runPerfil(client: Anthropic, respondents: RespondentInput[], problema: Problema, personalidad: Personalidad): Promise<Perfil> {
-  return callJson(client, buildPerfilPrompt(respondents, problema, personalidad), 3000, validatePerfil)
+  return callJson(client, buildPerfilPrompt(respondents, problema, personalidad), 8000, validatePerfil)
 }
