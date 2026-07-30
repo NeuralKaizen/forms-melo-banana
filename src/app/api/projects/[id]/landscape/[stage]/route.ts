@@ -43,7 +43,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           return NextResponse.json({ error: 'Falta versionId' }, { status: 400 })
         if (!esUuidValido(body.versionId))
           return NextResponse.json({ error: `versionId inválido: ${body.versionId}` }, { status: 400 })
-        return NextResponse.json(await approveLandscapeVersion(db, body.versionId))
+        // El scope (proyecto + etapa de la URL) va atado al UPDATE: aprobar no confía
+        // en que el versionId del body pertenezca a este proyecto y esta etapa, lo verifica.
+        return NextResponse.json(await approveLandscapeVersion(db, body.versionId, { projectId: id, stage: stage as StageKey }))
       }
       case 'seleccionar-tendencias': {
         if (stage !== 'tendencias')
@@ -61,10 +63,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   } catch (e) {
     // ErrorNoEncontrado: el pedido apunta a un recurso que no existe (un proyecto
-    // borrado o nunca creado) — 404, no 400: no es que el pedido esté mal formado, es
-    // que el recurso no está.
-    // ErrorDeValidacion: los rechazos del gate (versión inexistente, cantidad de
-    // tendencias, ids repetidos o intrusos) son culpa del pedido — 400 con su mensaje.
+    // borrado o nunca creado, una versión que no existe o que no es de este proyecto
+    // y esta etapa) — 404, no 400: no es que el pedido esté mal formado, es que el
+    // recurso no está.
+    // ErrorDeValidacion: los rechazos del gate (cantidad de tendencias, ids repetidos
+    // o intrusos) son culpa del pedido — 400 con su mensaje.
     // Cualquier otra excepción (Postgres caído, un bug real) es un fallo del servidor:
     // 500 con un mensaje genérico, sin filtrar el texto interno del driver al cliente.
     // El error real queda en el log del servidor para poder investigarlo.

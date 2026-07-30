@@ -91,10 +91,10 @@ async function main() {
     content: { carpeta_dropbox: `/Clientes/${objetivo.name}/Fase 01 Landscape`, deck: `${objetivo.name} — Landscape.key` },
     author: 'claude',
   })
-  await approveLandscapeVersion(db, setup.id)
+  await approveLandscapeVersion(db, setup.id, { projectId: objetivo.id, stage: 'setup' })
 
   const contexto = await saveLandscapeVersion(db, objetivo.id, 'contexto', { content: CONTEXTO, author: 'claude' })
-  await approveLandscapeVersion(db, contexto.id)
+  await approveLandscapeVersion(db, contexto.id, { projectId: objetivo.id, stage: 'contexto' })
 
   await saveLandscapeVersion(db, objetivo.id, 'tendencias', { content: TENDENCIAS, author: 'claude' })
   await setStageStatus(db, objetivo.id, 'diagnostico', 'no_aplica')

@@ -7,7 +7,7 @@ import {
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
   approveLandscapeVersion, getCurrentVersion, selectTendencias,
-  landscapeState, listLandscapeActivity, ErrorDeValidacion, ErrorNoEncontrado,
+  landscapeState, listLandscapeActivity, summarizeLandscape, ErrorDeValidacion, ErrorNoEncontrado,
 } from './store'
 import { answers, landscapeStages, landscapeVersions } from './schema'
 
@@ -162,7 +162,7 @@ describe('landscape · aprobar', () => {
     const db = await makeTestDb()
     const p = await findOrCreateProject(db, 'Acme')
     const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
-    const aprobada = await approveLandscapeVersion(db, v.id)
+    const aprobada = await approveLandscapeVersion(db, v.id, { projectId: p.id, stage: 'contexto' })
     expect(aprobada.approvedAt).toBeTruthy()
     const [stage] = await db.select().from(landscapeStages).where(eq(landscapeStages.projectId, p.id))
     expect(stage.status).toBe('aprobada')
@@ -170,23 +170,47 @@ describe('landscape · aprobar', () => {
 
   it('aprobar una versión que no existe explota', async () => {
     const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
     await expect(
-      approveLandscapeVersion(db, '00000000-0000-0000-0000-000000000000'),
+      approveLandscapeVersion(db, '00000000-0000-0000-0000-000000000000', { projectId: p.id, stage: 'contexto' }),
     ).rejects.toThrow(/no existe/i)
   })
 
-  it('aprobar una versión que no existe es un ErrorDeValidacion (culpa del pedido)', async () => {
+  it('aprobar una versión que no existe es un ErrorNoEncontrado (el recurso no está, no un pedido mal formado)', async () => {
     const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
     await expect(
-      approveLandscapeVersion(db, '00000000-0000-0000-0000-000000000000'),
-    ).rejects.toBeInstanceOf(ErrorDeValidacion)
+      approveLandscapeVersion(db, '00000000-0000-0000-0000-000000000000', { projectId: p.id, stage: 'contexto' }),
+    ).rejects.toBeInstanceOf(ErrorNoEncontrado)
+  })
+
+  it('aprobar no confía en el versionId del pedido: la versión tiene que ser de ese proyecto y esa etapa', async () => {
+    const db = await makeTestDb()
+    const propia = await findOrCreateProject(db, 'Acme')
+    const ajeno = await findOrCreateProject(db, 'Otra marca')
+    const v = await saveLandscapeVersion(db, propia.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+
+    // Mismo proyecto, otra etapa: tampoco matchea.
+    await expect(
+      approveLandscapeVersion(db, v.id, { projectId: propia.id, stage: 'tendencias' }),
+    ).rejects.toBeInstanceOf(ErrorNoEncontrado)
+    // Otro proyecto entero: el caso del bug real (POST a /landscape/A con un versionId de B).
+    await expect(
+      approveLandscapeVersion(db, v.id, { projectId: ajeno.id, stage: 'contexto' }),
+    ).rejects.toBeInstanceOf(ErrorNoEncontrado)
+
+    // Ninguno de los dos intentos aprobó nada: la versión sigue siendo un borrador.
+    const [sinAprobar] = await listLandscapeVersions(db, propia.id, 'contexto')
+    expect(sinAprobar.approvedAt).toBeNull()
+    const [stageAjeno] = await db.select().from(landscapeStages).where(eq(landscapeStages.projectId, ajeno.id))
+    expect(stageAjeno).toBeUndefined()
   })
 
   it('getCurrentVersion prefiere la aprobada sobre un borrador posterior', async () => {
     const db = await makeTestDb()
     const p = await findOrCreateProject(db, 'Acme')
     const v1 = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
-    await approveLandscapeVersion(db, v1.id)
+    await approveLandscapeVersion(db, v1.id, { projectId: p.id, stage: 'contexto' })
     await new Promise(r => setTimeout(r, 5))
     await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
 
@@ -291,7 +315,7 @@ describe('landscape · lectura de estado', () => {
     const db = await makeTestDb()
     const p = await findOrCreateProject(db, 'Acme')
     const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
-    await approveLandscapeVersion(db, v.id)
+    await approveLandscapeVersion(db, v.id, { projectId: p.id, stage: 'contexto' })
     await saveLandscapeVersion(db, p.id, 'tendencias', { content: { candidatas: [] }, author: 'claude' })
     await setStageStatus(db, p.id, 'diagnostico', 'no_aplica')
 
@@ -305,13 +329,26 @@ describe('landscape · lectura de estado', () => {
     expect(porEtapa.entrega.status).toBe('pendiente')
   })
 
+  it('summarizeLandscape no cuenta no_aplica ni como pendiente ni como aprobada', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await approveLandscapeVersion(db, v.id, { projectId: p.id, stage: 'contexto' })
+    await setStageStatus(db, p.id, 'diagnostico', 'no_aplica')
+
+    // Seis etapas en total; 'diagnostico' no aplica, así que sale de la cuenta en los
+    // dos lados: quedan 5 aplicables, de las que solo 'contexto' está aprobada.
+    const resumen = summarizeLandscape(await landscapeState(db, p.id))
+    expect(resumen).toEqual({ aprobadas: 1, total: 5 })
+  })
+
   it('la actividad sale de las versiones, sin tabla aparte', async () => {
     const db = await makeTestDb()
     const p = await findOrCreateProject(db, 'Acme')
     const v = await saveLandscapeVersion(db, p.id, 'contexto', {
       content: { v: 1 }, author: 'claude',
     })
-    await approveLandscapeVersion(db, v.id)
+    await approveLandscapeVersion(db, v.id, { projectId: p.id, stage: 'contexto' })
 
     const act = await listLandscapeActivity(db, p.id)
     expect(act).toHaveLength(2)
@@ -360,5 +397,33 @@ describe('landscape · proyecto inexistente', () => {
     await expect(
       selectTendencias(db, idInexistente, ['t1', 't2', 't3', 't4']),
     ).rejects.toThrow(/no existe el proyecto/i)
+  })
+})
+
+describe('landscape · zona horaria', () => {
+  // Regresión: con columnas `timestamp` sin zona, el driver arma el `Date` de vuelta con
+  // la zona del *proceso que lee*, no la que escribió. Con TZ=America/Bogota (UTC-5) una
+  // fila recién creada se leía corrida ~5 h ("hace 300 min" en vez de "recién"). Corre en
+  // cualquier TZ del corredor de tests porque fuerza la del proceso a Bogotá y la restaura
+  // al final — con el esquema viejo (`timestamp`) este test falla; con `timestamptz` no.
+  it('createdAt, approvedAt y updatedAt se leen correctas con el proceso en América/Bogotá', async () => {
+    const tzOriginal = process.env.TZ
+    process.env.TZ = 'America/Bogota'
+    try {
+      const db = await makeTestDb()
+      const p = await findOrCreateProject(db, 'Acme')
+      const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+      const aprobada = await approveLandscapeVersion(db, v.id, { projectId: p.id, stage: 'contexto' })
+      const [stage] = await db.select().from(landscapeStages).where(eq(landscapeStages.projectId, p.id))
+
+      const ahora = Date.now()
+      const margenMs = 60_000 // generoso: acá lo que importa es "~0", no "~300 min"
+      expect(Math.abs(ahora - new Date(v.createdAt).getTime())).toBeLessThan(margenMs)
+      expect(Math.abs(ahora - new Date(aprobada.approvedAt!).getTime())).toBeLessThan(margenMs)
+      expect(Math.abs(ahora - new Date(stage.updatedAt).getTime())).toBeLessThan(margenMs)
+    } finally {
+      if (tzOriginal === undefined) delete process.env.TZ
+      else process.env.TZ = tzOriginal
+    }
   })
 })

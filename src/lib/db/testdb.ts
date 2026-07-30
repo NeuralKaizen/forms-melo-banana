@@ -39,7 +39,7 @@ export async function makeTestDb() {
       project_id uuid NOT NULL REFERENCES projects(id),
       stage text NOT NULL,
       status text NOT NULL DEFAULT 'pendiente',
-      updated_at timestamp NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
       PRIMARY KEY (project_id, stage)
     );
     CREATE TABLE landscape_versions (
@@ -49,8 +49,8 @@ export async function makeTestDb() {
       content jsonb NOT NULL,
       author text NOT NULL,
       author_label text,
-      created_at timestamp NOT NULL DEFAULT now(),
-      approved_at timestamp
+      created_at timestamptz NOT NULL DEFAULT now(),
+      approved_at timestamptz
     );
     CREATE INDEX landscape_versions_project_stage ON landscape_versions (project_id, stage);
   `)

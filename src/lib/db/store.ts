@@ -252,13 +252,30 @@ export async function listLandscapeVersions(db: AnyDb, projectId: string, stage?
 /**
  * Sella una versión como aprobada y cierra la etapa. Único punto donde una etapa
  * pasa a 'aprobada'. Claude nunca llega acá: aprobar es humano y vive en el panel.
+ *
+ * `scope` ata la aprobación al proyecto y la etapa de la URL: el WHERE filtra por los
+ * tres campos a la vez, así que un versionId de otro proyecto (o de otra etapa del mismo
+ * proyecto) no matchea ninguna fila, en vez de aprobar y cerrar una etapa ajena. Al ir
+ * los tres campos en un solo UPDATE no hay ventana de carrera entre "existe" y "aprobar"
+ * como la habría con un SELECT previo.
  */
-export async function approveLandscapeVersion(db: AnyDb, versionId: string): Promise<LandscapeVersionRow> {
+export async function approveLandscapeVersion(
+  db: AnyDb, versionId: string, scope: { projectId: string; stage: StageKey },
+): Promise<LandscapeVersionRow> {
   const [row] = await db.update(landscapeVersions)
     .set({ approvedAt: new Date() })
-    .where(eq(landscapeVersions.id, versionId))
+    .where(and(
+      eq(landscapeVersions.id, versionId),
+      eq(landscapeVersions.projectId, scope.projectId),
+      eq(landscapeVersions.stage, scope.stage),
+    ))
     .returning()
-  if (!row) throw new ErrorDeValidacion(`No existe la versión ${versionId}`)
+  // Mismo mensaje tanto si el id no existe como si existe pero es de otro proyecto o
+  // etapa: quien hace el pedido no necesita distinguir esos dos casos, y así tampoco se
+  // filtra que la versión existe en otro lado. Es ErrorNoEncontrado (404), no
+  // ErrorDeValidacion (400): el recurso no está para este pedido, igual que un proyecto
+  // que no existe — no es que el pedido esté mal formado.
+  if (!row) throw new ErrorNoEncontrado(`No existe la versión ${versionId}`)
   await setStageStatus(db, row.projectId, row.stage as StageKey, 'aprobada')
   return row
 }
@@ -308,7 +325,7 @@ export async function selectTendencias(
     author: 'humano',
     authorLabel,
   })
-  return approveLandscapeVersion(db, version.id)
+  return approveLandscapeVersion(db, version.id, { projectId, stage: 'tendencias' })
 }
 
 export interface StageState {
@@ -334,6 +351,22 @@ export async function landscapeState(db: AnyDb, projectId: string): Promise<Stag
     const status = estadoPorEtapa.get(stage) ?? 'pendiente'
     return { stage, status, versiones: deLaEtapa.length, actual, aprobada: status === 'aprobada' }
   })
+}
+
+/**
+ * Cuántas etapas cuentan como aprobadas y cuántas cuentan en total, para la cabecera
+ * del proyecto. Una etapa 'no_aplica' no suma en ninguno de los dos lados: no es
+ * "pendiente" (nadie la va a mover nunca) ni "aprobada" (nadie la aprobó) — si contara
+ * como pendiente, un proyecto que no necesita 'diagnostico' nunca llegaría a "completo";
+ * si contara como aprobada, se acreditaría algo que nadie revisó. Se cuenta aparte, y no
+ * entra ni al numerador ni al denominador.
+ */
+export function summarizeLandscape(estado: StageState[]): { aprobadas: number; total: number } {
+  const aplicables = estado.filter(e => e.status !== 'no_aplica')
+  return {
+    aprobadas: aplicables.filter(e => e.aprobada).length,
+    total: aplicables.length,
+  }
 }
 
 export interface ActivityEntry {
