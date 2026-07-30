@@ -235,6 +235,11 @@ export async function selectTendencias(
   const candidatas = (actual?.content as TendenciasContent | undefined)?.candidatas
   if (!candidatas?.length) throw new Error('No hay long list de tendencias guardada para este proyecto')
 
+  // Antes de contar cuántas son: si hay repetidas, el largo crudo miente sobre cuántas
+  // tendencias distintas se eligieron en verdad.
+  const repetidas = [...new Set(seleccionadas.filter((id, i) => seleccionadas.indexOf(id) !== i))]
+  if (repetidas.length) throw new Error(`Estas tendencias están repetidas en la selección: ${repetidas.join(', ')}`)
+
   if (seleccionadas.length < MIN_TENDENCIAS || seleccionadas.length > MAX_TENDENCIAS)
     throw new Error(`Hay que elegir entre ${MIN_TENDENCIAS} y ${MAX_TENDENCIAS} tendencias, llegaron ${seleccionadas.length}`)
 

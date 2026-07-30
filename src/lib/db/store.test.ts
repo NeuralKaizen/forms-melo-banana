@@ -239,6 +239,11 @@ describe('landscape · gate de tendencias', () => {
     await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 't4', 't5', 't6'])).rejects.toThrow(/entre 4 y 5/i)
   })
 
+  it('no se puede repetir una tendencia en la selección', async () => {
+    const { db, p } = await conLongList()
+    await expect(selectTendencias(db, p.id, ['t1', 't1', 't2', 't3'])).rejects.toThrow(/repetid/i)
+  })
+
   it('no se puede seleccionar algo que no está en la long list', async () => {
     const { db, p } = await conLongList()
     await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 'fantasma'])).rejects.toThrow(/fantasma/)
