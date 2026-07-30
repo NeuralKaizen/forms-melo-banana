@@ -292,7 +292,10 @@ export interface ActivityEntry {
 /**
  * La actividad no tiene tabla propia: se deriva de las versiones. Cada versión es
  * un guardado, y cada versión sellada es además una aprobación. Aprobar siempre es
- * humano, así que esas entradas van con autor 'humano'.
+ * humano, así que esas entradas van con autor 'humano'. La tabla no guarda quién
+ * aprobó (solo quién guardó el borrador), así que las entradas 'aprobado' van sin
+ * `quien` — el panel cae a "Equipo" en vez de atribuirle la aprobación a quien
+ * escribió el borrador.
  */
 export async function listLandscapeActivity(db: AnyDb, projectId: string, limit = 8): Promise<ActivityEntry[]> {
   const versiones = await listLandscapeVersions(db, projectId)
@@ -313,7 +316,6 @@ export async function listLandscapeActivity(db: AnyDb, projectId: string, limit 
         tipo: 'aprobado',
         stage: v.stage as StageKey,
         autor: 'humano',
-        quien: v.authorLabel ?? undefined,
         cuando: new Date(v.approvedAt),
       })
     }

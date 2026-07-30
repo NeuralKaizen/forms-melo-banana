@@ -157,6 +157,21 @@ export function textoActividad(e: { tipo: 'guardado' | 'aprobado'; stage: StageK
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
+/** El estudio trabaja en Colombia: la fecha corta se rinde ahí, no en la zona del proceso (Vercel = UTC). */
+const ZONA_ESTUDIO = 'America/Bogota'
+
+/** Parte día/mes/año de `fecha`, tal como se ve desde `ZONA_ESTUDIO`. */
+function partesEnBogota(fecha: Date): { dia: number; mes: number; anio: number } {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: ZONA_ESTUDIO,
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+  }).formatToParts(fecha)
+  const valor = (tipo: string) => Number(partes.find(p => p.type === tipo)!.value)
+  return { dia: valor('day'), mes: valor('month') - 1, anio: valor('year') }
+}
+
 /** Tiempo relativo corto, para la columna de actividad. */
 export function haceCuanto(fecha: Date, ahora: Date = new Date()): string {
   const minutos = Math.floor((ahora.getTime() - fecha.getTime()) / 60_000)
@@ -167,5 +182,8 @@ export function haceCuanto(fecha: Date, ahora: Date = new Date()): string {
   const dias = Math.floor(horas / 24)
   if (dias === 1) return 'ayer'
   if (dias < 7) return `hace ${dias} días`
-  return `${fecha.getUTCDate()} ${MESES[fecha.getUTCMonth()]}`
+  const { dia, mes, anio } = partesEnBogota(fecha)
+  const { anio: anioActual } = partesEnBogota(ahora)
+  const fechaCorta = `${dia} ${MESES[mes]}`
+  return anio === anioActual ? fechaCorta : `${fechaCorta} ${anio}`
 }

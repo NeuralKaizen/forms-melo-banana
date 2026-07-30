@@ -50,4 +50,17 @@ describe('haceCuanto', () => {
   it('más de una semana muestra la fecha', () => {
     expect(haceCuanto(new Date('2026-07-02T09:00:00Z'), ahora)).toBe('2 jul')
   })
+
+  it('la fecha corta se rinde en la zona del estudio (Bogotá), no en UTC', () => {
+    // 2026-07-02 23:30 hora Bogotá (UTC-5) es 2026-07-03 04:30 UTC:
+    // en UTC ya es "otro día", pero el equipo en Bogotá lo vivió el 2.
+    const fecha = new Date('2026-07-03T04:30:00Z')
+    expect(haceCuanto(fecha, ahora)).toBe('2 jul')
+  })
+
+  it('si la fecha es de otro año, lo muestra', () => {
+    const finDeAnio = new Date('2025-12-21T15:00:00Z')
+    const enero = new Date('2026-01-15T12:00:00Z')
+    expect(haceCuanto(finDeAnio, enero)).toBe('21 dic 2025')
+  })
 })
