@@ -10,6 +10,9 @@ export type StageKey = 'setup' | 'contexto' | 'tendencias' | 'panorama' | 'diagn
 
 export type StageStatus = 'pendiente' | 'en_curso' | 'aprobada' | 'no_aplica'
 
+/** El orden del proceso, de docs/fase2/fase-2-investigacion-landscape.md. */
+export const STAGE_ORDER: StageKey[] = ['setup', 'contexto', 'tendencias', 'panorama', 'diagnostico', 'entrega']
+
 export interface Stage {
   key: StageKey
   label: string

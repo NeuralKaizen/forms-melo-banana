@@ -1,7 +1,7 @@
 import { eq, and, asc, desc, sql } from 'drizzle-orm'
 import { sessions, answers, projects, deliverables, landscapeStages, landscapeVersions } from './schema'
 import type { StageKey, StageStatus, TendenciaCandidata } from '@/lib/landscape/stages'
-import { MIN_TENDENCIAS, MAX_TENDENCIAS } from '@/lib/landscape/stages'
+import { MIN_TENDENCIAS, MAX_TENDENCIAS, STAGE_ORDER } from '@/lib/landscape/stages'
 
 type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter seam
 
@@ -253,4 +253,71 @@ export async function selectTendencias(
     authorLabel,
   })
   return approveLandscapeVersion(db, version.id)
+}
+
+export interface StageState {
+  stage: StageKey
+  status: StageStatus
+  versiones: number
+  actual: LandscapeVersionRow | null
+  aprobada: boolean
+}
+
+/** El estado completo del landscape de un proyecto. Siempre las seis etapas. */
+export async function landscapeState(db: AnyDb, projectId: string): Promise<StageState[]> {
+  const filas = await db.select().from(landscapeStages).where(eq(landscapeStages.projectId, projectId))
+  const versiones = await listLandscapeVersions(db, projectId)
+
+  const estadoPorEtapa = new Map<string, StageStatus>(
+    (filas as { stage: string; status: string }[]).map(f => [f.stage, f.status as StageStatus]),
+  )
+
+  return STAGE_ORDER.map(stage => {
+    const deLaEtapa = versiones.filter(v => v.stage === stage)
+    const actual = deLaEtapa.find(v => v.approvedAt) ?? deLaEtapa[0] ?? null
+    const status = estadoPorEtapa.get(stage) ?? 'pendiente'
+    return { stage, status, versiones: deLaEtapa.length, actual, aprobada: status === 'aprobada' }
+  })
+}
+
+export interface ActivityEntry {
+  id: string
+  tipo: 'guardado' | 'aprobado'
+  stage: StageKey
+  autor: 'claude' | 'humano'
+  quien?: string
+  cuando: Date
+}
+
+/**
+ * La actividad no tiene tabla propia: se deriva de las versiones. Cada versión es
+ * un guardado, y cada versión sellada es además una aprobación. Aprobar siempre es
+ * humano, así que esas entradas van con autor 'humano'.
+ */
+export async function listLandscapeActivity(db: AnyDb, projectId: string, limit = 8): Promise<ActivityEntry[]> {
+  const versiones = await listLandscapeVersions(db, projectId)
+  const entradas: ActivityEntry[] = []
+
+  for (const v of versiones) {
+    entradas.push({
+      id: `${v.id}:guardado`,
+      tipo: 'guardado',
+      stage: v.stage as StageKey,
+      autor: v.author as 'claude' | 'humano',
+      quien: v.authorLabel ?? undefined,
+      cuando: new Date(v.createdAt),
+    })
+    if (v.approvedAt) {
+      entradas.push({
+        id: `${v.id}:aprobado`,
+        tipo: 'aprobado',
+        stage: v.stage as StageKey,
+        autor: 'humano',
+        quien: v.authorLabel ?? undefined,
+        cuando: new Date(v.approvedAt),
+      })
+    }
+  }
+
+  return entradas.sort((a, b) => b.cuando.getTime() - a.cuando.getTime()).slice(0, limit)
 }

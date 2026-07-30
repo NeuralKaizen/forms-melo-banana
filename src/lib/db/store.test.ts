@@ -7,6 +7,7 @@ import {
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
   approveLandscapeVersion, getCurrentVersion, selectTendencias,
+  landscapeState, listLandscapeActivity,
 } from './store'
 import { answers, landscapeStages, landscapeVersions } from './schema'
 
@@ -253,5 +254,62 @@ describe('landscape · gate de tendencias', () => {
     const db = await makeTestDb()
     const p = await findOrCreateProject(db, 'Acme')
     await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 't4'])).rejects.toThrow(/long list/i)
+  })
+})
+
+describe('landscape · lectura de estado', () => {
+  it('siempre devuelve las seis etapas, en orden, aunque no haya nada', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const estado = await landscapeState(db, p.id)
+    expect(estado.map(e => e.stage)).toEqual(
+      ['setup', 'contexto', 'tendencias', 'panorama', 'diagnostico', 'entrega'],
+    )
+    expect(estado.every(e => e.status === 'pendiente')).toBe(true)
+    expect(estado.every(e => e.actual === null && e.versiones === 0)).toBe(true)
+  })
+
+  it('refleja versiones, aprobación y no_aplica', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await approveLandscapeVersion(db, v.id)
+    await saveLandscapeVersion(db, p.id, 'tendencias', { content: { candidatas: [] }, author: 'claude' })
+    await setStageStatus(db, p.id, 'diagnostico', 'no_aplica')
+
+    const porEtapa = Object.fromEntries((await landscapeState(db, p.id)).map(e => [e.stage, e]))
+    expect(porEtapa.contexto.status).toBe('aprobada')
+    expect(porEtapa.contexto.aprobada).toBe(true)
+    expect(porEtapa.contexto.versiones).toBe(1)
+    expect(porEtapa.tendencias.status).toBe('en_curso')
+    expect(porEtapa.tendencias.aprobada).toBe(false)
+    expect(porEtapa.diagnostico.status).toBe('no_aplica')
+    expect(porEtapa.entrega.status).toBe('pendiente')
+  })
+
+  it('la actividad sale de las versiones, sin tabla aparte', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', {
+      content: { v: 1 }, author: 'claude',
+    })
+    await approveLandscapeVersion(db, v.id)
+
+    const act = await listLandscapeActivity(db, p.id)
+    expect(act).toHaveLength(2)
+    expect(act[0].tipo).toBe('aprobado')
+    expect(act[0].autor).toBe('humano')
+    expect(act[1].tipo).toBe('guardado')
+    expect(act[1].autor).toBe('claude')
+    expect(act[1].stage).toBe('contexto')
+  })
+
+  it('la actividad respeta el límite', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    for (let i = 0; i < 5; i++) {
+      await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: i }, author: 'claude' })
+    }
+    expect(await listLandscapeActivity(db, p.id, 3)).toHaveLength(3)
   })
 })
