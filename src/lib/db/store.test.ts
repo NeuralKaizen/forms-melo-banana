@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { makeTestDb } from './testdb'
 import {
   createSession, saveAnswer, getSessionWithAnswers, completeSession, setNormalized,
   normalizeCompanyName, findOrCreateProject, assignSessionToProject,
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
-  approveLandscapeVersion, getCurrentVersion,
+  approveLandscapeVersion, getCurrentVersion, selectTendencias,
 } from './store'
 import { answers, landscapeStages, landscapeVersions } from './schema'
 
@@ -196,5 +196,57 @@ describe('landscape · aprobar', () => {
     const actual = await getCurrentVersion(db, p.id, 'contexto')
     expect((actual!.content as { v: number }).v).toBe(2)
     expect(await getCurrentVersion(db, p.id, 'panorama')).toBeNull()
+  })
+})
+
+describe('landscape · gate de tendencias', () => {
+  const longList = {
+    candidatas: [
+      { id: 't1', eje: 'Marca', titulo: 'A', descripcion: '', fuentes: [] },
+      { id: 't2', eje: 'Marca', titulo: 'B', descripcion: '', fuentes: [] },
+      { id: 't3', eje: 'Estrategia', titulo: 'C', descripcion: '', fuentes: [] },
+      { id: 't4', eje: 'Estrategia', titulo: 'D', descripcion: '', fuentes: [] },
+      { id: 't5', eje: 'Comunicación', titulo: 'E', descripcion: '', fuentes: [] },
+      { id: 't6', eje: 'Comunicación', titulo: 'F', descripcion: '', fuentes: [] },
+    ],
+  }
+
+  async function conLongList() {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    await saveLandscapeVersion(db, p.id, 'tendencias', { content: longList, author: 'claude' })
+    return { db, p }
+  }
+
+  it('cuatro seleccionadas quedan aprobadas y conservan la long list', async () => {
+    const { db, p } = await conLongList()
+    const v = await selectTendencias(db, p.id, ['t1', 't3', 't4', 't5'], 'Isa')
+    expect(v.approvedAt).toBeTruthy()
+    expect(v.author).toBe('humano')
+    expect(v.authorLabel).toBe('Isa')
+    const content = v.content as { candidatas: unknown[]; seleccionadas: string[] }
+    expect(content.seleccionadas).toEqual(['t1', 't3', 't4', 't5'])
+    expect(content.candidatas).toHaveLength(6)
+
+    const [stage] = await db.select().from(landscapeStages)
+      .where(and(eq(landscapeStages.projectId, p.id), eq(landscapeStages.stage, 'tendencias')))
+    expect(stage.status).toBe('aprobada')
+  })
+
+  it('tres es muy poco y seis es demasiado', async () => {
+    const { db, p } = await conLongList()
+    await expect(selectTendencias(db, p.id, ['t1', 't2', 't3'])).rejects.toThrow(/entre 4 y 5/i)
+    await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 't4', 't5', 't6'])).rejects.toThrow(/entre 4 y 5/i)
+  })
+
+  it('no se puede seleccionar algo que no está en la long list', async () => {
+    const { db, p } = await conLongList()
+    await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 'fantasma'])).rejects.toThrow(/fantasma/)
+  })
+
+  it('sin long list guardada no hay nada que seleccionar', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 't4'])).rejects.toThrow(/long list/i)
   })
 })

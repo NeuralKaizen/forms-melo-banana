@@ -1,6 +1,7 @@
 import { eq, and, asc, desc, sql } from 'drizzle-orm'
 import { sessions, answers, projects, deliverables, landscapeStages, landscapeVersions } from './schema'
-import type { StageKey, StageStatus } from '@/lib/landscape/stages'
+import type { StageKey, StageStatus, TendenciaCandidata } from '@/lib/landscape/stages'
+import { MIN_TENDENCIAS, MAX_TENDENCIAS } from '@/lib/landscape/stages'
 
 type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter seam
 
@@ -215,4 +216,36 @@ export async function approveLandscapeVersion(db: AnyDb, versionId: string): Pro
 export async function getCurrentVersion(db: AnyDb, projectId: string, stage: StageKey): Promise<LandscapeVersionRow | null> {
   const rows = await listLandscapeVersions(db, projectId, stage)
   return rows.find(r => r.approvedAt) ?? rows[0] ?? null
+}
+
+/** El `content` de la etapa `tendencias`: la long list, y la selección cuando ya se decidió. */
+export interface TendenciasContent {
+  candidatas: TendenciaCandidata[]
+  seleccionadas?: string[]
+}
+
+/**
+ * El gate humano del proceso: de la long list salen 4 o 5, y las elige el equipo.
+ * Guardar y aprobar son un solo acto porque la selección *es* la decisión.
+ */
+export async function selectTendencias(
+  db: AnyDb, projectId: string, seleccionadas: string[], authorLabel?: string,
+): Promise<LandscapeVersionRow> {
+  const actual = await getCurrentVersion(db, projectId, 'tendencias')
+  const candidatas = (actual?.content as TendenciasContent | undefined)?.candidatas
+  if (!candidatas?.length) throw new Error('No hay long list de tendencias guardada para este proyecto')
+
+  if (seleccionadas.length < MIN_TENDENCIAS || seleccionadas.length > MAX_TENDENCIAS)
+    throw new Error(`Hay que elegir entre ${MIN_TENDENCIAS} y ${MAX_TENDENCIAS} tendencias, llegaron ${seleccionadas.length}`)
+
+  const conocidas = new Set(candidatas.map(c => c.id))
+  const intrusas = seleccionadas.filter(id => !conocidas.has(id))
+  if (intrusas.length) throw new Error(`Estas tendencias no están en la long list: ${intrusas.join(', ')}`)
+
+  const version = await saveLandscapeVersion(db, projectId, 'tendencias', {
+    content: { candidatas, seleccionadas } satisfies TendenciasContent,
+    author: 'humano',
+    authorLabel,
+  })
+  return approveLandscapeVersion(db, version.id)
 }
