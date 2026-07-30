@@ -7,7 +7,7 @@ import {
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
   approveLandscapeVersion, getCurrentVersion, selectTendencias,
-  landscapeState, listLandscapeActivity,
+  landscapeState, listLandscapeActivity, ErrorDeValidacion,
 } from './store'
 import { answers, landscapeStages, landscapeVersions } from './schema'
 
@@ -175,6 +175,13 @@ describe('landscape · aprobar', () => {
     ).rejects.toThrow(/no existe/i)
   })
 
+  it('aprobar una versión que no existe es un ErrorDeValidacion (culpa del pedido)', async () => {
+    const db = await makeTestDb()
+    await expect(
+      approveLandscapeVersion(db, '00000000-0000-0000-0000-000000000000'),
+    ).rejects.toBeInstanceOf(ErrorDeValidacion)
+  })
+
   it('getCurrentVersion prefiere la aprobada sobre un borrador posterior', async () => {
     const db = await makeTestDb()
     const p = await findOrCreateProject(db, 'Acme')
@@ -254,6 +261,17 @@ describe('landscape · gate de tendencias', () => {
     const db = await makeTestDb()
     const p = await findOrCreateProject(db, 'Acme')
     await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 't4'])).rejects.toThrow(/long list/i)
+  })
+
+  it('los cuatro rechazos del gate son ErrorDeValidacion (culpa del pedido)', async () => {
+    const { db, p } = await conLongList()
+    await expect(selectTendencias(db, p.id, ['t1', 't2', 't3'])).rejects.toBeInstanceOf(ErrorDeValidacion)
+    await expect(selectTendencias(db, p.id, ['t1', 't1', 't2', 't3'])).rejects.toBeInstanceOf(ErrorDeValidacion)
+    await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 'fantasma'])).rejects.toBeInstanceOf(ErrorDeValidacion)
+
+    const sinLongList = await makeTestDb()
+    const p2 = await findOrCreateProject(sinLongList, 'Otra')
+    await expect(selectTendencias(sinLongList, p2.id, ['t1', 't2', 't3', 't4'])).rejects.toBeInstanceOf(ErrorDeValidacion)
   })
 })
 

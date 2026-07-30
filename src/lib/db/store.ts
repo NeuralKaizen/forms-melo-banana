@@ -5,6 +5,13 @@ import { MIN_TENDENCIAS, MAX_TENDENCIAS, STAGE_ORDER } from '@/lib/landscape/sta
 
 type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter seam
 
+/**
+ * Un rechazo que es culpa del pedido (datos inválidos), no del servidor: la ruta HTTP
+ * la traduce a 400. Cualquier otra excepción (Postgres caído, un bug real) es un fallo
+ * del servidor y se traduce a 500.
+ */
+export class ErrorDeValidacion extends Error {}
+
 export async function createSession(db: AnyDb, info: {
   name?: string; company?: string; role?: string; email?: string
 }) {
@@ -207,7 +214,7 @@ export async function approveLandscapeVersion(db: AnyDb, versionId: string): Pro
     .set({ approvedAt: new Date() })
     .where(eq(landscapeVersions.id, versionId))
     .returning()
-  if (!row) throw new Error(`No existe la versión ${versionId}`)
+  if (!row) throw new ErrorDeValidacion(`No existe la versión ${versionId}`)
   await setStageStatus(db, row.projectId, row.stage as StageKey, 'aprobada')
   return row
 }
@@ -233,19 +240,19 @@ export async function selectTendencias(
 ): Promise<LandscapeVersionRow> {
   const actual = await getCurrentVersion(db, projectId, 'tendencias')
   const candidatas = (actual?.content as TendenciasContent | undefined)?.candidatas
-  if (!candidatas?.length) throw new Error('No hay long list de tendencias guardada para este proyecto')
+  if (!candidatas?.length) throw new ErrorDeValidacion('No hay long list de tendencias guardada para este proyecto')
 
   // Antes de contar cuántas son: si hay repetidas, el largo crudo miente sobre cuántas
   // tendencias distintas se eligieron en verdad.
   const repetidas = [...new Set(seleccionadas.filter((id, i) => seleccionadas.indexOf(id) !== i))]
-  if (repetidas.length) throw new Error(`Estas tendencias están repetidas en la selección: ${repetidas.join(', ')}`)
+  if (repetidas.length) throw new ErrorDeValidacion(`Estas tendencias están repetidas en la selección: ${repetidas.join(', ')}`)
 
   if (seleccionadas.length < MIN_TENDENCIAS || seleccionadas.length > MAX_TENDENCIAS)
-    throw new Error(`Hay que elegir entre ${MIN_TENDENCIAS} y ${MAX_TENDENCIAS} tendencias, llegaron ${seleccionadas.length}`)
+    throw new ErrorDeValidacion(`Hay que elegir entre ${MIN_TENDENCIAS} y ${MAX_TENDENCIAS} tendencias, llegaron ${seleccionadas.length}`)
 
   const conocidas = new Set(candidatas.map(c => c.id))
   const intrusas = seleccionadas.filter(id => !conocidas.has(id))
-  if (intrusas.length) throw new Error(`Estas tendencias no están en la long list: ${intrusas.join(', ')}`)
+  if (intrusas.length) throw new ErrorDeValidacion(`Estas tendencias no están en la long list: ${intrusas.join(', ')}`)
 
   const version = await saveLandscapeVersion(db, projectId, 'tendencias', {
     content: { candidatas, seleccionadas } satisfies TendenciasContent,
