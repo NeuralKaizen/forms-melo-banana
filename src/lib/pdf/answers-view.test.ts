@@ -11,8 +11,7 @@ describe('buildBriefView', () => {
       { questionId: 'animal', rawText: '', imageChoice: 'leon' },
       { questionId: 'color', rawText: '', imageChoice: 'amarillo' },
       { questionId: 'genero', rawText: '', imageChoice: 'mujer' },
-      { questionId: 'edad_mujer', rawText: '', imageChoice: '30s' },
-      { questionId: 'edad_hombre', rawText: '', imageChoice: '40s' }, // stale: debe ignorarse
+      { questionId: 'edad', rawText: '', imageChoice: '30s' },
     ]
     const v = buildBriefView(session, answers)
 

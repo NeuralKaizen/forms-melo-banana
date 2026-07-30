@@ -22,9 +22,9 @@ describe('flow', () => {
 })
 
 describe('interviewQuestions', () => {
-  it('excludes the 4 identity questions, leaving 21', () => {
+  it('excludes the 4 identity questions, leaving 20', () => {
     const qs = interviewQuestions()
-    expect(qs).toHaveLength(21)
+    expect(qs).toHaveLength(20)
     for (const id of ['nombre', 'empresa', 'cargo', 'email']) {
       expect(qs.find(q => q.id === id)).toBeUndefined()
     }
@@ -32,18 +32,17 @@ describe('interviewQuestions', () => {
 })
 
 describe('visibleQuestions', () => {
-  it('muestra edad_hombre por defecto y oculta edad_mujer (total 20)', () => {
+  it('muestra la pregunta edad una sola vez, sin depender del género (total 20)', () => {
     const qs = visibleQuestions({})
     expect(qs).toHaveLength(20)
-    expect(qs.find(q => q.id === 'edad_hombre')).toBeDefined()
-    expect(qs.find(q => q.id === 'edad_mujer')).toBeUndefined()
+    expect(qs.filter(q => q.id === 'edad')).toHaveLength(1)
   })
-  it('con género mujer muestra edad_mujer y oculta edad_hombre (total 20)', () => {
+  it('con género mujer la pregunta edad se sigue mostrando una sola vez (total 20)', () => {
     const answers: Answers = { genero: { rawText: '', imageChoice: 'mujer' } }
     const qs = visibleQuestions(answers)
     expect(qs).toHaveLength(20)
-    expect(qs.find(q => q.id === 'edad_mujer')).toBeDefined()
-    expect(qs.find(q => q.id === 'edad_hombre')).toBeUndefined()
+    expect(qs.filter(q => q.id === 'edad')).toHaveLength(1)
+    expect(qs.find(q => q.id === 'genero')).toBeDefined()
   })
 })
 
@@ -59,12 +58,11 @@ describe('visibleSections', () => {
     expect(allIdx).toEqual([...Array(20).keys()])
   })
 
-  it('respeta el branching de género en la numeración', () => {
+  it('la sección proyectiva no rama por género: edad aparece una sola vez', () => {
     const secs = visibleSections({ genero: { rawText: '', imageChoice: 'mujer' } })
     const projective = secs.find(s => s.key === 'projective')!
     const ids = projective.questions.map(q => q.question.id)
-    expect(ids).toContain('edad_mujer')
-    expect(ids).not.toContain('edad_hombre')
+    expect(ids).toEqual(['animal', 'color', 'genero', 'edad', 'olor', 'ciudad'])
     expect(projective.questions.map(q => q.localNumber)).toEqual([1, 2, 3, 4, 5, 6])
   })
 })
