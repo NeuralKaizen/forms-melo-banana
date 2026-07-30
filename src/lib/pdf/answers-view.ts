@@ -21,7 +21,8 @@ function fmtDate(d?: Date | null): string {
 
 const CHIP_LABEL: Record<string, string> = {
   animal: 'Animal', color: 'Color', genero: 'Género',
-  edad_hombre: 'Edad', edad_mujer: 'Edad', olor: 'Olor', ciudad: 'Ciudad',
+  edad: 'Edad', edad_hombre: 'Edad', edad_mujer: 'Edad',
+  estilo: 'Estilo', olor: 'Olor', ciudad: 'Ciudad',
 }
 
 export function buildBriefView(

@@ -1,39 +1,25 @@
+import { redirect, notFound } from 'next/navigation'
 import { db } from '@/lib/db/client'
-import { getProjectWithSessions, getDeliverable, listProjects } from '@/lib/db/store'
-import type { Deliverable } from '@/lib/deliverable/schema'
-import { buildProjectDeckView } from '@/lib/deck/service'
-import { AdminBar } from '@/components/AdminBar'
-import { DeliverablePanel } from './DeliverablePanel'
+import { getProjectWithSessions, getDeliverable } from '@/lib/db/store'
+import { derivePhases, currentPhase } from '@/lib/pipeline/phases'
+import { projectSignals } from '@/lib/pipeline/signals'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * El proyecto no es una pantalla: es un recorrido. Entrar por la raíz te deja parado en la
+ * fase donde el proyecto realmente está, y desde ahí se camina con la cabecera.
+ */
 export default async function ProjectView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const project = await getProjectWithSessions(db, id)
-  if (!project) return <>
-    <AdminBar wide />
-    <main className="mx-auto max-w-5xl p-8 pt-24 text-center text-[15px] text-[#8a8170]">Proyecto no encontrado.</main>
-  </>
-  const deliverable = (await getDeliverable(db, id))?.content as Deliverable | null
-  const deckView = await buildProjectDeckView(id)
-  const allProjects = await listProjects(db) as { id: string; name: string }[]
-  const sessions = (project.sessions as { id: string; name?: string | null; role?: string | null }[])
-    .map(s => ({ id: s.id, name: s.name ?? '—', role: s.role ?? '—' }))
+  if (!project) notFound()
 
-  return <>
-    <AdminBar wide />
-    <main className="mx-auto w-full max-w-5xl space-y-8 p-8">
-      <header>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">Proyecto</p>
-        <h1 className="mt-2 font-serif text-3xl font-medium leading-tight text-ink">{project.name}</h1>
-      </header>
-      <DeliverablePanel
-        projectId={id}
-        view={deckView}
-        personalidad={deliverable?.personalidad ?? null}
-        sessions={sessions}
-        projects={allProjects}
-      />
-    </main>
-  </>
+  const deliverable = await getDeliverable(db, id)
+  const phases = derivePhases(id, projectSignals({
+    sessions: project.sessions as { status?: string | null }[],
+    tieneEntregable: !!deliverable,
+  }))
+
+  redirect(currentPhase(phases).href)
 }

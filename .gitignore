@@ -53,6 +53,10 @@ next-env.d.ts
 # artefactos generados (previews de PDF, etc.)
 tmp/
 
-# Material de referencia de clientes (nunca al repo)
-docs/mbanana_*/
-docs/analisis-entrevista-proyectiva/references/*.pdf
+# Material de referencia de clientes (nunca al repo).
+# Por ruta completa: las carpetas de material se mudan de lugar (docs/ -> docs/fase1/,
+# docs/fase2/) y una regla anclada a docs/ deja de matchear sin que se note.
+docs/**/mbanana_*/
+docs/**/*.pdf
+docs/**/*.docx
+docs/**/*.zip

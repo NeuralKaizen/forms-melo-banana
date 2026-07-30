@@ -1,4 +1,4 @@
-import { eq, asc } from 'drizzle-orm'
+import { eq, asc, sql } from 'drizzle-orm'
 import { sessions, answers, projects, deliverables } from './schema'
 
 type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter seam
@@ -70,6 +70,60 @@ export async function assignSessionToProject(db: AnyDb, sessionId: string, proje
 
 export async function listProjects(db: AnyDb) {
   return db.select({ id: projects.id, name: projects.name }).from(projects).orderBy(asc(projects.name))
+}
+
+/** Igual que listProjects, más lo mínimo para saber en qué fase está cada proyecto. */
+export async function listProjectsWithCounts(db: AnyDb) {
+  const rows = await db.select({
+    id: projects.id,
+    name: projects.name,
+    createdAt: projects.createdAt,
+    sessionsTotal: sql<number>`count(${sessions.id})`,
+    sessionsCompleted: sql<number>`count(*) filter (where ${sessions.status} = 'completed')`,
+    tieneEntregable: sql<boolean>`bool_or(${deliverables.projectId} is not null)`,
+    ultimaSesion: sql<string | null>`max(coalesce(${sessions.completedAt}, ${sessions.createdAt}))`,
+    ultimoEntregable: sql<string | null>`max(${deliverables.updatedAt})`,
+  })
+    .from(projects)
+    .leftJoin(sessions, eq(sessions.projectId, projects.id))
+    .leftJoin(deliverables, eq(deliverables.projectId, projects.id))
+    .groupBy(projects.id, projects.name, projects.createdAt)
+    .orderBy(asc(projects.name))
+
+  // pg devuelve los count como string según el driver.
+  return (rows as Record<string, unknown>[]).map(r => {
+    const fechas = [r.ultimaSesion, r.ultimoEntregable, r.createdAt]
+      .filter(Boolean)
+      .map(d => new Date(d as string | Date).getTime())
+
+    return {
+      id: String(r.id),
+      name: String(r.name),
+      sessionsTotal: Number(r.sessionsTotal ?? 0),
+      sessionsCompleted: Number(r.sessionsCompleted ?? 0),
+      tieneEntregable: Boolean(r.tieneEntregable),
+      /** Lo último que se movió en el proyecto, de donde sea que haya venido. */
+      ultimaActividad: fechas.length ? new Date(Math.max(...fechas)) : null,
+    }
+  })
+}
+
+/** Cuántas respuestas tiene cada entrevista del proyecto, por sessionId. */
+export async function answerCountsByProject(db: AnyDb, projectId: string) {
+  const rows = await db.select({
+    sessionId: answers.sessionId,
+    total: sql<number>`count(*)`,
+  })
+    .from(answers)
+    .innerJoin(sessions, eq(sessions.id, answers.sessionId))
+    .where(eq(sessions.projectId, projectId))
+    .groupBy(answers.sessionId)
+
+  const out: Record<string, number> = {}
+  for (const r of rows as { sessionId: string; total: number | string }[]) {
+    out[r.sessionId] = Number(r.total ?? 0)
+  }
+  return out
 }
 
 export async function getProjectWithSessions(db: AnyDb, projectId: string) {

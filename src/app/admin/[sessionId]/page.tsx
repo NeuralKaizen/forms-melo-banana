@@ -2,7 +2,7 @@ import { db } from '@/lib/db/client'
 import { getSessionWithAnswers } from '@/lib/db/store'
 import { ensureNormalized } from '@/lib/normalize/service'
 import { SCRIPT } from '@/lib/script/questions'
-import { AdminBar } from '@/components/AdminBar'
+import { AdminShell } from '@/components/AdminShell'
 
 export const dynamic = 'force-dynamic'
 const promptOf = (qid: string) => SCRIPT.flatMap(s => s.questions).find(q => q.id === qid)?.prompt ?? qid
@@ -12,18 +12,27 @@ type Answer = { id: string; questionId: string; rawText: string; normalizedText?
 export default async function Detail({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params
   const full = await getSessionWithAnswers(db, sessionId)
-  if (!full) return <>
-    <AdminBar />
-    <main className="mx-auto max-w-3xl p-8 pt-24 text-center text-[15px] text-[#8a8170]">No encontrado.</main>
-  </>
+  if (!full) return (
+    <AdminShell>
+      <p className="pt-16 text-center text-[15px] text-[#8a8170]">No encontrado.</p>
+    </AdminShell>
+  )
   await ensureNormalized(db, sessionId)
   const fresh = await getSessionWithAnswers(db, sessionId)
-  return <>
-    <AdminBar />
-    <main className="mx-auto w-full max-w-3xl space-y-8 p-8">
+  return (
+    <AdminShell activeProjectId={full.projectId ?? undefined}>
+      <div className="max-w-3xl space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <header>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">Respondiente</p>
+          {full.projectId
+            ? <a href={`/admin/projects/${full.projectId}/entrevistas`}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e] transition-colors duration-200 hover:text-ink">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+                Entrevistas
+              </a>
+            : <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">Respondiente</p>}
           <h1 className="mt-2 font-serif text-3xl font-medium leading-tight text-ink">{full.company} · {full.name}</h1>
         </header>
         <a href={`/api/sessions/${sessionId}/pdf`}
@@ -44,6 +53,7 @@ export default async function Detail({ params }: { params: Promise<{ sessionId: 
           ))}
         </div>
       </section>
-    </main>
-  </>
+      </div>
+    </AdminShell>
+  )
 }
