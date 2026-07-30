@@ -196,3 +196,23 @@ export async function listLandscapeVersions(db: AnyDb, projectId: string, stage?
     : eq(landscapeVersions.projectId, projectId)
   return db.select().from(landscapeVersions).where(where).orderBy(desc(landscapeVersions.createdAt))
 }
+
+/**
+ * Sella una versión como aprobada y cierra la etapa. Único punto donde una etapa
+ * pasa a 'aprobada'. Claude nunca llega acá: aprobar es humano y vive en el panel.
+ */
+export async function approveLandscapeVersion(db: AnyDb, versionId: string): Promise<LandscapeVersionRow> {
+  const [row] = await db.update(landscapeVersions)
+    .set({ approvedAt: new Date() })
+    .where(eq(landscapeVersions.id, versionId))
+    .returning()
+  if (!row) throw new Error(`No existe la versión ${versionId}`)
+  await setStageStatus(db, row.projectId, row.stage as StageKey, 'aprobada')
+  return row
+}
+
+/** Lo que hay que mostrar de una etapa: la aprobada manda; si no, el último borrador. */
+export async function getCurrentVersion(db: AnyDb, projectId: string, stage: StageKey): Promise<LandscapeVersionRow | null> {
+  const rows = await listLandscapeVersions(db, projectId, stage)
+  return rows.find(r => r.approvedAt) ?? rows[0] ?? null
+}

@@ -6,6 +6,7 @@ import {
   normalizeCompanyName, findOrCreateProject, assignSessionToProject,
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
+  approveLandscapeVersion, getCurrentVersion,
 } from './store'
 import { answers, landscapeStages, landscapeVersions } from './schema'
 
@@ -152,5 +153,48 @@ describe('landscape · guardar versiones', () => {
     expect((solo[0].content as { v: number }).v).toBe(2)
     expect(solo[0].authorLabel).toBe('Isa')
     expect(await listLandscapeVersions(db, p.id)).toHaveLength(3)
+  })
+})
+
+describe('landscape · aprobar', () => {
+  it('aprobar sella la versión y cierra la etapa', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    const aprobada = await approveLandscapeVersion(db, v.id)
+    expect(aprobada.approvedAt).toBeTruthy()
+    const [stage] = await db.select().from(landscapeStages).where(eq(landscapeStages.projectId, p.id))
+    expect(stage.status).toBe('aprobada')
+  })
+
+  it('aprobar una versión que no existe explota', async () => {
+    const db = await makeTestDb()
+    await expect(
+      approveLandscapeVersion(db, '00000000-0000-0000-0000-000000000000'),
+    ).rejects.toThrow(/no existe/i)
+  })
+
+  it('getCurrentVersion prefiere la aprobada sobre un borrador posterior', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v1 = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await approveLandscapeVersion(db, v1.id)
+    await new Promise(r => setTimeout(r, 5))
+    await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
+
+    const actual = await getCurrentVersion(db, p.id, 'contexto')
+    expect((actual!.content as { v: number }).v).toBe(1)
+  })
+
+  it('getCurrentVersion cae al borrador más nuevo si no hay ninguna aprobada', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await new Promise(r => setTimeout(r, 5))
+    await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
+
+    const actual = await getCurrentVersion(db, p.id, 'contexto')
+    expect((actual!.content as { v: number }).v).toBe(2)
+    expect(await getCurrentVersion(db, p.id, 'panorama')).toBeNull()
   })
 })
