@@ -124,3 +124,48 @@ export const ACTIVIDAD_DEMO: Actividad[] = [
 ]
 
 export const EJES: Eje[] = ['Marca', 'Estrategia', 'Comunicación']
+
+export const STAGE_LABEL: Record<StageKey, string> = {
+  setup: 'Setup',
+  contexto: 'Contexto del sector',
+  tendencias: 'Tendencias',
+  panorama: 'Panorama de categoría',
+  diagnostico: 'Diagnóstico',
+  entrega: 'Entrega',
+}
+
+export const STAGE_HINT: Partial<Record<StageKey, string>> = {
+  diagnostico: 'solo rebranding',
+}
+
+/** Las seis etapas siempre, aunque el proyecto todavía no tenga ninguna fila. */
+export function buildStages(estado: { stage: StageKey; status: StageStatus }[]): Stage[] {
+  const porEtapa = new Map(estado.map(e => [e.stage, e.status]))
+  return STAGE_ORDER.map(key => ({
+    key,
+    label: STAGE_LABEL[key],
+    hint: STAGE_HINT[key],
+    status: porEtapa.get(key) ?? 'pendiente',
+  }))
+}
+
+export function textoActividad(e: { tipo: 'guardado' | 'aprobado'; stage: StageKey }): string {
+  return e.tipo === 'aprobado'
+    ? `Aprobó ${STAGE_LABEL[e.stage]}`
+    : `Guardó un borrador de ${STAGE_LABEL[e.stage]}`
+}
+
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+/** Tiempo relativo corto, para la columna de actividad. */
+export function haceCuanto(fecha: Date, ahora: Date = new Date()): string {
+  const minutos = Math.floor((ahora.getTime() - fecha.getTime()) / 60_000)
+  if (minutos < 1) return 'recién'
+  if (minutos < 60) return `hace ${minutos} min`
+  const horas = Math.floor(minutos / 60)
+  if (horas < 24) return `hace ${horas} h`
+  const dias = Math.floor(horas / 24)
+  if (dias === 1) return 'ayer'
+  if (dias < 7) return `hace ${dias} días`
+  return `${fecha.getUTCDate()} ${MESES[fecha.getUTCMonth()]}`
+}
