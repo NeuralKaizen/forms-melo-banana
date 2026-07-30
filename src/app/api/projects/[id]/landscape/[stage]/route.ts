@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
-import { saveLandscapeVersion, approveLandscapeVersion, selectTendencias, ErrorDeValidacion } from '@/lib/db/store'
+import { saveLandscapeVersion, approveLandscapeVersion, selectTendencias, ErrorDeValidacion, ErrorNoEncontrado } from '@/lib/db/store'
 import { STAGE_ORDER, type StageKey } from '@/lib/landscape/stages'
 import { esUuidValido } from '@/lib/landscape/ids'
 
@@ -60,11 +60,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ error: `Acción desconocida: ${String(body.accion)}` }, { status: 400 })
     }
   } catch (e) {
-    // ErrorDeValidacion son los rechazos del gate (versión inexistente, cantidad de
-    // tendencias, ids repetidos o intrusos): son culpa del pedido, 400 con su mensaje.
+    // ErrorNoEncontrado: el pedido apunta a un recurso que no existe (un proyecto
+    // borrado o nunca creado) — 404, no 400: no es que el pedido esté mal formado, es
+    // que el recurso no está.
+    // ErrorDeValidacion: los rechazos del gate (versión inexistente, cantidad de
+    // tendencias, ids repetidos o intrusos) son culpa del pedido — 400 con su mensaje.
     // Cualquier otra excepción (Postgres caído, un bug real) es un fallo del servidor:
     // 500 con un mensaje genérico, sin filtrar el texto interno del driver al cliente.
     // El error real queda en el log del servidor para poder investigarlo.
+    if (e instanceof ErrorNoEncontrado)
+      return NextResponse.json({ error: e.message }, { status: 404 })
     if (e instanceof ErrorDeValidacion)
       return NextResponse.json({ error: e.message }, { status: 400 })
     console.error('Error inesperado en la ruta de landscape:', e)

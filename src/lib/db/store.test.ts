@@ -7,7 +7,7 @@ import {
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
   approveLandscapeVersion, getCurrentVersion, selectTendencias,
-  landscapeState, listLandscapeActivity, ErrorDeValidacion,
+  landscapeState, listLandscapeActivity, ErrorDeValidacion, ErrorNoEncontrado,
 } from './store'
 import { answers, landscapeStages, landscapeVersions } from './schema'
 
@@ -329,5 +329,36 @@ describe('landscape · lectura de estado', () => {
       await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: i }, author: 'claude' })
     }
     expect(await listLandscapeActivity(db, p.id, 3)).toHaveLength(3)
+  })
+})
+
+describe('landscape · proyecto inexistente', () => {
+  const idInexistente = '00000000-0000-0000-0000-000000000000'
+
+  it('guardar contra un proyecto que no existe es un ErrorNoEncontrado, no una falla de Postgres sin traducir', async () => {
+    const db = await makeTestDb()
+    await expect(
+      saveLandscapeVersion(db, idInexistente, 'contexto', { content: { v: 1 }, author: 'humano' }),
+    ).rejects.toBeInstanceOf(ErrorNoEncontrado)
+    await expect(
+      saveLandscapeVersion(db, idInexistente, 'contexto', { content: { v: 1 }, author: 'humano' }),
+    ).rejects.toThrow(/no existe el proyecto/i)
+  })
+
+  it('guardar contra un proyecto que sí existe no dispara el chequeo (caso feliz intacto)', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'humano' })
+    expect(v.id).toBeTruthy()
+  })
+
+  it('seleccionar tendencias contra un proyecto que no existe es un ErrorNoEncontrado, no el mensaje de "sin long list"', async () => {
+    const db = await makeTestDb()
+    await expect(
+      selectTendencias(db, idInexistente, ['t1', 't2', 't3', 't4']),
+    ).rejects.toBeInstanceOf(ErrorNoEncontrado)
+    await expect(
+      selectTendencias(db, idInexistente, ['t1', 't2', 't3', 't4']),
+    ).rejects.toThrow(/no existe el proyecto/i)
   })
 })

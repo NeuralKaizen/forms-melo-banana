@@ -12,6 +12,41 @@ type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter
  */
 export class ErrorDeValidacion extends Error {}
 
+/**
+ * El pedido apunta a un recurso que no existe (un proyecto borrado o que nunca existió):
+ * la ruta HTTP la traduce a 404. No es "el pedido está mal formado" (eso es
+ * `ErrorDeValidacion`, 400) ni "algo se rompió" (eso es cualquier otra excepción, 500).
+ */
+export class ErrorNoEncontrado extends Error {}
+
+/** Código de Postgres para violación de foreign key (por ejemplo, un project_id que no existe). */
+const CODIGO_FK_VIOLADA = '23503'
+
+/**
+ * `drizzle-orm` envuelve el error del driver en `DrizzleQueryError`; el código de Postgres
+ * viaja en la excepción original, en `cause` (verificado a mano contra PGlite).
+ */
+function esViolacionDeForeignKey(e: unknown): boolean {
+  const causa = e instanceof Error ? (e as { cause?: unknown }).cause : undefined
+  return Boolean(
+    causa && typeof causa === 'object' && 'code' in causa && (causa as { code?: unknown }).code === CODIGO_FK_VIOLADA,
+  )
+}
+
+/**
+ * Chequeo de existencia liviano, solo para dar un 404 claro en vez de un mensaje que
+ * despista (por ejemplo "no hay long list") cuando el proyecto directamente no existe.
+ * No es la fuente de verdad de la escritura: si el proyecto se borra en la ventana entre
+ * este chequeo y el insert final —una carrera muy improbable en un panel interno de uso
+ * secuencial—, el catch de la violación de foreign key en `saveLandscapeVersion` sigue
+ * atajando el caso. Ver la Ronda 3 en el reporte de la Tarea 7 para la justificación
+ * completa de por qué la escritura no usa este mismo chequeo como gate.
+ */
+async function existeProyecto(db: AnyDb, projectId: string): Promise<boolean> {
+  const [row] = await db.select({ id: projects.id }).from(projects).where(eq(projects.id, projectId))
+  return Boolean(row)
+}
+
 export async function createSession(db: AnyDb, info: {
   name?: string; company?: string; role?: string; email?: string
 }) {
@@ -175,14 +210,23 @@ export async function setStageStatus(db: AnyDb, projectId: string, stage: StageK
 export async function saveLandscapeVersion(db: AnyDb, projectId: string, stage: StageKey, v: {
   content: unknown; author: 'claude' | 'humano'; authorLabel?: string
 }): Promise<LandscapeVersionRow> {
-  const [row] = await db.insert(landscapeVersions)
-    .values({
-      projectId, stage,
-      content: v.content,
-      author: v.author,
-      authorLabel: v.authorLabel ?? null,
-    })
-    .returning()
+  let row: LandscapeVersionRow
+  try {
+    ;[row] = await db.insert(landscapeVersions)
+      .values({
+        projectId, stage,
+        content: v.content,
+        author: v.author,
+        authorLabel: v.authorLabel ?? null,
+      })
+      .returning()
+  } catch (e) {
+    // Sin pre-chequeo de existencia acá a propósito: este catch es la fuente de verdad de
+    // la escritura y no tiene ventana de carrera (a diferencia de un SELECT previo, que sí
+    // la tendría entre el chequeo y el insert).
+    if (esViolacionDeForeignKey(e)) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
+    throw e
+  }
 
   await db.insert(landscapeStages)
     .values({ projectId, stage, status: 'en_curso' })
@@ -238,6 +282,11 @@ export interface TendenciasContent {
 export async function selectTendencias(
   db: AnyDb, projectId: string, seleccionadas: string[], authorLabel?: string,
 ): Promise<LandscapeVersionRow> {
+  // Sin este chequeo, un proyecto inexistente cae en "no hay long list" más abajo — un
+  // mensaje que despista, porque el problema real es que el proyecto no existe, no que
+  // le falte la etapa de tendencias.
+  if (!(await existeProyecto(db, projectId))) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
+
   const actual = await getCurrentVersion(db, projectId, 'tendencias')
   const candidatas = (actual?.content as TendenciasContent | undefined)?.candidatas
   if (!candidatas?.length) throw new ErrorDeValidacion('No hay long list de tendencias guardada para este proyecto')
