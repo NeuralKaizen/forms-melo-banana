@@ -1,5 +1,8 @@
 import { db } from '@/lib/db/client'
-import { getProjectWithSessions, getDeliverable, listProjects, answerCountsByProject } from '@/lib/db/store'
+import {
+  getProjectWithSessions, getDeliverable, listProjects, answerCountsByProject,
+  landscapeState, summarizeLandscape,
+} from '@/lib/db/store'
 import { derivePhases } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
@@ -34,7 +37,10 @@ export default async function EntrevistasView({ params }: { params: Promise<{ id
   const allProjects = await listProjects(db) as { id: string; name: string }[]
   const counts = await answerCountsByProject(db, id)
   const rawSessions = project.sessions as SessionRow[]
-  const phases = derivePhases(id, projectSignals({ sessions: rawSessions, tieneEntregable: !!deliverable }))
+  const estadoLandscape = await landscapeState(db, id)
+  const phases = derivePhases(id, projectSignals({
+    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estadoLandscape),
+  }))
 
   const respondents: Respondent[] = rawSessions.map(s => ({
     id: s.id,

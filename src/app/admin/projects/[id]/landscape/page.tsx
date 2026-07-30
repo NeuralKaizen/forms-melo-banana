@@ -1,7 +1,7 @@
 import { db } from '@/lib/db/client'
 import {
   getProjectWithSessions, getDeliverable,
-  landscapeState, listLandscapeActivity, type TendenciasContent,
+  landscapeState, listLandscapeActivity, summarizeLandscape, type TendenciasContent,
 } from '@/lib/db/store'
 import { derivePhases } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
@@ -23,9 +23,11 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
 
   const deliverable = await getDeliverable(db, id)
   const rawSessions = project.sessions as { status?: string | null }[]
-  const phases = derivePhases(id, projectSignals({ sessions: rawSessions, tieneEntregable: !!deliverable }))
-
   const estado = await landscapeState(db, id)
+  const phases = derivePhases(id, projectSignals({
+    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estado),
+  }))
+
   const stages = buildStages(estado)
 
   const etapaTendencias = estado.find(e => e.stage === 'tendencias')!
@@ -42,7 +44,10 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
   }))
 
   const contenidoPorEtapa = Object.fromEntries(
-    estado.map(e => [e.stage, e.actual ? { content: e.actual.content, aprobada: !!e.actual.approvedAt } : null]),
+    estado.map(e => [
+      e.stage,
+      e.actual ? { id: e.actual.id, content: e.actual.content, aprobada: !!e.actual.approvedAt } : null,
+    ]),
   )
 
   return (

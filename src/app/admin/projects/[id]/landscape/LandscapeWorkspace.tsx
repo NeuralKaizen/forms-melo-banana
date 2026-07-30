@@ -17,7 +17,7 @@ export interface ActividadVista {
   cuando: string
 }
 
-type ContenidoEtapaVista = { content: unknown; aprobada: boolean } | null
+type ContenidoEtapaVista = { id: string; content: unknown; aprobada: boolean } | null
 
 const STATUS_LABEL: Record<StageStatus, string> = {
   pendiente: 'Pendiente',
@@ -181,6 +181,28 @@ export function LandscapeWorkspace({
     }
   }
 
+  // Aprobar una versión ya guardada. Solo aplica a etapas que no son 'tendencias': esa
+  // tiene su propio gate (aprobarSeleccion), porque ahí guardar y aprobar son un solo
+  // acto — la selección *es* la decisión. Acá son dos actos separados: Claude guarda
+  // por MCP, el equipo aprueba después desde el panel.
+  async function aprobarVersion(etapa: StageKey, versionId: string) {
+    setGuardando(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/landscape/${etapa}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'aprobar', versionId }),
+      })
+      if (!res.ok) throw new Error(((await res.json()) as { error?: string }).error ?? 'No se pudo aprobar')
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   const etapaActual = stages.find(s => s.key === stage)
   const contenido = contenidoPorEtapa[stage]
   const hayLongList = tendencias.length > 0
@@ -254,6 +276,26 @@ export function LandscapeWorkspace({
             <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
               <ContenidoEtapa content={contenido.content} />
             </div>
+
+            {/* Gate humano, igual que el de tendencias: 'tendencias' no pasa por acá,
+                tiene el suyo arriba. */}
+            {stage !== 'tendencias' && !contenido.aprobada && (
+              <div className="sticky bottom-4 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--ink)] px-5 py-3.5 shadow-[0_8px_24px_-12px_rgba(26,21,16,0.5)]">
+                <p className="text-[13px] text-white/85">
+                  Sin aprobar
+                  <span className="text-white/50"> · decide el equipo, no el agente</span>
+                  {error && <span className="ml-1 text-[#ff9c8a]">{error}</span>}
+                </p>
+                <button
+                  type="button"
+                  disabled={guardando}
+                  onClick={() => aprobarVersion(stage, contenido.id)}
+                  className="rounded-xl bg-[var(--banana)] px-4 py-2 text-[13px] font-semibold text-[#1a1510] transition-opacity duration-200 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  {guardando ? 'Guardando…' : 'Aprobar'}
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div className="rounded-2xl border border-black/5 bg-white p-10 text-center shadow-sm">

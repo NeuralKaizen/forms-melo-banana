@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { db } from '@/lib/db/client'
-import { listProjectsWithCounts } from '@/lib/db/store'
+import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { derivePhases, currentPhase } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { attentionItems } from '@/lib/pipeline/attention'
@@ -20,12 +20,17 @@ export async function AdminShell({ activeProjectId, children }: {
   children: React.ReactNode
 }) {
   const rows = await listProjectsWithCounts(db)
-  const proyectos = rows.map(r => {
+  // Igual que en el listado de /admin: una lectura de landscapeState por proyecto,
+  // porque acá tampoco hay un conteo agregado. La lateral se pinta en cada pantalla,
+  // así que ya paga ese costo en cada navegación — aceptable para un puñado de proyectos.
+  const landscapeByProject = await Promise.all(rows.map(r => landscapeState(db, r.id)))
+  const proyectos = rows.map((r, idx) => {
     const phases = derivePhases(r.id, projectSignals({
       sessions: Array.from({ length: r.sessionsTotal }, (_, i) => ({
         status: i < r.sessionsCompleted ? 'completed' : 'in_progress',
       })),
       tieneEntregable: r.tieneEntregable,
+      landscape: summarizeLandscape(landscapeByProject[idx]),
     }))
     return { ...r, phases, actual: currentPhase(phases) }
   })

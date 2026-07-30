@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/client'
-import { getProjectWithSessions, getDeliverable } from '@/lib/db/store'
+import { getProjectWithSessions, getDeliverable, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import type { Deliverable } from '@/lib/deliverable/schema'
 import { buildProjectDeckView } from '@/lib/deck/service'
 import { derivePhases } from '@/lib/pipeline/phases'
@@ -22,7 +22,10 @@ export default async function PropuestaView({ params }: { params: Promise<{ id: 
   const deliverable = (await getDeliverable(db, id))?.content as Deliverable | null
   const deckView = await buildProjectDeckView(id)
   const rawSessions = project.sessions as { status?: string | null }[]
-  const phases = derivePhases(id, projectSignals({ sessions: rawSessions, tieneEntregable: !!deliverable }))
+  const estadoLandscape = await landscapeState(db, id)
+  const phases = derivePhases(id, projectSignals({
+    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estadoLandscape),
+  }))
 
   return (
     <AdminShell activeProjectId={id}>

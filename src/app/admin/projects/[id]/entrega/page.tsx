@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/client'
-import { getProjectWithSessions, getDeliverable } from '@/lib/db/store'
+import { getProjectWithSessions, getDeliverable, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { derivePhases } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
@@ -19,7 +19,10 @@ export default async function EntregaView({ params }: { params: Promise<{ id: st
 
   const deliverable = await getDeliverable(db, id)
   const rawSessions = project.sessions as { status?: string | null }[]
-  const phases = derivePhases(id, projectSignals({ sessions: rawSessions, tieneEntregable: !!deliverable }))
+  const estadoLandscape = await landscapeState(db, id)
+  const phases = derivePhases(id, projectSignals({
+    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estadoLandscape),
+  }))
   const entrega = phases.find(p => p.key === 'entrega')!
 
   return (

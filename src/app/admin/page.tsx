@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { db } from '@/lib/db/client'
-import { listProjectsWithCounts } from '@/lib/db/store'
+import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { derivePhases, currentPhase, type Phase, type PhaseStatus } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { attentionItems, haceCuanto, type AttentionItem } from '@/lib/pipeline/attention'
@@ -72,12 +72,17 @@ const Th = ({ children, className = '' }: { children?: React.ReactNode; classNam
 
 export default async function Admin() {
   const rows = await listProjectsWithCounts(db)
-  const projects = rows.map(r => {
+  // Una lectura de landscapeState por proyecto: la lista no tiene un conteo agregado
+  // (no hay tabla que lo dé de un solo select), y estas dos tablas todavía ni existen
+  // en Neon. Con la cantidad de proyectos de un estudio interno, N+1 no pesa.
+  const landscapeByProject = await Promise.all(rows.map(r => landscapeState(db, r.id)))
+  const projects = rows.map((r, idx) => {
     const phases = derivePhases(r.id, projectSignals({
       sessions: Array.from({ length: r.sessionsTotal }, (_, i) => ({
         status: i < r.sessionsCompleted ? 'completed' : 'in_progress',
       })),
       tieneEntregable: r.tieneEntregable,
+      landscape: summarizeLandscape(landscapeByProject[idx]),
     }))
     return { ...r, phases, actual: currentPhase(phases) }
   })
