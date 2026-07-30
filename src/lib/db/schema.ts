@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb, unique } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, jsonb, unique, primaryKey, index } from 'drizzle-orm/pg-core'
 
 export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -34,3 +34,28 @@ export const deliverables = pgTable('deliverables', {
   content: jsonb('content').notNull(), // Deliverable (ver deliverable/schema.ts)
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
+
+// Fase 2 · Landscape. Ver docs/superpowers/specs/2026-07-28-fase2-landscape-columna-vertebral-design.md
+
+/** Una fila por etapa del landscape de un proyecto. El estado, y nada más. */
+export const landscapeStages = pgTable('landscape_stages', {
+  projectId: uuid('project_id').notNull().references(() => projects.id),
+  stage: text('stage').notNull(),                          // StageKey
+  status: text('status').notNull().default('pendiente'),   // StageStatus
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.projectId, t.stage] })])
+
+/**
+ * Append-only: nada se pisa. La versión aprobada es la que cuenta; las anteriores
+ * quedan para volver atrás y para ver cómo evolucionó la etapa.
+ */
+export const landscapeVersions = pgTable('landscape_versions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').notNull().references(() => projects.id),
+  stage: text('stage').notNull(),                          // StageKey
+  content: jsonb('content').notNull(),                     // la salida de la etapa
+  author: text('author').notNull(),                        // 'claude' | 'humano'
+  authorLabel: text('author_label'),                       // quién, si se sabe
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  approvedAt: timestamp('approved_at'),
+}, (t) => [index('landscape_versions_project_stage').on(t.projectId, t.stage)])

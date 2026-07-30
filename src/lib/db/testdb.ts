@@ -35,6 +35,24 @@ export async function makeTestDb() {
       content jsonb NOT NULL,
       updated_at timestamp NOT NULL DEFAULT now()
     );
+    CREATE TABLE landscape_stages (
+      project_id uuid NOT NULL REFERENCES projects(id),
+      stage text NOT NULL,
+      status text NOT NULL DEFAULT 'pendiente',
+      updated_at timestamp NOT NULL DEFAULT now(),
+      PRIMARY KEY (project_id, stage)
+    );
+    CREATE TABLE landscape_versions (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      project_id uuid NOT NULL REFERENCES projects(id),
+      stage text NOT NULL,
+      content jsonb NOT NULL,
+      author text NOT NULL,
+      author_label text,
+      created_at timestamp NOT NULL DEFAULT now(),
+      approved_at timestamp
+    );
+    CREATE INDEX landscape_versions_project_stage ON landscape_versions (project_id, stage);
   `)
   return db
 }

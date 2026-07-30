@@ -5,7 +5,7 @@ import {
   normalizeCompanyName, findOrCreateProject, assignSessionToProject,
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
 } from './store'
-import { answers } from './schema'
+import { answers, landscapeStages, landscapeVersions } from './schema'
 
 type AnswerRow = typeof answers.$inferSelect
 
@@ -88,5 +88,30 @@ describe('projects & deliverables', () => {
     await saveDeliverable(db, p.id, { problema: { data: { problemaMundo: 'y' }, meta: { generatedAt: 'T1' } } })
     d = await getDeliverable(db, p.id)
     expect((d!.content as any).problema.data.problemaMundo).toBe('y')
+  })
+})
+
+describe('landscape · esquema', () => {
+  it('guarda una versión de etapa y la lee de vuelta', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const [v] = await db.insert(landscapeVersions).values({
+      projectId: p.id,
+      stage: 'tendencias',
+      content: { candidatas: [] },
+      author: 'claude',
+    }).returning()
+    expect(v.id).toBeTruthy()
+    expect(v.approvedAt).toBeNull()
+    expect(v.authorLabel).toBeNull()
+  })
+
+  it('una etapa es única por proyecto', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    await db.insert(landscapeStages).values({ projectId: p.id, stage: 'contexto', status: 'en_curso' })
+    await expect(
+      db.insert(landscapeStages).values({ projectId: p.id, stage: 'contexto', status: 'aprobada' }),
+    ).rejects.toThrow()
   })
 })
