@@ -715,16 +715,18 @@ Expected: FAIL — `landscapeState is not a function`.
 
 - [ ] **Step 3: Implementa en el store**
 
-Agrega `STAGE_ORDER` al import de `@/lib/landscape/stages`:
+Esta tarea necesita el orden de las etapas, así que lo crea. Agrega a `src/lib/landscape/stages.ts`, justo después de la definición de `StageStatus`:
+
+```ts
+/** El orden del proceso, de docs/fase2/fase-2-investigacion-landscape.md. */
+export const STAGE_ORDER: StageKey[] = ['setup', 'contexto', 'tendencias', 'panorama', 'diagnostico', 'entrega']
+```
+
+Y en `src/lib/db/store.ts`, agrégalo al import que ya existe:
 
 ```ts
 import { MIN_TENDENCIAS, MAX_TENDENCIAS, STAGE_ORDER } from '@/lib/landscape/stages'
 ```
-
-> `STAGE_ORDER` se crea en la Tarea 6. Si estás haciendo esta tarea antes, agrégalo vos a `src/lib/landscape/stages.ts`:
-> ```ts
-> export const STAGE_ORDER: StageKey[] = ['setup', 'contexto', 'tendencias', 'panorama', 'diagnostico', 'entrega']
-> ```
 
 Y al final del archivo:
 
@@ -827,16 +829,15 @@ EOF
 - Consumes: `StageState` y `ActivityEntry` de `@/lib/db/store` (solo los tipos — este módulo no toca la base).
 - Produces:
   ```ts
-  STAGE_ORDER: StageKey[]
   STAGE_LABEL: Record<StageKey, string>
   STAGE_HINT: Partial<Record<StageKey, string>>
   buildStages(estado: { stage: StageKey; status: StageStatus }[]): Stage[]
   textoActividad(e: { tipo: 'guardado' | 'aprobado'; stage: StageKey }): string
   haceCuanto(fecha: Date, ahora?: Date): string
   ```
-  Se **borran**: `STAGES`, `TENDENCIAS_DEMO`, `ACTIVIDAD_DEMO`, `interface Actividad`. Se conservan: `StageKey`, `StageStatus`, `Stage`, `Fuente`, `Eje`, `TendenciaCandidata`, `EJES`, `MIN_TENDENCIAS`, `MAX_TENDENCIAS`.
+  (`STAGE_ORDER` ya lo creó la Tarea 5.)
 
-Ojo con el orden: `LandscapeWorkspace.tsx` importa `STAGES` y `Actividad`, y `page.tsx` importa `TENDENCIAS_DEMO`/`ACTIVIDAD_DEMO`. El proyecto queda sin compilar entre esta tarea y la 8. Está bien: se comitea igual (los tests unitarios pasan) y la 8 lo cierra. Si preferís no romper el build ni un commit, hacé las tareas 6, 7 y 8 y comiteá al final.
+**Esta tarea es puramente aditiva.** Los datos de demo — `STAGES`, `TENDENCIAS_DEMO`, `ACTIVIDAD_DEMO`, `interface Actividad` — se quedan donde están y los borra la Tarea 8, cuando ya nadie los importe. Si los borrás acá, `LandscapeWorkspace.tsx` y `page.tsx` quedan sin compilar y el commit de esta tarea sale roto.
 
 - [ ] **Step 1: Escribe los tests que fallan**
 
@@ -903,50 +904,11 @@ describe('haceCuanto', () => {
 Run: `npx vitest run src/lib/landscape/stages.test.ts`
 Expected: FAIL — no existe el export `buildStages`.
 
-- [ ] **Step 3: Reescribe el módulo de dominio**
+- [ ] **Step 3: Agrega las funciones nuevas al módulo de dominio**
 
-Reemplaza el contenido completo de `src/lib/landscape/stages.ts` por:
+En `src/lib/landscape/stages.ts`, **dejá intacto todo lo que ya está** — los tipos, `STAGE_ORDER` (lo agregó la Tarea 5), `MIN_TENDENCIAS`, `MAX_TENDENCIAS`, `EJES`, y el bloque de demo (`STAGES`, `Actividad`, `TENDENCIAS_DEMO`, `ACTIVIDAD_DEMO`). Agregá al final del archivo:
 
 ```ts
-/**
- * Modelo de las etapas del Landscape (fase 2).
- * Ver docs/superpowers/specs/2026-07-28-fase2-landscape-columna-vertebral-design.md
- *
- * Este módulo no toca la base: traduce el estado que devuelve el store a lo que
- * el panel necesita mostrar. Funciones puras, testeables sin Postgres.
- */
-
-export type StageKey = 'setup' | 'contexto' | 'tendencias' | 'panorama' | 'diagnostico' | 'entrega'
-
-export type StageStatus = 'pendiente' | 'en_curso' | 'aprobada' | 'no_aplica'
-
-export interface Stage {
-  key: StageKey
-  label: string
-  /** Nota chica bajo el nombre, para condicionales. */
-  hint?: string
-  status: StageStatus
-}
-
-export interface Fuente {
-  /** Nombre del documento en el archivo del estudio. */
-  doc: string
-  pagina?: number
-}
-
-export type Eje = 'Marca' | 'Estrategia' | 'Comunicación'
-
-export interface TendenciaCandidata {
-  id: string
-  eje: Eje
-  titulo: string
-  descripcion: string
-  fuentes: Fuente[]
-}
-
-/** El orden del proceso, de docs/fase2/fase-2-investigacion-landscape.md. */
-export const STAGE_ORDER: StageKey[] = ['setup', 'contexto', 'tendencias', 'panorama', 'diagnostico', 'entrega']
-
 export const STAGE_LABEL: Record<StageKey, string> = {
   setup: 'Setup',
   contexto: 'Contexto del sector',
@@ -959,12 +921,6 @@ export const STAGE_LABEL: Record<StageKey, string> = {
 export const STAGE_HINT: Partial<Record<StageKey, string>> = {
   diagnostico: 'solo rebranding',
 }
-
-/** Cuántas tendencias exige el proceso antes de dejar avanzar la etapa. */
-export const MIN_TENDENCIAS = 4
-export const MAX_TENDENCIAS = 5
-
-export const EJES: Eje[] = ['Marca', 'Estrategia', 'Comunicación']
 
 /** Las seis etapas siempre, aunque el proyecto todavía no tenga ninguna fila. */
 export function buildStages(estado: { stage: StageKey; status: StageStatus }[]): Stage[] {
@@ -1098,9 +1054,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 - [ ] **Step 2: Verifica que compila y que el lint pasa**
 
 Run: `npx tsc --noEmit && npm run lint`
-Expected: sin errores en `src/app/api/projects/[id]/landscape/[stage]/route.ts`.
-
-> Si `tsc` se queja de `LandscapeWorkspace.tsx` o `landscape/page.tsx` por `STAGES`/`TENDENCIAS_DEMO`, es lo esperado tras la Tarea 6 y lo arregla la Tarea 8. Verifica solo que no haya errores en la ruta nueva.
+Expected: sin errores. El proyecto compila entero — la Tarea 6 fue aditiva a propósito para que ningún commit intermedio quede roto.
 
 - [ ] **Step 3: Commit**
 
@@ -1476,12 +1430,24 @@ export function LandscapeWorkspace({
 }
 ```
 
-- [ ] **Step 4: Verifica que compila, lint y toda la suite**
+- [ ] **Step 4: Borra los datos de demo**
+
+Ahora que nadie los importa, saca de `src/lib/landscape/stages.ts` el bloque de demo que la Tarea 6 dejó a propósito: `export const STAGES`, `export interface Actividad`, `export const TENDENCIAS_DEMO` y `export const ACTIVIDAD_DEMO`. No toques nada más del archivo.
+
+Verifica que no quedó ninguna referencia:
+
+```bash
+rg -n 'STAGES|TENDENCIAS_DEMO|ACTIVIDAD_DEMO|\bActividad\b' src/
+```
+
+Expected: solo aparecen `STAGE_ORDER`, `STAGE_LABEL`, `STAGE_HINT` y `ActividadVista`/`ActividadItem`. Ninguna mención de `TENDENCIAS_DEMO` ni `ACTIVIDAD_DEMO`.
+
+- [ ] **Step 5: Verifica que compila, lint y toda la suite**
 
 Run: `npx tsc --noEmit && npm run lint && npm test`
 Expected: sin errores; todos los tests en verde.
 
-- [ ] **Step 5: Verifica la tipografía por bytes**
+- [ ] **Step 6: Verifica la tipografía por bytes**
 
 ```bash
 rg -n $'–' 'src/app/admin/projects/[id]/landscape/LandscapeWorkspace.tsx'   # guión medio
@@ -1490,10 +1456,10 @@ rg -n $'…' 'src/app/admin/projects/[id]/landscape/LandscapeWorkspace.tsx'   # 
 
 Expected: la primera encuentra `de {MIN_TENDENCIAS}–{MAX_TENDENCIAS} seleccionadas`; la segunda, `Guardando…`. Si alguna sale vacía, el carácter se aplanó al escribir el archivo: corrígelo antes de comitear.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/app/admin/projects/\[id\]/landscape
+git add src/app/admin/projects/\[id\]/landscape src/lib/landscape/stages.ts
 git commit -m "$(cat <<'EOF'
 feat(landscape): el panel lee y escribe el estado real del proyecto
 
