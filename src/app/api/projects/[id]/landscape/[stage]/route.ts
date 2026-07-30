@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { saveLandscapeVersion, approveLandscapeVersion, selectTendencias, ErrorDeValidacion } from '@/lib/db/store'
 import { STAGE_ORDER, type StageKey } from '@/lib/landscape/stages'
+import { esUuidValido } from '@/lib/landscape/ids'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string; stage: string }> }) {
   const { id, stage } = await params
   if (!STAGE_ORDER.includes(stage as StageKey))
     return NextResponse.json({ error: `Etapa desconocida: ${stage}` }, { status: 400 })
+  if (!esUuidValido(id))
+    return NextResponse.json({ error: `Id de proyecto inválido: ${id}` }, { status: 400 })
 
   let body: Record<string, unknown>
   try {
@@ -38,6 +41,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       case 'aprobar': {
         if (typeof body.versionId !== 'string')
           return NextResponse.json({ error: 'Falta versionId' }, { status: 400 })
+        if (!esUuidValido(body.versionId))
+          return NextResponse.json({ error: `versionId inválido: ${body.versionId}` }, { status: 400 })
         return NextResponse.json(await approveLandscapeVersion(db, body.versionId))
       }
       case 'seleccionar-tendencias': {
