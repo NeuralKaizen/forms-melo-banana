@@ -20,7 +20,8 @@
     "seed:caso-prueba": "node scripts/seed-caso-prueba.mjs",
     "seed:frutas": "node scripts/seed-frutas.mjs",
     "db:projects": "tsx --env-file=.env scripts/list-projects.ts",
-    "db:rm-project": "tsx --env-file=.env scripts/delete-project.ts"
+    "db:rm-project": "tsx --env-file=.env scripts/delete-project.ts",
+    "seed:landscape": "tsx --env-file=.env scripts/seed-landscape.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
