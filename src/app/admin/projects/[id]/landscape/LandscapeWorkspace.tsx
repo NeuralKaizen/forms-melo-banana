@@ -1,10 +1,23 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
-  STAGES, EJES, MIN_TENDENCIAS, MAX_TENDENCIAS,
-  type Actividad, type Stage, type StageStatus, type TendenciaCandidata,
+  EJES, MIN_TENDENCIAS, MAX_TENDENCIAS,
+  type Stage, type StageKey, type StageStatus, type TendenciaCandidata,
 } from '@/lib/landscape/stages'
+import { ContenidoEtapa } from './ContenidoEtapa'
+
+/** Lo que la página le pasa al panel: ya formateado, sin fechas crudas. */
+export interface ActividadVista {
+  id: string
+  autor: 'claude' | 'humano'
+  quien?: string
+  texto: string
+  cuando: string
+}
+
+type ContenidoEtapaVista = { content: unknown; aprobada: boolean } | null
 
 const STATUS_LABEL: Record<StageStatus, string> = {
   pendiente: 'Pendiente',
@@ -81,7 +94,7 @@ function TendenciaCard({ t, selected, onToggle }: { t: TendenciaCandidata; selec
   )
 }
 
-function ActividadItem({ a }: { a: Actividad }) {
+function ActividadItem({ a }: { a: ActividadVista }) {
   return (
     <li className="flex gap-2.5 py-2.5">
       <span
@@ -100,14 +113,29 @@ function ActividadItem({ a }: { a: Actividad }) {
 }
 
 export function LandscapeWorkspace({
+  projectId,
+  stages,
   tendencias,
+  seleccionAprobada,
+  tendenciasAprobadas,
+  contenidoPorEtapa,
   actividad,
 }: {
+  projectId: string
+  stages: Stage[]
   tendencias: TendenciaCandidata[]
-  actividad: Actividad[]
+  seleccionAprobada: string[]
+  tendenciasAprobadas: boolean
+  contenidoPorEtapa: Record<string, ContenidoEtapaVista>
+  actividad: ActividadVista[]
 }) {
-  const [stage, setStage] = useState(STAGES.find(s => s.status === 'en_curso')?.key ?? 'tendencias')
-  const [selected, setSelected] = useState<string[]>([])
+  const router = useRouter()
+  const [stage, setStage] = useState<StageKey>(
+    stages.find(s => s.status === 'en_curso')?.key ?? 'tendencias',
+  )
+  const [selected, setSelected] = useState<string[]>(seleccionAprobada)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const toggle = (id: string) =>
     setSelected(prev =>
@@ -119,6 +147,28 @@ export function LandscapeWorkspace({
   const listo = selected.length >= MIN_TENDENCIAS && selected.length <= MAX_TENDENCIAS
   const tope = selected.length >= MAX_TENDENCIAS
 
+  async function aprobarSeleccion() {
+    setGuardando(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/landscape/tendencias`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'seleccionar-tendencias', seleccionadas: selected }),
+      })
+      if (!res.ok) throw new Error(((await res.json()) as { error?: string }).error ?? 'No se pudo guardar')
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const etapaActual = stages.find(s => s.key === stage)
+  const contenido = contenidoPorEtapa[stage]
+  const hayLongList = tendencias.length > 0
+
   return (
     <div className="grid gap-6 lg:grid-cols-[176px_minmax(0,1fr)_248px]">
 
@@ -126,7 +176,7 @@ export function LandscapeWorkspace({
       <nav aria-label="Etapas del landscape" className="lg:sticky lg:top-6 lg:self-start">
         <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">Etapas</p>
         <div className="space-y-0.5">
-          {STAGES.map(s => (
+          {stages.map(s => (
             <StageRow key={s.key} stage={s} active={s.key === stage} onSelect={() => setStage(s.key)} />
           ))}
         </div>
@@ -134,7 +184,7 @@ export function LandscapeWorkspace({
 
       {/* Contenido de la etapa */}
       <section className="min-w-0">
-        {stage === 'tendencias' ? (
+        {stage === 'tendencias' && hayLongList ? (
           <>
             <header className="mb-5">
               <h2 className="font-serif text-xl font-medium text-ink">Tendencias</h2>
@@ -165,21 +215,33 @@ export function LandscapeWorkspace({
                 <span className="font-semibold text-white tabular-nums">{selected.length}</span> de {MIN_TENDENCIAS}–{MAX_TENDENCIAS} seleccionadas
                 <span className="text-white/50"> · decide el equipo, no el agente</span>
                 {tope && <span className="ml-1 text-[var(--banana)]">Llegaste al máximo.</span>}
+                {error && <span className="ml-1 text-[#ff9c8a]">{error}</span>}
               </p>
               <button
                 type="button"
-                disabled={!listo}
+                disabled={!listo || guardando}
+                onClick={aprobarSeleccion}
                 className="rounded-xl bg-[var(--banana)] px-4 py-2 text-[13px] font-semibold text-[#1a1510] transition-opacity duration-200 disabled:cursor-not-allowed disabled:opacity-35"
               >
-                Aprobar y desarrollar
+                {guardando ? 'Guardando…' : tendenciasAprobadas ? 'Actualizar selección' : 'Aprobar y desarrollar'}
               </button>
+            </div>
+          </>
+        ) : contenido ? (
+          <>
+            <header className="mb-5 flex items-baseline justify-between gap-3">
+              <h2 className="font-serif text-xl font-medium text-ink">{etapaActual?.label}</h2>
+              <span className="text-[11px] text-[#a59c89]">
+                {contenido.aprobada ? 'Versión aprobada' : 'Borrador sin aprobar'}
+              </span>
+            </header>
+            <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+              <ContenidoEtapa content={contenido.content} />
             </div>
           </>
         ) : (
           <div className="rounded-2xl border border-black/5 bg-white p-10 text-center shadow-sm">
-            <h2 className="font-serif text-lg font-medium text-ink">
-              {STAGES.find(s => s.key === stage)?.label}
-            </h2>
+            <h2 className="font-serif text-lg font-medium text-ink">{etapaActual?.label}</h2>
             <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-[#8a8170]">
               Esta etapa todavía no tiene una versión guardada. Cuando el equipo la trabaje en Claude,
               el resultado aparece aquí para revisar y aprobar.
@@ -203,9 +265,13 @@ export function LandscapeWorkspace({
 
         <div className="mt-4 rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">Actividad</p>
-          <ul className="mt-1 divide-y divide-black/5">
-            {actividad.map(a => <ActividadItem key={a.id} a={a} />)}
-          </ul>
+          {actividad.length === 0 ? (
+            <p className="mt-2 text-[12px] leading-relaxed text-[#a59c89]">Todavía no pasó nada en este proyecto.</p>
+          ) : (
+            <ul className="mt-1 divide-y divide-black/5">
+              {actividad.map(a => <ActividadItem key={a.id} a={a} />)}
+            </ul>
+          )}
         </div>
       </aside>
     </div>
