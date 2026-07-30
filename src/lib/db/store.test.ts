@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
+import { eq } from 'drizzle-orm'
 import { makeTestDb } from './testdb'
 import {
   createSession, saveAnswer, getSessionWithAnswers, completeSession, setNormalized,
   normalizeCompanyName, findOrCreateProject, assignSessionToProject,
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
+  saveLandscapeVersion, setStageStatus, listLandscapeVersions,
 } from './store'
 import { answers, landscapeStages, landscapeVersions } from './schema'
 
@@ -113,5 +115,42 @@ describe('landscape · esquema', () => {
     await expect(
       db.insert(landscapeStages).values({ projectId: p.id, stage: 'contexto', status: 'aprobada' }),
     ).rejects.toThrow()
+  })
+})
+
+describe('landscape · guardar versiones', () => {
+  it('guardar la primera versión pone la etapa en curso', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', {
+      content: { cifras: ['x'] }, author: 'claude',
+    })
+    expect(v.approvedAt).toBeNull()
+    const [stage] = await db.select().from(landscapeStages).where(eq(landscapeStages.projectId, p.id))
+    expect(stage.status).toBe('en_curso')
+  })
+
+  it('guardar no degrada una etapa ya aprobada', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    await setStageStatus(db, p.id, 'contexto', 'aprobada')
+    await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
+    const [stage] = await db.select().from(landscapeStages).where(eq(landscapeStages.projectId, p.id))
+    expect(stage.status).toBe('aprobada')
+  })
+
+  it('las versiones se acumulan, la más nueva primero', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await new Promise(r => setTimeout(r, 5))
+    await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'humano', authorLabel: 'Isa' })
+    await saveLandscapeVersion(db, p.id, 'tendencias', { content: { v: 9 }, author: 'claude' })
+
+    const solo = await listLandscapeVersions(db, p.id, 'contexto')
+    expect(solo).toHaveLength(2)
+    expect((solo[0].content as { v: number }).v).toBe(2)
+    expect(solo[0].authorLabel).toBe('Isa')
+    expect(await listLandscapeVersions(db, p.id)).toHaveLength(3)
   })
 })

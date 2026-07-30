@@ -1,5 +1,6 @@
-import { eq, asc, sql } from 'drizzle-orm'
-import { sessions, answers, projects, deliverables } from './schema'
+import { eq, and, asc, desc, sql } from 'drizzle-orm'
+import { sessions, answers, projects, deliverables, landscapeStages, landscapeVersions } from './schema'
+import type { StageKey, StageStatus } from '@/lib/landscape/stages'
 
 type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter seam
 
@@ -142,4 +143,56 @@ export async function saveDeliverable(db: AnyDb, projectId: string, content: unk
 export async function getDeliverable(db: AnyDb, projectId: string) {
   const [d] = await db.select().from(deliverables).where(eq(deliverables.projectId, projectId))
   return d ?? null
+}
+
+// ── Landscape (fase 2) ──────────────────────────────────────────────────────
+// Ver docs/superpowers/specs/2026-07-28-fase2-landscape-columna-vertebral-design.md
+
+export type LandscapeVersionRow = typeof landscapeVersions.$inferSelect
+
+export async function setStageStatus(db: AnyDb, projectId: string, stage: StageKey, status: StageStatus) {
+  await db.insert(landscapeStages)
+    .values({ projectId, stage, status })
+    .onConflictDoUpdate({
+      target: [landscapeStages.projectId, landscapeStages.stage],
+      set: { status, updatedAt: new Date() },
+    })
+}
+
+/**
+ * Escribe una versión nueva. Siempre borrador: aprobar es un acto humano aparte.
+ * La etapa arranca a moverse con la primera versión, pero una etapa ya aprobada
+ * o marcada como no aplica no se degrada sola.
+ */
+export async function saveLandscapeVersion(db: AnyDb, projectId: string, stage: StageKey, v: {
+  content: unknown; author: 'claude' | 'humano'; authorLabel?: string
+}): Promise<LandscapeVersionRow> {
+  const [row] = await db.insert(landscapeVersions)
+    .values({
+      projectId, stage,
+      content: v.content,
+      author: v.author,
+      authorLabel: v.authorLabel ?? null,
+    })
+    .returning()
+
+  await db.insert(landscapeStages)
+    .values({ projectId, stage, status: 'en_curso' })
+    .onConflictDoUpdate({
+      target: [landscapeStages.projectId, landscapeStages.stage],
+      set: {
+        status: sql`case when ${landscapeStages.status} = 'pendiente' then 'en_curso' else ${landscapeStages.status} end`,
+        updatedAt: new Date(),
+      },
+    })
+
+  return row
+}
+
+/** Historial de una etapa, o del proyecto entero. La más nueva primero. */
+export async function listLandscapeVersions(db: AnyDb, projectId: string, stage?: StageKey): Promise<LandscapeVersionRow[]> {
+  const where = stage
+    ? and(eq(landscapeVersions.projectId, projectId), eq(landscapeVersions.stage, stage))
+    : eq(landscapeVersions.projectId, projectId)
+  return db.select().from(landscapeVersions).where(where).orderBy(desc(landscapeVersions.createdAt))
 }
