@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   EJES, MIN_TENDENCIAS, MAX_TENDENCIAS,
@@ -136,6 +136,22 @@ export function LandscapeWorkspace({
   const [selected, setSelected] = useState<string[]>(seleccionAprobada)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // `seleccionAprobada` puede cambiar por fuera de este componente: Claude escribe
+  // etapas por MCP mientras el panel está abierto, así que no es un caso raro. Se
+  // resincroniza cuando el *contenido* cambia de verdad — no en cada render, que
+  // traería una nueva referencia de array aunque el contenido sea el mismo, y no
+  // cuando el usuario está armando una selección propia que todavía no mandó.
+  const previaRef = useRef(seleccionAprobada)
+  useEffect(() => {
+    const previa = previaRef.current
+    const cambio = previa.length !== seleccionAprobada.length
+      || previa.some((id, i) => id !== seleccionAprobada[i])
+    if (cambio) {
+      setSelected(seleccionAprobada)
+      previaRef.current = seleccionAprobada
+    }
+  }, [seleccionAprobada])
 
   const toggle = (id: string) =>
     setSelected(prev =>
