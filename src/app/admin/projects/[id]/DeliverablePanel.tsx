@@ -19,12 +19,12 @@ function Linea({ label, value }: { label: string; value: string }) {
   return <p className="text-[15px] leading-relaxed text-ink"><strong className="font-medium">{label}:</strong> {value || '—'}</p>
 }
 
-export function DeliverablePanel({ projectId, view, personalidad, sessions, projects }: {
+export function DeliverablePanel({ projectId, view, personalidad, sessionsCount }: {
   projectId: string
   view: DeckView | null
   personalidad: Part<Personalidad> | null
-  sessions: { id: string; name: string; role: string }[]
-  projects: { id: string; name: string }[]
+  /** Cuántas entrevistas alimentan el documento. La lista vive en la fase Entrevistas. */
+  sessionsCount: number
 }) {
   const [busy, setBusy] = useState<PartKey | 'full' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -58,21 +58,19 @@ export function DeliverablePanel({ projectId, view, personalidad, sessions, proj
     }
   }
 
-  async function reassign(sessionId: string, newProjectId: string) {
-    if (!newProjectId || newProjectId === projectId) return
-    await fetch(`/api/sessions/${sessionId}`, {
-      method: 'PATCH', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ projectId: newProjectId }),
-    })
-    location.reload()
-  }
-
   const pers = personalidad?.data ?? null
 
   return <div className="space-y-6">
     <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-bold text-ink">Respondientes ({sessions.length})</h2>
+        <div>
+          <h2 className="font-bold text-ink">Documento</h2>
+          <p className="mt-0.5 text-[13px] text-[#8a8170]">
+            {sessionsCount === 0
+              ? 'Todavía no hay entrevistas que lo alimenten.'
+              : `Se arma con ${sessionsCount} ${sessionsCount === 1 ? 'entrevista' : 'entrevistas'} del proyecto.`}
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {!!view && (
             <a href={`/api/projects/${projectId}/deck`}
@@ -107,28 +105,6 @@ export function DeliverablePanel({ projectId, view, personalidad, sessions, proj
         </div>
       )}
 
-      <ul className="mt-4 divide-y divide-black/5">
-        {sessions.map(s => (
-          <li key={s.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-            <span className="flex items-center gap-1.5">
-              <a href={`/api/sessions/${s.id}/pdf`} target="_blank" rel="noopener"
-                className="flex items-center gap-1.5 font-medium text-ink underline decoration-black/20 underline-offset-2 transition-colors hover:decoration-[var(--banana)]">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="text-[#8a8170]">
-                  <path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7z" />
-                  <path d="M14 3v4h4" />
-                </svg>
-                {s.name}
-              </a>
-              {' · '}<span className="text-[#8a8170]">{s.role}</span>
-            </span>
-            <select defaultValue="" onChange={e => reassign(s.id, e.target.value)}
-              className="rounded-lg border border-black/10 bg-white px-2 py-1 text-xs text-[#8a8170] outline-none transition focus:border-[var(--banana)]">
-              <option value="">mover a…</option>
-              {projects.filter(p => p.id !== projectId).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </li>
-        ))}
-      </ul>
     </section>
 
     {error && (

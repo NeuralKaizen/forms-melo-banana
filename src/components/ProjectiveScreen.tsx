@@ -4,6 +4,7 @@ import type { Question } from '@/lib/script/types'
 import { ImageGrid } from './ImageGrid'
 import { ColorGrid } from './ColorGrid'
 import { GenderChoice } from './GenderChoice'
+import { AgeGrid } from './AgeGrid'
 
 export function ProjectiveScreen({ question, index, total, initial, canGoBack, onBack, onAnswer }: {
   question: Question; index: number; total: number
@@ -42,6 +43,9 @@ export function ProjectiveScreen({ question, index, total, initial, canGoBack, o
             )}
             {question.type === 'gender' && question.options && (
               <GenderChoice options={question.options} selected={choice} onSelect={setChoice} />
+            )}
+            {question.type === 'age-grid' && question.options && (
+              <AgeGrid options={question.options} selected={choice} onSelect={setChoice} />
             )}
           </div>
 

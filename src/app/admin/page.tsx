@@ -1,39 +1,184 @@
 import Link from 'next/link'
 import { db } from '@/lib/db/client'
-import { listProjects } from '@/lib/db/store'
-import { AdminBar } from '@/components/AdminBar'
+import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
+import { derivePhases, currentPhase, type Phase, type PhaseStatus } from '@/lib/pipeline/phases'
+import { projectSignals } from '@/lib/pipeline/signals'
+import { attentionItems, haceCuanto, type AttentionItem } from '@/lib/pipeline/attention'
+import { AdminShell } from '@/components/AdminShell'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * El recorrido del proyecto de un vistazo, sin abrirlo: cinco tramos.
+ * Amarillo lo aprobado, gris lleno donde está parado, hueco lo que falta.
+ */
+function PhaseTrack({ phases, activeKey }: { phases: Phase[]; activeKey: string }) {
+  return (
+    <span className="flex w-24 items-center gap-1" aria-hidden="true">
+      {phases.map(p => (
+        <span
+          key={p.key}
+          className={`h-1.5 flex-1 rounded-full ${
+            p.status === 'completa' ? 'bg-[var(--banana)]'
+              : p.key === activeKey ? 'bg-[#d9d0ba]'
+              : 'bg-[#efe9db]'
+          }`}
+        />
+      ))}
+    </span>
+  )
+}
+
+const CHIP: Record<PhaseStatus, { clase: string; texto: string }> = {
+  completa: { clase: 'bg-[#fffdf0] text-[#8a6d10]', texto: 'Completa' },
+  en_curso: { clase: 'bg-[#fffdf0] text-[#8a6d10]', texto: 'En curso' },
+  espera: { clase: 'bg-[#f7f3e6] text-[#8a6d10]', texto: 'En espera' },
+  pendiente: { clase: 'bg-[#f4f1e8] text-[#8a8170]', texto: 'Pendiente' },
+}
+
+/** Una cosa esperando: qué proyecto, qué falta, y quién la destraba. */
+function AttentionRow({ item }: { item: AttentionItem }) {
+  const delEquipo = item.bloqueo === 'equipo'
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-[#fffdf0]"
+      >
+        <span
+          className={`h-1.5 w-1.5 flex-none rounded-full ${delEquipo ? 'bg-[var(--banana)]' : 'bg-[#d9d0ba]'}`}
+          aria-hidden="true"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13.5px] leading-snug text-ink">
+            <strong className="font-medium">{item.projectName}</strong>
+            <span className="text-[#c0b8a6]"> · </span>
+            <span className="text-[#6b6155]">{item.accion}</span>
+          </span>
+        </span>
+        <span className="flex-none text-[11px] text-[#a59c89]">
+          {delEquipo ? 'Nos toca' : 'Esperando'}
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+const Th = ({ children, className = '' }: { children?: React.ReactNode; className?: string }) => (
+  <th scope="col" className={`px-5 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#a59c89] ${className}`}>
+    {children}
+  </th>
+)
+
 export default async function Admin() {
-  const projects = await listProjects(db) as { id: string; name: string }[]
-  return <>
-    <AdminBar />
-    <main className="mx-auto w-full max-w-3xl p-8">
-      <h1 className="font-serif text-3xl font-medium leading-tight text-ink">
-        <span className="underline-banana">Proyectos</span>
-      </h1>
-      {projects.length === 0 && (
+  const rows = await listProjectsWithCounts(db)
+  // Una lectura de landscapeState por proyecto: la lista no tiene un conteo agregado
+  // (no hay tabla que lo dé de un solo select), y estas dos tablas todavía ni existen
+  // en Neon. Con la cantidad de proyectos de un estudio interno, N+1 no pesa.
+  const landscapeByProject = await Promise.all(rows.map(r => landscapeState(db, r.id)))
+  const projects = rows.map((r, idx) => {
+    const phases = derivePhases(r.id, projectSignals({
+      sessions: Array.from({ length: r.sessionsTotal }, (_, i) => ({
+        status: i < r.sessionsCompleted ? 'completed' : 'in_progress',
+      })),
+      tieneEntregable: r.tieneEntregable,
+      landscape: summarizeLandscape(landscapeByProject[idx]),
+    }))
+    return { ...r, phases, actual: currentPhase(phases) }
+  })
+
+  const pendientes = attentionItems(projects)
+  const nosToca = pendientes.filter(i => i.bloqueo === 'equipo').length
+  const ahora = new Date()
+
+  return (
+    <AdminShell>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="font-serif text-3xl font-medium leading-tight text-ink">
+          <span className="underline-banana">Proyectos</span>
+        </h1>
+        <p className="text-[13px] text-[#a59c89]">Todo lo que el estudio tiene en curso</p>
+      </div>
+
+      {projects.length === 0 ? (
         <p className="mt-16 text-center text-[15px] text-[#8a8170]">
           Todavía no hay proyectos. Se crean al completarse una entrevista.
         </p>
+      ) : (
+        <>
+          <section aria-labelledby="atencion" className="mt-7 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 px-3">
+              <h2 id="atencion" className="text-[13px] font-semibold text-ink">Esperando</h2>
+              <p className="text-[11.5px] text-[#a59c89]">
+                {nosToca === 0
+                  ? 'Nada trabado de nuestro lado'
+                  : `${nosToca} ${nosToca === 1 ? 'cosa depende' : 'cosas dependen'} del equipo`}
+              </p>
+            </div>
+
+            {pendientes.length === 0 ? (
+              <p className="px-3 pt-3 text-[13.5px] text-[#8a8170]">Todo al día. Ningún proyecto espera nada.</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-black/5">
+                {pendientes.map(i => <AttentionRow key={`${i.projectId}-${i.fase}`} item={i} />)}
+              </ul>
+            )}
+          </section>
+
+          <section className="mt-6 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[48rem] border-collapse">
+                <thead>
+                  <tr className="border-b border-black/5 bg-[#faf7ee]">
+                    <Th>Proyecto</Th>
+                    <Th>Entrevistas</Th>
+                    <Th>Propuesta</Th>
+                    <Th>Fase actual</Th>
+                    <Th>Movimiento</Th>
+                    <Th className="text-right">Recorrido</Th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/5">
+                  {projects.map(p => (
+                    <tr key={p.id} className="transition-colors duration-200 hover:bg-[#fffdf0]">
+                      <td className="px-5 py-4">
+                        <Link href={`/admin/projects/${p.id}`} className="font-serif text-[17px] font-medium text-ink underline decoration-transparent underline-offset-4 transition-colors duration-200 hover:decoration-[var(--banana)]">
+                          {p.name}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-4 text-[13px] tabular-nums text-[#6b6155]">
+                        {p.sessionsTotal === 0
+                          ? <span className="text-[#c0b8a6]">—</span>
+                          : <>{p.sessionsCompleted}/{p.sessionsTotal} <span className="text-[#a59c89]">completas</span></>}
+                      </td>
+                      <td className="px-5 py-4 text-[13px] text-[#6b6155]">
+                        {p.tieneEntregable ? 'Generada' : <span className="text-[#c0b8a6]">—</span>}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13px] font-medium text-ink">{p.actual.label}</span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-medium ${CHIP[p.actual.status].clase}`}>
+                            {CHIP[p.actual.status].texto}
+                          </span>
+                        </span>
+                        <span className="mt-0.5 block text-[11.5px] text-[#a59c89]">{p.actual.detalle}</span>
+                      </td>
+                      <td className="px-5 py-4 text-[12.5px] text-[#8a8170]">
+                        {haceCuanto(p.ultimaActividad, ahora)}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="flex justify-end">
+                          <PhaseTrack phases={p.phases} activeKey={p.actual.key} />
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
       )}
-      <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {projects.map(p => (
-          <li key={p.id}>
-            <Link href={`/admin/projects/${p.id}`}
-              className="flex min-h-[9rem] flex-col justify-between rounded-2xl border border-black/5 bg-white p-6 shadow-sm transition-colors hover:border-[var(--banana)]">
-              <span className="font-serif text-xl font-medium leading-snug text-ink">{p.name}</span>
-              <span className="mt-4 inline-flex items-center gap-1 text-[13px] text-[#a59c89]">
-                Abrir
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <path d="M9 6l6 6-6 6" />
-                </svg>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </main>
-  </>
+    </AdminShell>
+  )
 }

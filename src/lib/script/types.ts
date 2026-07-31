@@ -1,4 +1,4 @@
-export type QuestionType = 'open' | 'image-grid' | 'color-grid' | 'gender'
+export type QuestionType = 'open' | 'image-grid' | 'color-grid' | 'gender' | 'age-grid'
 
 export interface Option {
   id: string

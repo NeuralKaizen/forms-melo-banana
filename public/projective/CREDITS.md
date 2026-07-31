@@ -20,25 +20,33 @@ tipográficos generados con ImageMagick (sin fotos de personas).
 
 ## olor
 
-- **cerezo** — Three pink cherry blossoms in Tuntorp.jpg · W.carter · CC BY 4.0 · https://commons.wikimedia.org/wiki/File:Three_pink_cherry_blossoms_in_Tuntorp.jpg
-- **pina** — കൈതച്ചക്ക.jpg · Suniltg at Malayalam Wikipedia · CC BY 3.0 · https://commons.wikimedia.org/wiki/File:%E0%B4%95%E0%B5%88%E0%B4%A4%E0%B4%9A%E0%B5%8D%E0%B4%9A%E0%B4%95%E0%B5%8D%E0%B4%95.jpg
-- **cesped** — Garden-grass-meadow-green (24299700986).jpg · www.Pixel.la Free Stock Photos · CC0 · https://commons.wikimedia.org/wiki/File:Garden-grass-meadow-green_(24299700986).jpg
-- **rio** — Zagedan Lakes, Mountain cirque, Caucasus Mountains.jpg · Vyacheslav Argenberg · CC BY 4.0 · https://commons.wikimedia.org/wiki/File:Zagedan_Lakes,_Mountain_cirque,_Caucasus_Mountains.jpg
-- **caramelos** — Pastel Peppermint Candy Buttons by Andie's Specialty Sweets IMG 3169.JPG · Sweetisfaction · CC BY-SA 3.0 · https://commons.wikimedia.org/wiki/File:Pastel_Peppermint_Candy_Buttons_by_Andie%27s_Specialty_Sweets_IMG_3169.JPG
-- **madera** — Weatherworn planks on top of wooden table.jpg · W.carter · CC0 · https://commons.wikimedia.org/wiki/File:Weatherworn_planks_on_top_of_wooden_table.jpg
-- **hierba** — Chopping Fresh Herbs.jpg · Leecason · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Chopping_Fresh_Herbs.jpg
-- **naranjas** — Citrus fruits for sale in a New Zealand supermarket.jpg · Grouffles · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Citrus_fruits_for_sale_in_a_New_Zealand_supermarket.jpg
-- **rosas** — Bouquet of red and yellow roses.jpg · Karthika Manikandan · CC0 · https://commons.wikimedia.org/wiki/File:Bouquet_of_red_and_yellow_roses.jpg
+Set generado con IA (Recraft V4.1 vía Higgsfield) el 2026-07-21 — still-life editorial
+cohesivo (luz suave, fondo crema, macro). Reemplaza las fotos de Commons anteriores,
+que eran feas e inconsistentes. Sin personas ni marcas.
+
+- **cerezo** — margaritas blancas con centro amarillo · generado
+- **pina** — piña de pino (pinecone) con ramita de pino · generado
+- **cesped** — césped recién cortado con rocío · generado
+- **rio** — río corriendo sobre piedras, orilla con musgo · generado
+- **caramelos** — pastillas pastel opacas (menta/rosa/crema) · generado
+- **madera** — cedro con viruta · generado
+- **hierba** — menta fresca · generado
+- **naranjas** — montoncito de naranjas, una partida, sin hojas · generado
+- **rosas** — rosas rojas · generado
 
 ## ciudad
 
-- **bali** — Rice Paddies. Gunung Kawi, Bali 1626.jpg · Michael Gunther · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Rice_Paddies._Gunung_Kawi,_Bali_1626.jpg
-- **ny** — Manhattan from Weehawken, NJ.jpg · Dmitry Avdeev · CC BY-SA 3.0 · https://commons.wikimedia.org/wiki/File:Manhattan_from_Weehawken,_NJ.jpg
-- **barcelona** — Sagrada Familia, Barcelona (P1170694).jpg · Matti Blume · CC BY-SA · https://commons.wikimedia.org/wiki/File:Sagrada_Familia,_Barcelona_(P1170694).jpg
-- **delhi** — India Gate 1 (New Delhi).jpg · Subeesh Balan സുഭീഷ് ബാലൻ · CC BY-SA 3.0 · https://commons.wikimedia.org/wiki/File:India_Gate_1_(New_Delhi).jpg
-- **lasvegas** — Las Vegas (Nevada, USA), The Strip -- 2012 -- 6232.jpg · Dietmar Rabich · CC BY-SA 4.0 · https://commons.wikimedia.org/wiki/File:Las_Vegas_(Nevada,_USA),_The_Strip_--_2012_--_6232.jpg
-- **berlin** — Brandenburger Tor nachts.jpg · Thomas Wolf, www.foto-tw.de · CC BY-SA 3.0 · https://commons.wikimedia.org/wiki/File:Brandenburger_Tor_nachts.jpg
-- **paris** — Tour Eiffel Wikimedia Commons.jpg · Benh LIEU SONG · Public domain · https://commons.wikimedia.org/wiki/File:Tour_Eiffel_Wikimedia_Commons.jpg
-- **dubai** — Dubai Skyline mit Burj Khalifa (18241030269).jpg · Tim Reckmann from Hamm, Deutschland · CC BY 2.0 · https://commons.wikimedia.org/wiki/File:Dubai_Skyline_mit_Burj_Khalifa_(18241030269).jpg
-- **marrakech** — Kutubiyya Mosque, Marrakesh, Morocco, 20250124 1834 7027.jpg · Jakub Hałun · CC BY 4.0 · https://commons.wikimedia.org/wiki/File:Kutubiyya_Mosque,_Marrakesh,_Morocco,_20250124_1834_7027.jpg
+Set generado con IA (Recraft V4.1 vía Higgsfield) el 2026-07-21 — postales premium
+cinematográficas (landmark reconocible, hora dorada o noche, color vivo). Reemplaza las
+fotos de Commons anteriores, que se veían planas y poco representativas. Sin personas.
+
+- **bali** — terrazas de arroz con niebla y palmeras · generado
+- **ny** — skyline de Manhattan de noche con reflejos en el río · generado
+- **barcelona** — Sagrada Família a la hora dorada · generado
+- **delhi** — India Gate al atardecer con rayos de sol · generado
+- **lasvegas** — The Strip de noche con neón · generado
+- **berlin** — Puerta de Brandeburgo a la hora azul · generado
+- **paris** — Torre Eiffel a la hora dorada con jardines · generado
+- **dubai** — skyline con el Burj Khalifa al atardecer · generado
+- **marrakech** — Mezquita Koutoubia al atardecer · generado
 

@@ -20,10 +20,10 @@ describe('SCRIPT', () => {
     }
   })
 
-  it('la sección proyectiva tiene las 7 preguntas', () => {
+  it('la sección proyectiva tiene las 6 preguntas', () => {
     const proj = SCRIPT.find(s => s.key === 'projective')!
     expect(proj.questions.map(q => q.id)).toEqual([
-      'animal', 'color', 'genero', 'edad_hombre', 'edad_mujer', 'olor', 'ciudad',
+      'animal', 'color', 'genero', 'edad', 'olor', 'ciudad',
     ])
   })
   it('every question has a non-empty prompt and audio path', () => {
