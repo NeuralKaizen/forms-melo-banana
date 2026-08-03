@@ -9,8 +9,20 @@ describe('GenderChoice', () => {
     render(<GenderChoice options={[
       { id: 'hombre', label: 'Hombre' },
       { id: 'mujer', label: 'Mujer' },
+      { id: 'neutro', label: 'Neutro' },
     ]} onSelect={onSelect} />)
     fireEvent.click(screen.getByRole('button', { name: 'Mujer' }))
     expect(onSelect).toHaveBeenCalledWith('mujer')
+  })
+
+  it('ofrece también la opción neutro', () => {
+    const onSelect = vi.fn()
+    render(<GenderChoice options={[
+      { id: 'hombre', label: 'Hombre' },
+      { id: 'mujer', label: 'Mujer' },
+      { id: 'neutro', label: 'Neutro' },
+    ]} onSelect={onSelect} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Neutro' }))
+    expect(onSelect).toHaveBeenCalledWith('neutro')
   })
 })

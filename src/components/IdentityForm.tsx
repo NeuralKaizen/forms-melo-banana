@@ -19,8 +19,9 @@ export function IdentityForm({ onSubmit }: {
           Cuéntanos sobre tu&nbsp;<span className="underline-banana">marca</span>
         </h1>
         <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-[#7a7060]">
-          Es una charla corta y proyectiva — no hay respuestas correctas.
-          Mientras más te sueltes, mejor entendemos tu mundo. 🍌
+          Queremos conocer a profundidad tu proyecto, tus necesidades y expectativas.
+          Responde estas preguntas de forma individual y recuerda, no hay respuestas
+          correctas ni incorrectas.
         </p>
 
         <form onSubmit={(e) => { e.preventDefault(); onSubmit(v) }}
@@ -44,7 +45,7 @@ export function IdentityForm({ onSubmit }: {
         </form>
 
         <p className="mt-6 text-[12px] text-[#a59c89]">
-          Te toma ~10 minutos · con cariño, Mellow &amp; Banana
+          Te tomará aprox 10 minutos
         </p>
       </div>
     </div>

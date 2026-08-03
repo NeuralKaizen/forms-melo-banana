@@ -26,6 +26,16 @@ describe('SCRIPT', () => {
       'animal', 'color', 'genero', 'edad', 'olor', 'ciudad',
     ])
   })
+  it('género incluye neutro', () => {
+    const genero = SCRIPT.flatMap(s => s.questions).find(q => q.id === 'genero')!
+    expect(genero.options!.map(o => o.id)).toEqual(['hombre', 'mujer', 'neutro'])
+  })
+  it('los olores usan las etiquetas aprobadas por el cliente', () => {
+    const olor = SCRIPT.flatMap(s => s.questions).find(q => q.id === 'olor')!
+    expect(olor.options!.map(o => o.label)).toEqual([
+      'Flores', 'Bosque', 'Césped', 'Río', 'Dulce', 'Madera', 'Hierbas', 'Cítrico', 'Rosas',
+    ])
+  })
   it('every question has a non-empty prompt and audio path', () => {
     for (const s of SCRIPT) for (const q of s.questions) {
       expect(q.prompt.length).toBeGreaterThan(0)

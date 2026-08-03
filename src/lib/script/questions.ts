@@ -28,7 +28,7 @@ export const SCRIPT: Section[] = [
   {
     key: 'consumer', title: 'Contexto del consumidor',
     questions: [
-      open('problema', '¿Cuál es el problema clave que se resuelve para el consumidor?', 'problema clave'),
+      open('problema', '¿Cuál es el problema clave que buscas resolver para las personas (clientes/consumidores)?', 'problema clave'),
       open('target', '¿Quién es el target?', 'target'),
       open('percepcion', '¿Qué piensan hoy los consumidores de la marca y cómo se relacionan con ella o la usan? (si aplica)', 'piensan hoy'),
       open('cambio', '¿Cuál es el cambio clave que se busca en el consumidor?', 'cambio clave'),
@@ -39,7 +39,7 @@ export const SCRIPT: Section[] = [
     questions: [
       open('objetivos', '¿Cuáles son los objetivos principales del diseño?', 'objetivos'),
       open('donde_vive', '¿Dónde vivirá el diseño? (tiendas, online, eventos…)', 'Dónde vivirá'),
-      open('marketing_mix', '¿Cómo encajará en el marketing mix cuando se lance?', 'marketing mix'),
+      open('marketing_mix', '¿Cómo encajará en el marketing mix cuando se lance la nueva identidad al mercado?', 'marketing mix'),
     ],
   },
   {
@@ -84,6 +84,7 @@ export const SCRIPT: Section[] = [
         options: [
           { id: 'hombre', label: 'Hombre' },
           { id: 'mujer', label: 'Mujer' },
+          { id: 'neutro', label: 'Neutro' },
         ],
       },
       {
@@ -102,15 +103,16 @@ export const SCRIPT: Section[] = [
         id: 'olor', type: 'image-grid', highlight: 'olor', audio: '/audio/olor.mp3',
         prompt: 'Si la compañía tuviera un olor, ¿cuál sería?',
         followUp: '¿Por qué ese olor?',
+        // Los ids quedan fijos (las respuestas ya guardadas los referencian); los labels sí cambian.
         options: [
-          { id: 'cerezo', label: 'Margaritas', src: '/projective/olor/cerezo.jpg' },
-          { id: 'pina', label: 'Piña', src: '/projective/olor/pina.jpg' },
+          { id: 'cerezo', label: 'Flores', src: '/projective/olor/cerezo.jpg' },
+          { id: 'pina', label: 'Bosque', src: '/projective/olor/pina.jpg' },
           { id: 'cesped', label: 'Césped', src: '/projective/olor/cesped.jpg' },
           { id: 'rio', label: 'Río', src: '/projective/olor/rio.jpg' },
-          { id: 'caramelos', label: 'Caramelos', src: '/projective/olor/caramelos.jpg' },
+          { id: 'caramelos', label: 'Dulce', src: '/projective/olor/caramelos.jpg' },
           { id: 'madera', label: 'Madera', src: '/projective/olor/madera.jpg' },
-          { id: 'hierba', label: 'Menta', src: '/projective/olor/hierba.jpg' },
-          { id: 'naranjas', label: 'Naranjas', src: '/projective/olor/naranjas.jpg' },
+          { id: 'hierba', label: 'Hierbas', src: '/projective/olor/hierba.jpg' },
+          { id: 'naranjas', label: 'Cítrico', src: '/projective/olor/naranjas.jpg' },
           { id: 'rosas', label: 'Rosas', src: '/projective/olor/rosas.jpg' },
         ],
       },

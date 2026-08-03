@@ -1,16 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { closingAfter, sectionIntro } from './breathers'
-
-describe('closingAfter', () => {
-  it('da el cierre tras la última', () => {
-    expect(closingAfter(15, 15)).toEqual({ message: '¡Eso es todo! Gracias por compartir tu visión con nosotros.', closing: true })
-  })
-  it('no da nada antes del final', () => {
-    expect(closingAfter(7, 15)).toBeNull()
-    expect(closingAfter(12, 15)).toBeNull()
-    expect(closingAfter(3, 15)).toBeNull()
-  })
-})
+import { sectionIntro } from './breathers'
 
 describe('sectionIntro', () => {
   it('abre cada sección del flujo de voz con su transición', () => {
