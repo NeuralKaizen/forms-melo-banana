@@ -1,44 +1,42 @@
 # Fase 2 · Columna vertebral — qué queda pendiente
 
-Fecha: 2026-07-30
-Rama: `fase2-columna-vertebral` (19 commits sobre `main`)
-Estado: implementada, revisada y en verde. **No verificada en un navegador todavía.**
+Fecha: 2026-07-30 · actualizado 2026-07-31
+Rama: `fase2-columna-vertebral` (19 commits sobre `main`), ya en `main` y en producción
+Estado: desplegada y funcionando. El panel se recorrió en un navegador el 2026-07-31.
 
 Lo construido es lo que el spec llama la columna vertebral: las seis etapas del
 Landscape versionadas en Neon (append-only), el gate humano de tendencias, la
 aprobación de etapas, y el panel leyendo y escribiendo estado real en vez de datos
 de demostración. Ver `docs/superpowers/plans/2026-07-29-fase2-columna-vertebral.md`.
 
-## 1. Antes de desplegar: correr `db:push` (bloqueante)
+## 1. Despliegue: hecho, y lo que costó
 
-Las tablas `landscape_stages` y `landscape_versions` **todavía no existen en Neon**.
+Las tablas `landscape_stages` y `landscape_versions` **ya existen en Neon** (creadas el
+2026-07-31). No hace falta correr nada antes de desplegar.
 
-```
-npm run db:push
-```
+Se crearon con DDL explícito y no con `db:push`, por lo mismo que este documento
+advertía: `drizzle-kit` pide una confirmación interactiva que ningún agente puede
+contestar, y puede proponer un rename donde hay un alta. El SQL fue puramente aditivo
+—dos `create table if not exists` y un índice— y se verificó después que las cinco
+tablas de fase 1 conservaran sus filas (5 proyectos, 16 sesiones, 221 respuestas,
+3 entregables).
 
-Hay que correrlo desde una terminal interactiva —`drizzle-kit` pide confirmación y
-ningún agente puede contestarla—. Cuando pregunte por las dos tablas, elegir
-**create table**: son nuevas, no son renames. Si propusiera tocar `projects`,
-`sessions`, `answers` o `deliverables`, cancelar: se verificó columna por columna
-que este cambio es puramente aditivo y no altera ninguna tabla con datos.
+**Lo que salió mal, para no repetirlo.** El deploy salió antes que las tablas. Como la
+cabecera del proyecto consulta el estado del landscape en las ocho pantallas, el admin
+entero respondió 500 durante ~10 minutos, no solo `/landscape`
+(`NeonDbError 42P01: relation "landscape_stages" does not exist`). El riesgo estaba
+escrito acá y el orden se invirtió igual, porque `db:push` depende de que alguien se
+acuerde de correrlo a mano. Mientras siga siendo un paso manual va a volver a pasar: la
+salida de fondo es tener migraciones versionadas en `drizzle/` aplicadas en el build.
+Hoy ese directorio no existe.
 
-**El orden importa.** La cabecera del proyecto ahora consulta el estado real del
-landscape en las ocho pantallas del panel, así que si este código llega a producción
-sin las tablas creadas, el admin entero responde 500 — no solo `/landscape`.
-Primero `db:push`, después el deploy.
-
-Después de eso, para ver el panel con contenido:
+Para ver el panel con contenido:
 
 ```
 npm run db:projects              # lista los proyectos que hay
 npm run seed:landscape -- "<nombre del proyecto>"
 npm run dev
 ```
-
-Queda pendiente la verificación visual del paso 4 de la Tarea 9 del plan: que las
-etapas se vean con su estado, que la selección de 4 tendencias habilite el botón,
-y que aprobar mueva la etapa y sume una línea a la actividad.
 
 ## 2. Decisiones abiertas, para vos
 
@@ -66,21 +64,38 @@ agregar la columna y atribuir las aprobaciones.
 
 Es trabajo del plan del servidor MCP, no un olvido:
 
-- **Un borrador nuevo sobre una etapa ya aprobada queda invisible.** `getCurrentVersion`
-  prefiere la aprobada, así que si Claude guarda una long list ampliada sobre
-  `tendencias` ya aprobada, el panel sigue mostrando la vieja y la nueva queda
-  huérfana. Hay que decidir la regla —¿reabre la etapa?, ¿se muestra junto a la
-  aprobada?— antes de que `guardar_etapa` exista, porque es el caso normal de uso.
 - **La propuesta de valor post-taller** sobre `deliverables`, con el mismo mecanismo
   de versiones.
 - **El catálogo del archivo del estudio** y las seis herramientas MCP.
+
+### Resuelto: borrador nuevo sobre una etapa ya aprobada (2026-07-31)
+
+Era el bloqueante de `guardar_etapa` y ya está decidido e implementado.
+
+**La regla: lo aprobado sigue mandando, y lo nuevo no queda escondido.** Una escritura
+por MCP sobre una etapa cerrada no pisa la versión aprobada ni reabre la etapa sola
+—sería deshacer una decisión humana desde un chat que nadie está mirando— pero tampoco
+desaparece: queda esperando el gate humano en el panel.
+
+Sale de las dos fronteras que fija el spec: *"Claude nunca aprueba"* y *"el panel es
+donde se decide; Claude es donde se trabaja"*. Reabrir la etapa sola rompe la primera;
+rechazar la escritura rompe la segunda. Esta es la única de las tres que respeta ambas.
+
+Qué cambió:
+
+- `StageState.borradorNuevo` — la versión más nueva sin aprobar, cuando la etapa ya
+  tiene una aprobada debajo. `null` el resto del tiempo.
+- El panel muestra un aviso con "Ver la nueva / Ver la aprobada", y el botón de aprobar
+  sella la versión que estás viendo.
+- `selectTendencias` toma la long list de la versión **más nueva**, no de la aprobada.
+  La long list es el insumo del gate: si Claude la amplía, hay que poder elegir sobre la
+  lista ampliada. Antes una tendencia que solo existía en la propuesta nueva se
+  rechazaba por "intrusa" — el caso exacto que este documento marcaba como normal.
 
 ## 4. Deuda menor registrada
 
 Ninguna bloquea nada:
 
-- `listLandscapeVersions` ordena por `created_at` sin desempate por `id`: dos versiones
-  con el mismo timestamp tendrían orden indefinido.
 - `selectTendencias` no es atómico —`neon-http` no tiene transacciones—: si falla la
   aprobación queda un borrador con la selección sin aprobar.
 - La ruta de escritura no tiene tests propios: el repo no tiene andamiaje para tests

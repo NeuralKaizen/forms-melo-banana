@@ -369,6 +369,142 @@ describe('landscape · lectura de estado', () => {
   })
 })
 
+/**
+ * El caso normal de uso una vez que Claude escribe por MCP: la etapa ya está aprobada
+ * y llega trabajo nuevo. Regla: lo aprobado sigue mandando —una escritura desde un chat
+ * nunca pisa una decisión humana— pero el borrador nuevo no queda escondido.
+ */
+describe('landscape · borrador sobre etapa aprobada', () => {
+  it('sin ninguna aprobada, el borrador más nuevo es el actual y no hay borrador pendiente', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    const v2 = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
+
+    const [etapa] = (await landscapeState(db, p.id)).filter(e => e.stage === 'contexto')
+    expect(etapa.actual!.id).toBe(v2.id)
+    expect(etapa.borradorNuevo).toBeNull()
+  })
+
+  it('con una aprobada y nada nuevo encima, no hay borrador pendiente', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await approveLandscapeVersion(db, v.id, { projectId: p.id, stage: 'contexto' })
+
+    const [etapa] = (await landscapeState(db, p.id)).filter(e => e.stage === 'contexto')
+    expect(etapa.actual!.id).toBe(v.id)
+    expect(etapa.borradorNuevo).toBeNull()
+  })
+
+  it('un borrador posterior no desplaza a la aprobada ni reabre la etapa, pero queda visible', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const aprobada = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await approveLandscapeVersion(db, aprobada.id, { projectId: p.id, stage: 'contexto' })
+    const nueva = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
+
+    const [etapa] = (await landscapeState(db, p.id)).filter(e => e.stage === 'contexto')
+    // Lo aprobado sigue mandando: ni el contenido ni el estado se mueven solos.
+    expect(etapa.actual!.id).toBe(aprobada.id)
+    expect(etapa.status).toBe('aprobada')
+    expect(etapa.aprobada).toBe(true)
+    // Y lo nuevo no se pierde de vista.
+    expect(etapa.borradorNuevo!.id).toBe(nueva.id)
+    expect(etapa.versiones).toBe(2)
+  })
+
+  it('aprobar el borrador nuevo lo vuelve el actual y deja de haber pendiente', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const vieja = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await approveLandscapeVersion(db, vieja.id, { projectId: p.id, stage: 'contexto' })
+    const nueva = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
+    await approveLandscapeVersion(db, nueva.id, { projectId: p.id, stage: 'contexto' })
+
+    const [etapa] = (await landscapeState(db, p.id)).filter(e => e.stage === 'contexto')
+    expect(etapa.actual!.id).toBe(nueva.id)
+    expect(etapa.borradorNuevo).toBeNull()
+  })
+
+  it('un borrador de otra etapa no cuenta como pendiente de la etapa aprobada', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await approveLandscapeVersion(db, v.id, { projectId: p.id, stage: 'contexto' })
+    await saveLandscapeVersion(db, p.id, 'tendencias', { content: { candidatas: [] }, author: 'claude' })
+
+    const porEtapa = Object.fromEntries((await landscapeState(db, p.id)).map(e => [e.stage, e]))
+    expect(porEtapa.contexto.borradorNuevo).toBeNull()
+  })
+})
+
+describe('landscape · long list ampliada sobre tendencias ya aprobadas', () => {
+  const seis = [
+    { id: 't1', eje: 'Marca', titulo: 'A', descripcion: '', fuentes: [] },
+    { id: 't2', eje: 'Marca', titulo: 'B', descripcion: '', fuentes: [] },
+    { id: 't3', eje: 'Estrategia', titulo: 'C', descripcion: '', fuentes: [] },
+    { id: 't4', eje: 'Estrategia', titulo: 'D', descripcion: '', fuentes: [] },
+    { id: 't5', eje: 'Comunicación', titulo: 'E', descripcion: '', fuentes: [] },
+    { id: 't6', eje: 'Comunicación', titulo: 'F', descripcion: '', fuentes: [] },
+  ]
+  const t7 = { id: 't7', eje: 'Marca' as const, titulo: 'G', descripcion: '', fuentes: [] }
+
+  /** Aprobado con las seis, y después Claude propone una séptima. */
+  async function conLongListAmpliada() {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    await saveLandscapeVersion(db, p.id, 'tendencias', { content: { candidatas: seis }, author: 'claude' })
+    await selectTendencias(db, p.id, ['t1', 't3', 't4', 't5'])
+    await saveLandscapeVersion(db, p.id, 'tendencias', {
+      content: { candidatas: [...seis, t7] }, author: 'claude',
+    })
+    return { db, p }
+  }
+
+  it('se puede elegir una tendencia que solo existe en la long list nueva', async () => {
+    const { db, p } = await conLongListAmpliada()
+    // Sin esto, el gate valida contra la long list aprobada y rechaza t7 por "intrusa",
+    // que es el caso que el spec marca como normal: Claude amplía, el equipo re-elige.
+    const v = await selectTendencias(db, p.id, ['t1', 't3', 't4', 't7'])
+    expect(v.approvedAt).toBeTruthy()
+    const content = v.content as { candidatas: unknown[]; seleccionadas: string[] }
+    expect(content.seleccionadas).toEqual(['t1', 't3', 't4', 't7'])
+    expect(content.candidatas).toHaveLength(7)
+  })
+
+  it('elegir sobre la long list nueva deja de haber borrador pendiente', async () => {
+    const { db, p } = await conLongListAmpliada()
+    const antes = (await landscapeState(db, p.id)).find(e => e.stage === 'tendencias')!
+    expect(antes.borradorNuevo).not.toBeNull()
+
+    await selectTendencias(db, p.id, ['t1', 't3', 't4', 't7'])
+
+    const despues = (await landscapeState(db, p.id)).find(e => e.stage === 'tendencias')!
+    expect(despues.borradorNuevo).toBeNull()
+    expect(despues.aprobada).toBe(true)
+  })
+})
+
+describe('landscape · orden de versiones', () => {
+  it('dos versiones con el mismo timestamp salen siempre en el mismo orden', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    // Mismo instante exacto: sin desempate, el orden lo decide Postgres y puede variar
+    // entre corridas. Con Claude escribiendo por MCP el empate deja de ser hipotético.
+    const mismoInstante = new Date('2026-07-31T12:00:00.000Z')
+    await db.insert(landscapeVersions).values([
+      { projectId: p.id, stage: 'contexto', content: { v: 1 }, author: 'claude', createdAt: mismoInstante },
+      { projectId: p.id, stage: 'contexto', content: { v: 2 }, author: 'claude', createdAt: mismoInstante },
+    ])
+
+    const primera = (await listLandscapeVersions(db, p.id, 'contexto')).map(v => v.id)
+    const segunda = (await listLandscapeVersions(db, p.id, 'contexto')).map(v => v.id)
+    expect(primera).toEqual(segunda)
+    expect(primera).toEqual([...primera].sort().reverse())
+  })
+})
+
 describe('landscape · proyecto inexistente', () => {
   const idInexistente = '00000000-0000-0000-0000-000000000000'
 

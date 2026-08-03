@@ -246,7 +246,11 @@ export async function listLandscapeVersions(db: AnyDb, projectId: string, stage?
   const where = stage
     ? and(eq(landscapeVersions.projectId, projectId), eq(landscapeVersions.stage, stage))
     : eq(landscapeVersions.projectId, projectId)
-  return db.select().from(landscapeVersions).where(where).orderBy(desc(landscapeVersions.createdAt))
+  // Desempate por id: dos versiones con el mismo `created_at` tendrían orden indefinido,
+  // y `landscapeState` decide con el orden —cuál es la actual y si hay un borrador más
+  // nuevo que la aprobada—. Con Claude escribiendo por MCP el empate deja de ser teórico.
+  return db.select().from(landscapeVersions).where(where)
+    .orderBy(desc(landscapeVersions.createdAt), desc(landscapeVersions.id))
 }
 
 /**
@@ -304,8 +308,13 @@ export async function selectTendencias(
   // le falte la etapa de tendencias.
   if (!(await existeProyecto(db, projectId))) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
 
-  const actual = await getCurrentVersion(db, projectId, 'tendencias')
-  const candidatas = (actual?.content as TendenciasContent | undefined)?.candidatas
+  // La long list sale de la versión *más nueva*, no de la aprobada. La long list es el
+  // insumo del gate: si Claude amplió la lista después de una selección aprobada, hay que
+  // poder elegir sobre la lista ampliada — con `getCurrentVersion` acá, una tendencia que
+  // solo existe en la propuesta nueva se rechazaba por "intrusa". Cuando no hay borrador
+  // más nuevo las dos coinciden, porque seleccionar guarda y aprueba en un solo acto.
+  const [masNueva] = await listLandscapeVersions(db, projectId, 'tendencias')
+  const candidatas = (masNueva?.content as TendenciasContent | undefined)?.candidatas
   if (!candidatas?.length) throw new ErrorDeValidacion('No hay long list de tendencias guardada para este proyecto')
 
   // Antes de contar cuántas son: si hay repetidas, el largo crudo miente sobre cuántas
@@ -334,6 +343,17 @@ export interface StageState {
   versiones: number
   actual: LandscapeVersionRow | null
   aprobada: boolean
+  /**
+   * La versión más nueva sin aprobar, cuando la etapa ya tiene una aprobada debajo.
+   * `null` el resto del tiempo (sin aprobar todavía, el borrador ya es `actual`).
+   *
+   * Existe porque el spec pone la frontera en que Claude nunca aprueba: escribir es
+   * trabajo y va al chat, aprobar es decisión y vive en el panel. Una escritura por
+   * MCP sobre una etapa cerrada no puede ni pisar lo aprobado ni reabrir la etapa
+   * sola —sería deshacer una decisión humana desde un chat que nadie está mirando—,
+   * pero tampoco puede quedar escondida. Queda acá, esperando el gate humano.
+   */
+  borradorNuevo: LandscapeVersionRow | null
 }
 
 /** El estado completo del landscape de un proyecto. Siempre las seis etapas. */
@@ -346,10 +366,23 @@ export async function landscapeState(db: AnyDb, projectId: string): Promise<Stag
   )
 
   return STAGE_ORDER.map(stage => {
+    // `versiones` viene de la más nueva a la más vieja, así que [0] es la más reciente.
     const deLaEtapa = versiones.filter(v => v.stage === stage)
-    const actual = deLaEtapa.find(v => v.approvedAt) ?? deLaEtapa[0] ?? null
+    const aprobadaMasNueva = deLaEtapa.find(v => v.approvedAt) ?? null
+    const masNueva = deLaEtapa[0] ?? null
+    const actual = aprobadaMasNueva ?? masNueva
     const status = estadoPorEtapa.get(stage) ?? 'pendiente'
-    return { stage, status, versiones: deLaEtapa.length, actual, aprobada: status === 'aprobada' }
+    // Si la más reciente de todas no está aprobada y hay una aprobada más abajo,
+    // entonces llegó trabajo después de la decisión: eso es el borrador pendiente.
+    const borradorNuevo = aprobadaMasNueva && masNueva && !masNueva.approvedAt ? masNueva : null
+    return {
+      stage,
+      status,
+      versiones: deLaEtapa.length,
+      actual,
+      aprobada: status === 'aprobada',
+      borradorNuevo,
+    }
   })
 }
 

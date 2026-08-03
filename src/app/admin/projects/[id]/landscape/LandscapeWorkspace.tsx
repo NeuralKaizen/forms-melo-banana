@@ -17,7 +17,13 @@ export interface ActividadVista {
   cuando: string
 }
 
-type ContenidoEtapaVista = { id: string; content: unknown; aprobada: boolean } | null
+type ContenidoEtapaVista = {
+  id: string
+  content: unknown
+  aprobada: boolean
+  /** Lo que Claude guardó después de la aprobación. Ver `StageState.borradorNuevo`. */
+  borradorNuevo: { id: string; content: unknown } | null
+} | null
 
 const STATUS_LABEL: Record<StageStatus, string> = {
   pendiente: 'Pendiente',
@@ -94,6 +100,29 @@ function TendenciaCard({ t, selected, onToggle }: { t: TendenciaCandidata; selec
   )
 }
 
+/**
+ * Claude escribió sobre una etapa que el equipo ya había aprobado. Lo aprobado sigue
+ * mandando —una escritura desde un chat no deshace una decisión— pero lo nuevo tiene
+ * que estar a un clic, no perdido en la actividad.
+ */
+function AvisoBorradorNuevo({ viendoBorrador, onCambiar }: { viendoBorrador: boolean; onCambiar: () => void }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--banana)]/45 bg-[#fffdf0] px-4 py-3">
+      <p className="text-[12.5px] leading-relaxed text-[#6b6155]">
+        Claude guardó una versión más nueva después de la aprobación.
+        <span className="text-[#a59c89]"> La aprobada sigue vigente hasta que el equipo decida.</span>
+      </p>
+      <button
+        type="button"
+        onClick={onCambiar}
+        className="rounded-xl border border-black/10 bg-white px-3 py-1.5 text-[12.5px] font-medium text-ink transition-colors duration-200 hover:border-black/25"
+      >
+        {viendoBorrador ? 'Ver la aprobada' : 'Ver la nueva'}
+      </button>
+    </div>
+  )
+}
+
 function ActividadItem({ a }: { a: ActividadVista }) {
   return (
     <li className="flex gap-2.5 py-2.5">
@@ -136,6 +165,15 @@ export function LandscapeWorkspace({
   const [selected, setSelected] = useState<string[]>(seleccionAprobada)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Qué se está mirando cuando la etapa tiene una aprobada y un borrador más nuevo.
+  // Arranca en la aprobada: es la que manda hasta que el equipo decida otra cosa.
+  const [viendoBorrador, setViendoBorrador] = useState(false)
+
+  function irAEtapa(key: StageKey) {
+    setStage(key)
+    setViendoBorrador(false)
+    setError(null)
+  }
 
   // `seleccionAprobada` puede cambiar por fuera de este componente: Claude escribe
   // etapas por MCP mientras el panel está abierto, así que no es un caso raro. Se
@@ -207,6 +245,14 @@ export function LandscapeWorkspace({
   const contenido = contenidoPorEtapa[stage]
   const hayLongList = tendencias.length > 0
 
+  // Lo aprobado manda: la vista arranca en `contenido` y solo cambia si el equipo pide
+  // ver el borrador. `vista` es lo que se muestra y lo que aprueba el botón de abajo.
+  const borradorNuevo = contenido?.borradorNuevo ?? null
+  const mostrandoBorrador = !!borradorNuevo && viendoBorrador
+  const vista = mostrandoBorrador
+    ? { id: borradorNuevo.id, content: borradorNuevo.content, aprobada: false }
+    : contenido
+
   return (
     <div className="grid gap-6 lg:grid-cols-[176px_minmax(0,1fr)_248px]">
 
@@ -215,7 +261,7 @@ export function LandscapeWorkspace({
         <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">Etapas</p>
         <div className="space-y-0.5">
           {stages.map(s => (
-            <StageRow key={s.key} stage={s} active={s.key === stage} onSelect={() => setStage(s.key)} />
+            <StageRow key={s.key} stage={s} active={s.key === stage} onSelect={() => irAEtapa(s.key)} />
           ))}
         </div>
       </nav>
@@ -231,6 +277,17 @@ export function LandscapeWorkspace({
                 cada una se desarrolla después en tres diapositivas.
               </p>
             </header>
+
+            {/* Acá no hay toggle: la lista de abajo ya es la ampliada, porque elegir sobre
+                la vieja no tendría sentido. Lo que cambia es que hay que volver a decidir. */}
+            {borradorNuevo && (
+              <div className="mb-5 rounded-2xl border border-[var(--banana)]/45 bg-[#fffdf0] px-4 py-3">
+                <p className="text-[12.5px] leading-relaxed text-[#6b6155]">
+                  Claude amplió la long list después de la selección aprobada. Abajo está la lista completa;
+                  <span className="text-[#a59c89]"> la selección vigente sigue siendo la anterior hasta que vuelvas a aprobar.</span>
+                </p>
+              </div>
+            )}
 
             {EJES.map(eje => {
               const delEje = tendencias.filter(t => t.eje === eje)
@@ -265,34 +322,43 @@ export function LandscapeWorkspace({
               </button>
             </div>
           </>
-        ) : contenido ? (
+        ) : contenido && vista ? (
           <>
             <header className="mb-5 flex items-baseline justify-between gap-3">
               <h2 className="font-serif text-xl font-medium text-ink">{etapaActual?.label}</h2>
               <span className="text-[11px] text-[#a59c89]">
-                {contenido.aprobada ? 'Versión aprobada' : 'Borrador sin aprobar'}
+                {vista.aprobada ? 'Versión aprobada' : 'Borrador sin aprobar'}
               </span>
             </header>
+
+            {borradorNuevo && (
+              <AvisoBorradorNuevo
+                viendoBorrador={viendoBorrador}
+                onCambiar={() => setViendoBorrador(v => !v)}
+              />
+            )}
+
             <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-              <ContenidoEtapa content={contenido.content} />
+              <ContenidoEtapa content={vista.content} />
             </div>
 
             {/* Gate humano, igual que el de tendencias: 'tendencias' no pasa por acá,
-                tiene el suyo arriba. */}
-            {stage !== 'tendencias' && !contenido.aprobada && (
+                tiene el suyo arriba. Aprueba lo que se está viendo — así el borrador
+                nuevo se sella sin que haya que pasar por otra pantalla. */}
+            {stage !== 'tendencias' && !vista.aprobada && (
               <div className="sticky bottom-4 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--ink)] px-5 py-3.5 shadow-[0_8px_24px_-12px_rgba(26,21,16,0.5)]">
                 <p className="text-[13px] text-white/85">
-                  Sin aprobar
+                  {mostrandoBorrador ? 'Versión más nueva, sin aprobar' : 'Sin aprobar'}
                   <span className="text-white/50"> · decide el equipo, no el agente</span>
                   {error && <span className="ml-1 text-[#ff9c8a]">{error}</span>}
                 </p>
                 <button
                   type="button"
                   disabled={guardando}
-                  onClick={() => aprobarVersion(stage, contenido.id)}
+                  onClick={() => aprobarVersion(stage, vista.id)}
                   className="rounded-xl bg-[var(--banana)] px-4 py-2 text-[13px] font-semibold text-[#1a1510] transition-opacity duration-200 disabled:cursor-not-allowed disabled:opacity-35"
                 >
-                  {guardando ? 'Guardando…' : 'Aprobar'}
+                  {guardando ? 'Guardando…' : mostrandoBorrador ? 'Aprobar esta versión' : 'Aprobar'}
                 </button>
               </div>
             )}

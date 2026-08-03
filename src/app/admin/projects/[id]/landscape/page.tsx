@@ -31,7 +31,14 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
   const stages = buildStages(estado)
 
   const etapaTendencias = estado.find(e => e.stage === 'tendencias')!
-  const tendenciasContent = etapaTendencias.actual?.content as TendenciasContent | undefined
+  // La long list se toma de la versión más nueva, igual criterio que el gate en
+  // `selectTendencias`: si Claude amplió la lista después de una selección aprobada, el
+  // equipo tiene que ver la lista ampliada para poder re-elegir sobre ella.
+  const versionLongList = etapaTendencias.borradorNuevo ?? etapaTendencias.actual
+  const tendenciasContent = versionLongList?.content as TendenciasContent | undefined
+  // La selección marcada, en cambio, es la que el equipo aprobó — no la que venga en un
+  // borrador que todavía nadie decidió.
+  const seleccionAprobada = (etapaTendencias.actual?.content as TendenciasContent | undefined)?.seleccionadas ?? []
 
   // Se formatea el tiempo en el servidor para que no baile entre servidor y cliente.
   const ahora = new Date()
@@ -46,7 +53,18 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
   const contenidoPorEtapa = Object.fromEntries(
     estado.map(e => [
       e.stage,
-      e.actual ? { id: e.actual.id, content: e.actual.content, aprobada: !!e.actual.approvedAt } : null,
+      e.actual
+        ? {
+            id: e.actual.id,
+            content: e.actual.content,
+            aprobada: !!e.actual.approvedAt,
+            // Lo que Claude escribió después de la aprobación: no desplaza a lo aprobado,
+            // pero el panel lo tiene que poder mostrar y ofrecer al gate humano.
+            borradorNuevo: e.borradorNuevo
+              ? { id: e.borradorNuevo.id, content: e.borradorNuevo.content }
+              : null,
+          }
+        : null,
     ]),
   )
 
@@ -58,7 +76,7 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
         projectId={id}
         stages={stages}
         tendencias={tendenciasContent?.candidatas ?? []}
-        seleccionAprobada={tendenciasContent?.seleccionadas ?? []}
+        seleccionAprobada={seleccionAprobada}
         tendenciasAprobadas={etapaTendencias.aprobada}
         contenidoPorEtapa={contenidoPorEtapa}
         actividad={actividad}
