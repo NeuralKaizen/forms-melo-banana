@@ -3,7 +3,7 @@ import { sessions, answers, projects, deliverables, landscapeStages, landscapeVe
 import type { StageKey, StageStatus, TendenciaCandidata } from '@/lib/landscape/stages'
 import { MIN_TENDENCIAS, MAX_TENDENCIAS, STAGE_ORDER } from '@/lib/landscape/stages'
 
-type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter seam
+export type AnyDb = any // drizzle db (neon-http or pglite); kept loose for the adapter seam
 
 /**
  * Un rechazo que es culpa del pedido (datos inválidos), no del servidor: la ruta HTTP
