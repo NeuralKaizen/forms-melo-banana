@@ -220,9 +220,23 @@ una persona. Es el único paso que no se puede automatizar.
   Authentication**, que es lo que se comerían los pedidos de Anthropic. O se desactiva la
   protección para preview, o se prueba contra producción — viable porque todo lo que este
   spec agrega es aditivo.
-- **La URL definitiva, decidida de antemano**, porque el campo `resource` tiene que
-  coincidir exacto con lo que se pegue en claude.ai. Mudar de dominio después obliga a
-  tocar configuración y reconectar.
+### La URL: decidido el 2026-08-03
+
+**`https://forms-melo-banana.vercel.app/api/mcp`.** El estudio no tiene hoy un dominio
+propio del que colgar un subdominio, y la cuenta de Vercel no tiene ninguno registrado.
+La URL de Vercel responde 200 público y es estable mientras el proyecto no se renombre.
+
+La URL **no se escribe en el código**: sale de la variable `MCP_PUBLIC_URL`, que alimenta
+el campo `resource` del documento de metadata. Mudar de dominio más adelante es una
+variable y un redeploy, no cirugía.
+
+Lo que la variable no evita: los tokens que claude.ai guarda quedan atados al `resource`
+viejo, así que un cambio de URL obliga a cada persona del estudio a reconectar desde
+Settings → Connectors. Se asume a sabiendas; a esta escala la fricción es aceptable.
+
+Si más adelante aparece un dominio propio, además de ser más presentable queda **exento
+del muro de Vercel Authentication**, porque la protección está configurada como “todo
+excepto dominios personalizados”.
 
 ## Fuera de alcance
 
