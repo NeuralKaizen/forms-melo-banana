@@ -1,17 +1,23 @@
 'use client'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { LogoBlock } from '@/components/Brand'
 
-export default function Login() {
+function Login() {
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
+  const params = useSearchParams()
+  // Solo rutas internas: un `next` que empiece con `//` o con un esquema convertiría
+  // el login en un redirector abierto hacia otro dominio.
+  const crudo = params.get('next') ?? ''
+  const destino = crudo.startsWith('/') && !crudo.startsWith('//') ? crudo : '/admin'
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true); setError(false)
     const r = await fetch('/api/admin/login', { method: 'POST', body: JSON.stringify({ pw }), headers: { 'content-type': 'application/json' } })
-    if (r.ok) { location.href = '/admin'; return }
+    if (r.ok) { location.href = destino; return }
     setBusy(false); setError(true)
   }
 
@@ -39,5 +45,13 @@ export default function Login() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <Login />
+    </Suspense>
   )
 }
