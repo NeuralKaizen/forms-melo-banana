@@ -11,6 +11,10 @@ interface Pedido {
   codeChallenge: string; scope: string
 }
 
+// Lo único que esta app sabe otorgar. Si mañana se suma un scope nuevo, se agrega acá
+// y en `scopes_supported` de metadata.ts — las dos listas tienen que coincidir.
+const SCOPES_PERMITIDOS = ['landscape']
+
 /**
  * Lee y valida el pedido. El redirect_uri se compara contra los registrados *antes*
  * de redirigir a ningún lado: sin eso, cualquiera podría llevarse el código a un
@@ -27,14 +31,24 @@ async function leerPedido(url: URL): Promise<Pedido | { error: string }> {
   if (!codeChallenge) return { error: 'Falta code_challenge' }
 
   const [cliente] = await db.select().from(oauthClients).where(eq(oauthClients.id, clientId))
-  if (!cliente) return { error: 'Cliente desconocido' }
+  // Un solo mensaje para “no existe” y “existe pero el redirect_uri no es suyo”:
+  // distinguirlos es un oráculo que deja probar client_id a ciegas sin autenticarse —
+  // el mismo motivo por el que `canjearCodigo` en store.ts unifica sus rechazos.
+  const clienteORedirectInvalidos = { error: 'El client_id o el redirect_uri no son válidos' }
+  if (!cliente) return clienteORedirectInvalidos
   if (!(cliente.redirectUris as string[]).includes(redirectUri))
-    return { error: 'El redirect_uri no está registrado para este cliente' }
+    return clienteORedirectInvalidos
+
+  // El scope pedido se filtra contra lo permitido y se queda con la intersección — no
+  // se rechaza el pedido entero por pedir de más. Lo que importa es que lo que se
+  // otorga sea siempre lo que la pantalla de consentimiento describe.
+  const pedidos = (url.searchParams.get('scope') ?? '').split(' ').filter(Boolean)
+  const otorgados = pedidos.filter(s => SCOPES_PERMITIDOS.includes(s))
 
   return {
     clientId, redirectUri, codeChallenge,
     state: url.searchParams.get('state') ?? '',
-    scope: url.searchParams.get('scope') || 'landscape',
+    scope: otorgados.length ? otorgados.join(' ') : 'landscape',
   }
 }
 

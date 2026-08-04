@@ -84,6 +84,17 @@ describe('POST /api/oauth/register', () => {
     const body = await res.json()
     expect(body.error).toBe('invalid_redirect_uri')
   })
+
+  it('con un redirect_uri que no es https devuelve 400 (rama ErrorOAuth)', async () => {
+    const res = await registerPOST(req('http://localhost/api/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ redirect_uris: ['http://evil.example/cb'] }),
+    }))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('invalid_redirect_uri')
+  })
 })
 
 describe('POST /api/oauth/token', () => {
@@ -147,6 +158,49 @@ describe('GET/POST /api/oauth/authorize — validaciones', () => {
     const res = await authorizeGET(req(url))
     expect(res.status).toBe(400)
     expect(res.headers.get('location')).toBeNull()
+  })
+
+  it('un client_id inexistente y un redirect_uri no registrado dan la misma respuesta ' +
+    '(sin eso, alguien sin sesión podría probar qué client_id existe)', async () => {
+    const { body: cliente } = await registrarViaRuta()
+
+    const urlClienteInexistente = `http://localhost/api/oauth/authorize?client_id=cli_no_existe` +
+      `&redirect_uri=${encodeURIComponent(CALLBACK)}&code_challenge=xyz&code_challenge_method=S256`
+    const resClienteInexistente = await authorizeGET(req(urlClienteInexistente))
+
+    const urlRedirectNoRegistrado = `http://localhost/api/oauth/authorize?client_id=${cliente.client_id}` +
+      `&redirect_uri=${encodeURIComponent('https://atacante.example/cb')}` +
+      `&code_challenge=xyz&code_challenge_method=S256`
+    const resRedirectNoRegistrado = await authorizeGET(req(urlRedirectNoRegistrado))
+
+    expect(resClienteInexistente.status).toBe(resRedirectNoRegistrado.status)
+    const [bodyA, bodyB] = await Promise.all([resClienteInexistente.json(), resRedirectNoRegistrado.json()])
+    expect(bodyA.error).toBe(bodyB.error)
+  })
+
+  it('con scope=landscape%20admin otorga solo landscape (no rechaza, filtra)', async () => {
+    const { body: cliente } = await registrarViaRuta()
+    const { verifier, challenge } = pkce()
+    cookieJar.set('admin', ADMIN_PW)
+
+    const url = `http://localhost/api/oauth/authorize?client_id=${cliente.client_id}` +
+      `&redirect_uri=${encodeURIComponent(CALLBACK)}&code_challenge=${challenge}` +
+      `&code_challenge_method=S256&scope=${encodeURIComponent('landscape admin')}`
+    const autorizado = await authorizePOST(req(url, { method: 'POST' }))
+    expect(autorizado.status).toBe(303)
+    const codigo = new URL(autorizado.headers.get('location')!).searchParams.get('code')
+
+    const canje = await tokenPOST(req('http://localhost/api/oauth/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code', code: codigo!, redirect_uri: CALLBACK,
+        client_id: cliente.client_id, code_verifier: verifier,
+      }).toString(),
+    }))
+    expect(canje.status).toBe(200)
+    const tokens = await canje.json()
+    expect(tokens.scope).toBe('landscape')
   })
 })
 

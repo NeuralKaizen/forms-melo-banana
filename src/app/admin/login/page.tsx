@@ -3,21 +3,39 @@ import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { LogoBlock } from '@/components/Brand'
 
+/**
+ * Solo destinos internos: comparar orígenes en vez de filtrar por prefijos de texto.
+ * `crudo.startsWith('/') && !crudo.startsWith('//')` deja pasar `/\evil.com` — los
+ * navegadores normalizan la barra invertida a barra normal en esquemas especiales, así
+ * que `location.href` termina navegando a otro dominio igual. Resolver contra el origen
+ * actual y comparar orígenes cierra ese agujero, y de paso también `javascript:` y
+ * cualquier esquema que no sea el de esta app.
+ */
+export function destinoSeguro(crudo: string, origin: string): string {
+  // Sin `next` (el caso normal: entrar al panel sin venir de /authorize), `new URL('', origin)`
+  // resuelve igual — a la raíz del origen, no a /admin — así que hay que cortar antes.
+  if (!crudo) return '/admin'
+  try {
+    const u = new URL(crudo, origin)
+    if (u.origin === origin) return u.pathname + u.search + u.hash
+  } catch { /* URL inválida: cae a /admin */ }
+  return '/admin'
+}
+
 function Login() {
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
   const params = useSearchParams()
-  // Solo rutas internas: un `next` que empiece con `//` o con un esquema convertiría
-  // el login en un redirector abierto hacia otro dominio.
   const crudo = params.get('next') ?? ''
-  const destino = crudo.startsWith('/') && !crudo.startsWith('//') ? crudo : '/admin'
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true); setError(false)
     const r = await fetch('/api/admin/login', { method: 'POST', body: JSON.stringify({ pw }), headers: { 'content-type': 'application/json' } })
-    if (r.ok) { location.href = destino; return }
+    // `window` no existe durante el render del servidor: el origen se calcula acá, no
+    // en el cuerpo del componente.
+    if (r.ok) { location.href = destinoSeguro(crudo, window.location.origin); return }
     setBusy(false); setError(true)
   }
 
