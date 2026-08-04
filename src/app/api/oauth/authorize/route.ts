@@ -8,7 +8,7 @@ import { crearCodigo } from '@/lib/oauth/store'
 
 interface Pedido {
   clientId: string; redirectUri: string; state: string
-  codeChallenge: string; scope: string
+  codeChallenge: string; scope: string; clientName: string | null
 }
 
 // Lo único que esta app sabe otorgar. Si mañana se suma un scope nuevo, se agrega acá
@@ -49,12 +49,25 @@ async function leerPedido(url: URL): Promise<Pedido | { error: string }> {
     clientId, redirectUri, codeChallenge,
     state: url.searchParams.get('state') ?? '',
     scope: otorgados.length ? otorgados.join(' ') : 'landscape',
+    clientName: cliente.name ?? null,
   }
 }
 
-function pantalla(url: URL): Response {
-  // La app no tiene identidad de usuario: quien pasó el login del panel es quien
-  // consiente. Por eso alcanza con un botón.
+/** Escapa texto para insertarlo en HTML: `clientName` y el host salen de datos que
+ * cualquiera puede registrar vía `/api/oauth/register`, así que no son de confiar. */
+function escaparHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+/**
+ * `/api/oauth/register` es público: cualquiera puede registrar un cliente con su propio
+ * redirect_uri y mandarle este link a alguien del estudio. Si la pantalla no dice a
+ * quién y a qué dominio se le da acceso, es indistinguible de la legítima — y el código
+ * de autorización termina en el dominio de quien registró el cliente, no en Claude.
+ */
+function pantalla(redirectUri: string, clientName: string | null): Response {
+  const host = escaparHtml(new URL(redirectUri).host)
+  const nombre = clientName?.trim() ? `“${escaparHtml(clientName.trim())}”` : 'una aplicación sin nombre declarado'
   const html = `<!doctype html><html lang="es"><meta charset="utf-8">
 <title>Conectar con Claude</title>
 <style>
@@ -63,11 +76,18 @@ function pantalla(url: URL): Response {
   h1 { font-size: 1.35rem; margin-bottom: .5rem }
   p { color: #555 }
   ul { color: #555 }
+  .quien { border-radius: .6rem; background: #f4f4f4; padding: .9rem 1.1rem; margin: 1rem 0 }
+  .host { font-weight: 600; color: #1a1a1a }
   button { font: inherit; padding: .7rem 1.4rem; border: 0; border-radius: .5rem;
            background: #1a1a1a; color: #fff; cursor: pointer; margin-top: 1.5rem }
 </style>
 <h1>Conectar Claude con la plataforma</h1>
-<p>Claude va a poder:</p>
+<div class="quien">
+  <p>Está pidiendo acceso <strong>${nombre}</strong>, que va a volver a
+  <span class="host">“${host}”</span> con el código de autorización.</p>
+  <p>Si no reconocés ese dominio, cerrá esta pantalla sin conectar — es a dónde va a ir el acceso.</p>
+</div>
+<p>De aprobar, va a poder:</p>
 <ul>
   <li>leer los proyectos, las entrevistas y el estado del landscape;</li>
   <li>escribir <strong>borradores</strong> de etapas.</li>
@@ -89,7 +109,7 @@ export async function GET(req: Request) {
     destino.searchParams.set('next', url.pathname + url.search)
     return NextResponse.redirect(destino)
   }
-  return pantalla(url)
+  return pantalla(pedido.redirectUri, pedido.clientName)
 }
 
 export async function POST(req: Request) {

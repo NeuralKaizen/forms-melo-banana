@@ -204,6 +204,55 @@ describe('GET/POST /api/oauth/authorize — validaciones', () => {
   })
 })
 
+describe('GET /api/oauth/authorize — pantalla de consentimiento', () => {
+  it('muestra el nombre del cliente registrado y el host del redirect_uri', async () => {
+    const { body: cliente } = await registrarViaRuta()
+    cookieJar.set('admin', ADMIN_PW)
+
+    const url = `http://localhost/api/oauth/authorize?client_id=${cliente.client_id}` +
+      `&redirect_uri=${encodeURIComponent(CALLBACK)}&code_challenge=xyz&code_challenge_method=S256`
+    const res = await authorizeGET(req(url))
+    expect(res.status).toBe(200)
+    const html = await res.text()
+    // `registrarViaRuta` registra el cliente con client_name: 'prueba'.
+    expect(html).toContain('prueba')
+    expect(html).toContain(new URL(CALLBACK).host)
+  })
+
+  it('sin client_name declarado, muestra un texto neutro pero igual el host', async () => {
+    const res = await registerPOST(req('http://localhost/api/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ redirect_uris: [CALLBACK] }),
+    }))
+    const cliente = await res.json()
+    cookieJar.set('admin', ADMIN_PW)
+
+    const url = `http://localhost/api/oauth/authorize?client_id=${cliente.client_id}` +
+      `&redirect_uri=${encodeURIComponent(CALLBACK)}&code_challenge=xyz&code_challenge_method=S256`
+    const html = await (await authorizeGET(req(url))).text()
+    expect(html).toContain(new URL(CALLBACK).host)
+    expect(html).not.toContain('undefined')
+    expect(html).not.toContain('null')
+  })
+
+  it('un client_name con HTML no se inyecta sin escapar (queda como texto)', async () => {
+    const res = await registerPOST(req('http://localhost/api/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ redirect_uris: [CALLBACK], client_name: '<script>alert(1)</script>' }),
+    }))
+    const cliente = await res.json()
+    cookieJar.set('admin', ADMIN_PW)
+
+    const url = `http://localhost/api/oauth/authorize?client_id=${cliente.client_id}` +
+      `&redirect_uri=${encodeURIComponent(CALLBACK)}&code_challenge=xyz&code_challenge_method=S256`
+    const html = await (await authorizeGET(req(url))).text()
+    expect(html).not.toContain('<script>alert(1)</script>')
+    expect(html).toContain('&lt;script&gt;')
+  })
+})
+
 describe('flujo completo: registrar → autorizar → canjear', () => {
   it('registra, crea código con la cookie admin puesta, lo canjea y obtiene tokens; ' +
     'canjear el mismo código dos veces falla la segunda', async () => {

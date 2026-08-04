@@ -86,7 +86,11 @@ export async function estadoLandscape(db: AnyDb, ref: string) {
       titulo: STAGE_LABEL[e.stage],
       estado: e.status,
       versiones: e.versiones,
-      hayBorradorEsperandoAprobacion: e.borradorNuevo !== null,
+      // Tiene que significar "hay trabajo sin aprobar esperando el gate humano", no
+      // solo "hay un borrador nuevo sobre algo ya aprobado" (`borradorNuevo` es eso
+      // último: null también cuando la etapa todavía no tiene ninguna aprobada, aunque
+      // sí tenga un borrador esperando la primera aprobación).
+      hayBorradorEsperandoAprobacion: e.versiones > 0 && (!e.aprobada || e.borradorNuevo !== null),
       bloqueo: bloqueoDe(e.stage, e.status, e.versiones),
     })),
   }

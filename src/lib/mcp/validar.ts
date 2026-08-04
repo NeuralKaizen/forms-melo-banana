@@ -1,4 +1,4 @@
-import { EJES, type StageKey } from '@/lib/landscape/stages'
+import { EJES, MAX_TENDENCIAS, MIN_TENDENCIAS, type StageKey } from '@/lib/landscape/stages'
 import { ErrorDeHerramienta } from './errores'
 
 /**
@@ -23,9 +23,12 @@ export function validarContenidoEtapa(etapa: StageKey, contenido: unknown): void
       'y se hace desde el panel. Mandá solo la long list en “candidatas”.',
     )
 
-  if (!Array.isArray(candidatas) || candidatas.length === 0)
+  if (!Array.isArray(candidatas) || candidatas.length < MIN_TENDENCIAS)
     throw new ErrorDeHerramienta(
-      'La etapa Tendencias necesita “candidatas”: una lista con la long list completa. ' +
+      'La etapa Tendencias necesita “candidatas”: una lista con la long list completa, de ' +
+      `al menos ${MIN_TENDENCIAS} tendencias — de esa lista el equipo elige entre ` +
+      `${MIN_TENDENCIAS} y ${MAX_TENDENCIAS} desde el panel, así que tiene que haber ` +
+      'al menos esa cantidad. ' +
       'Cada tendencia lleva id, eje, titulo, descripcion y fuentes.',
     )
 
@@ -51,5 +54,29 @@ export function validarContenidoEtapa(etapa: StageKey, contenido: unknown): void
     for (const campo of ['titulo', 'descripcion'] as const)
       if (typeof t[campo] !== 'string' || !(t[campo] as string).trim())
         throw new ErrorDeHerramienta(`A la candidata “${t.id}” le falta “${campo}”.`)
+
+    // El panel recorre `fuentes` sin guarda al renderizar (`t.fuentes.map(...)`): sin
+    // este chequeo, una candidata sin `fuentes` o con `fuentes` mal formada no rompe
+    // acá, rompe en el navegador de quien abre el gate, y ahí ya no hay vuelta atrás
+    // fácil. Puede venir vacía — el panel mapea sobre un array vacío sin problema.
+    if (!Array.isArray(t.fuentes))
+      throw new ErrorDeHerramienta(
+        `A la candidata “${t.id}” le falta “fuentes” como array (puede ir vacío: []).`,
+      )
+    t.fuentes.forEach((f, j) => {
+      if (typeof f !== 'object' || f === null)
+        throw new ErrorDeHerramienta(
+          `La fuente ${j + 1} de la candidata “${t.id}” tiene que ser un objeto.`,
+        )
+      const fuente = f as Record<string, unknown>
+      if (typeof fuente.doc !== 'string' || !fuente.doc.trim())
+        throw new ErrorDeHerramienta(
+          `La fuente ${j + 1} de la candidata “${t.id}” necesita “doc” de texto no vacío.`,
+        )
+      if (fuente.pagina !== undefined && typeof fuente.pagina !== 'number')
+        throw new ErrorDeHerramienta(
+          `La fuente ${j + 1} de la candidata “${t.id}” tiene “pagina”, pero no es un número.`,
+        )
+    })
   })
 }

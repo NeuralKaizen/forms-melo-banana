@@ -120,4 +120,25 @@ describe('mcp · herramientas', () => {
     expect(tendencias.bloqueo).not.toContain('elija 4 o 5')
     expect(tendencias.bloqueo).toContain('Todavía no hay una long list')
   })
+
+  it('estado_landscape no se contradice: hayBorradorEsperandoAprobacion coincide con el bloqueo', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Fruta Viva')
+
+    // Etapa vacía: nada esperando.
+    const vacio = (await estadoLandscape(db, 'Fruta Viva')).etapas.find(e => e.etapa === 'contexto')!
+    expect(vacio.hayBorradorEsperandoAprobacion).toBe(false)
+
+    // Borrador guardado, todavía sin aprobar: sí está esperando el gate.
+    await guardarEtapa(db, { proyecto: 'Fruta Viva', etapa: 'contexto', contenido: { datos: 'x' } })
+    const conBorrador = (await estadoLandscape(db, 'Fruta Viva')).etapas.find(e => e.etapa === 'contexto')!
+    expect(conBorrador.hayBorradorEsperandoAprobacion).toBe(true)
+
+    // Aprobada, y encima llega un borrador más nuevo: sigue esperando el gate.
+    const versiones = await listLandscapeVersions(db, p.id, 'contexto')
+    await approveLandscapeVersion(db, versiones[0].id, { projectId: p.id, stage: 'contexto' })
+    await guardarEtapa(db, { proyecto: 'Fruta Viva', etapa: 'contexto', contenido: { datos: 'y' } })
+    const aprobadaConBorradorNuevo = (await estadoLandscape(db, 'Fruta Viva')).etapas.find(e => e.etapa === 'contexto')!
+    expect(aprobadaConBorradorNuevo.hayBorradorEsperandoAprobacion).toBe(true)
+  })
 })
