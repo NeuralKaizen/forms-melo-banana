@@ -79,11 +79,11 @@ Va primera porque todo lo demás agrega tablas, y el 2026-07-31 el deploy salió
 
 Run: `npx drizzle-kit generate`
 
-Esto crea `drizzle/0000_<nombre>.sql` con las **siete tablas que ya existen** en Neon, más `drizzle/meta/`. No lo apliques todavía.
+Esto crea `drizzle/0000_<nombre>.sql` con las **seis tablas que ya existen** en Neon, más `drizzle/meta/`. No lo apliques todavía.
 
 - [ ] **Step 2: Hacer idempotente la migración 0000**
 
-Producción ya tiene esas siete tablas con datos reales (5 proyectos, 16 sesiones, 221 respuestas, 3 entregables). Aplicar el archivo tal cual falla con “ya existe”.
+Producción ya tiene esas seis tablas con datos reales (5 proyectos, 16 sesiones, 221 respuestas, 3 entregables). Aplicar el archivo tal cual falla con “ya existe”.
 
 Edita `drizzle/0000_<nombre>.sql`:
 

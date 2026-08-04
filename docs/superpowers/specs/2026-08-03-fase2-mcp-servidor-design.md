@@ -180,7 +180,7 @@ es un paso manual que alguien tiene que acordarse de correr. Hoy `drizzle/` no e
 
 Se crea `drizzle/` con migraciones versionadas aplicadas en el build.
 
-**El detalle que hay que hacer bien:** las siete tablas actuales ya existen con datos
+**El detalle que hay que hacer bien:** las seis tablas actuales ya existen con datos
 reales (5 proyectos, 16 sesiones, 221 respuestas, 3 entregables). `drizzle-kit generate` va
 a producir una primera migración que las crea todas, y correrla contra producción falla con
 “ya existe”. Esa primera migración se marca como **ya aplicada** en producción en vez de
