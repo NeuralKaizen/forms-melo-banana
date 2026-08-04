@@ -3,10 +3,17 @@ import {
   listProjectsWithCounts, getProjectWithSessions, getSessionWithAnswers, getDeliverable,
   landscapeState, summarizeLandscape, saveLandscapeVersion,
 } from '@/lib/db/store'
+import { sessions, answers } from '@/lib/db/schema'
 import { STAGE_LABEL, STAGE_ORDER, type StageKey } from '@/lib/landscape/stages'
 import { ErrorDeHerramienta } from './errores'
 import { resolverProyecto } from './resolver'
 import { validarContenidoEtapa } from './validar'
+
+// `AnyDb` hace que todo lo que sale del store llegue tipado `any`: estas dos anotan el
+// parámetro de cada `.map` con el tipo real de la fila, así un nombre de campo mal escrito
+// (`a.normalizedTxt`) sigue marcando error de tipos en vez de devolver `undefined` en silencio.
+type SessionRow = typeof sessions.$inferSelect
+type AnswerRow = typeof answers.$inferSelect
 
 export async function listarProyectos(db: AnyDb) {
   const proyectos = await listProjectsWithCounts(db)
@@ -33,12 +40,18 @@ export async function contextoProyecto(db: AnyDb, ref: string) {
 
   // `getProjectWithSessions` trae las sesiones sin sus respuestas: sin este paso las
   // entrevistas llegarían vacías, que es justamente el material que Claude necesita.
+  //
+  // Se seleccionan los campos a mano, no se esparce la fila (`...s`): la fila trae
+  // `email`, un dato personal del entrevistado que no aporta nada al análisis y no
+  // tiene por qué salir de la base hacia el chat.
   const entrevistas = await Promise.all(
-    ((proyecto?.sessions ?? []) as { id: string }[]).map(async s => {
+    (proyecto?.sessions ?? []).map(async (s: SessionRow) => {
       const conRespuestas = await getSessionWithAnswers(db, s.id)
       return {
-        ...s,
-        respuestas: (conRespuestas?.answers ?? []).map((a: Record<string, unknown>) => ({
+        nombre: s.name,
+        empresa: s.company,
+        rol: s.role,
+        respuestas: (conRespuestas?.answers ?? []).map((a: AnswerRow) => ({
           pregunta: a.questionId,
           // La normalizada es la que se leyó y limpió; la cruda es el respaldo.
           texto: a.normalizedText ?? a.rawText,
@@ -74,13 +87,24 @@ export async function estadoLandscape(db: AnyDb, ref: string) {
       estado: e.status,
       versiones: e.versiones,
       hayBorradorEsperandoAprobacion: e.borradorNuevo !== null,
-      bloqueo: bloqueoDe(e.stage, e.status),
+      bloqueo: bloqueoDe(e.stage, e.status, e.versiones),
     })),
   }
 }
 
-function bloqueoDe(stage: StageKey, status: string): string | null {
+function bloqueoDe(stage: StageKey, status: string, versiones: number): string | null {
   if (status === 'aprobada' || status === 'no_aplica') return null
+
+  // Con cero versiones no hay nada que aprobar ni que elegir todavía: el bloqueo real
+  // es que la etapa no arrancó. Sin esta rama, un proyecto recién creado —seis etapas
+  // en 'pendiente', cero versiones cada una— devolvía “apruebe una versión desde el
+  // panel” para las seis, y Claude se lo repetía a la persona en el chat mandándola a
+  // aprobar algo que todavía no existe.
+  if (versiones === 0)
+    return stage === 'tendencias'
+      ? 'Todavía no hay una long list de tendencias escrita.'
+      : `Todavía no hay ningún borrador de ${STAGE_LABEL[stage]} escrito.`
+
   if (stage === 'tendencias')
     return 'Necesita que el equipo elija 4 o 5 tendencias de la long list, desde el panel.'
   return 'Necesita que el equipo apruebe una versión desde el panel.'
