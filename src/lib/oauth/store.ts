@@ -13,6 +13,7 @@ export class ErrorOAuth extends Error {
 
 const VIDA_CODIGO_MS = 10 * 60_000
 const VIDA_ACCESS_S = 3600
+const VIDA_REFRESH_MS = 30 * 24 * 3600_000
 
 export async function registrarCliente(
   db: AnyDb, d: { redirectUris: string[]; name?: string },
@@ -34,6 +35,15 @@ export async function crearCodigo(db: AnyDb, d: {
   clientId: string; redirectUri: string; codeChallenge: string; scope: string; ahora?: Date
 }): Promise<string> {
   const ahora = d.ahora ?? new Date()
+
+  // El client_id es público — cualquiera puede arrancar una autorización con el id de un
+  // conector legítimo. Sin exigir que el redirect_uri sea uno de los registrados, el
+  // código termina en la URL de quien lo pidió, no en la del dueño real del client_id.
+  const [cliente] = await db.select().from(oauthClients).where(eq(oauthClients.id, d.clientId))
+  if (!cliente) throw new ErrorOAuth('invalid_client', 'El client_id no existe')
+  if (!cliente.redirectUris.includes(d.redirectUri))
+    throw new ErrorOAuth('invalid_redirect_uri', 'El redirect_uri no está registrado para este cliente')
+
   const codigo = nuevoToken()
   await db.insert(oauthCodes).values({
     code: hashear(codigo),
@@ -86,6 +96,7 @@ export async function emitirTokens(db: AnyDb, d: {
     clientId: d.clientId,
     scope: d.scope,
     accessExpiresAt: new Date(ahora.getTime() + VIDA_ACCESS_S * 1000),
+    refreshExpiresAt: new Date(ahora.getTime() + VIDA_REFRESH_MS),
   })
   return { accessToken, refreshToken, expiresIn: VIDA_ACCESS_S }
 }
@@ -98,7 +109,19 @@ export async function rotarRefresh(db: AnyDb, refreshToken: string, d: {
     .where(eq(oauthTokens.refreshHash, hashear(refreshToken)))
 
   const malo = () => new ErrorOAuth('invalid_grant', 'El refresh token no es válido o ya se usó')
-  if (!fila || fila.revokedAt || fila.clientId !== d.clientId) throw malo()
+  if (!fila || fila.clientId !== d.clientId) throw malo()
+
+  if (fila.revokedAt) {
+    // Reuso de un refresh ya rotado: puede ser el dueño legítimo perdiendo la carrera
+    // contra quien lo robó, o quien lo robó mismo. En los dos casos tratamos la familia
+    // entera del cliente como comprometida y la matamos entera — RFC 9700 §4.14.2 — en
+    // vez de dejar vivos los tokens que salieron de esa rotación.
+    await db.update(oauthTokens)
+      .set({ revokedAt: ahora })
+      .where(and(eq(oauthTokens.clientId, fila.clientId), isNull(oauthTokens.revokedAt)))
+    throw malo()
+  }
+  if (fila.refreshExpiresAt && fila.refreshExpiresAt <= ahora) throw malo()
 
   // Revocar con `revoked_at is null` en el WHERE, por lo mismo que el código: dos
   // refresh simultáneos con el mismo token no pueden emitir dos pares de tokens.

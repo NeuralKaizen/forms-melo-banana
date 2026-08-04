@@ -76,6 +76,7 @@ export async function makeTestDb() {
       client_id text NOT NULL,
       scope text NOT NULL,
       access_expires_at timestamptz NOT NULL,
+      refresh_expires_at timestamptz,
       revoked_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now()
     );

@@ -96,6 +96,7 @@ export const oauthTokens = pgTable('oauth_tokens', {
   clientId: text('client_id').notNull(),
   scope: text('scope').notNull(),
   accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }).notNull(),
+  refreshExpiresAt: timestamp('refresh_expires_at', { withTimezone: true }),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })

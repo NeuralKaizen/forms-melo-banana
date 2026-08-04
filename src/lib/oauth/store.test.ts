@@ -118,4 +118,85 @@ describe('oauth · store', () => {
     await expect(registrarCliente(db, { redirectUris: ['http://evil.example/cb'] }))
       .rejects.toThrow(ErrorOAuth)
   })
+
+  it('rechaza crear un código con un redirect_uri no registrado para el cliente', async () => {
+    const db = await makeTestDb()
+    const cliente = await registrarCliente(db, { redirectUris: [CALLBACK] })
+    await expect(crearCodigo(db, {
+      clientId: cliente.id, redirectUri: 'https://atacante.example/cb',
+      codeChallenge: 'x', scope: 'landscape',
+    })).rejects.toThrow(ErrorOAuth)
+  })
+
+  it('rechaza crear un código para un client_id que no existe', async () => {
+    const db = await makeTestDb()
+    await expect(crearCodigo(db, {
+      clientId: 'cli_inventado', redirectUri: CALLBACK, codeChallenge: 'x', scope: 'landscape',
+    })).rejects.toThrow(ErrorOAuth)
+  })
+
+  it('un cliente no puede canjear el código de otro', async () => {
+    const db = await makeTestDb()
+    const { verifier, codigo } = await clienteConCodigo(db)
+    const otro = await registrarCliente(db, { redirectUris: [CALLBACK] })
+    await expect(canjearCodigo(db, codigo, {
+      clientId: otro.id, redirectUri: CALLBACK, codeVerifier: verifier,
+    })).rejects.toThrow(ErrorOAuth)
+  })
+
+  it('de dos canjes concurrentes del mismo código, exactamente uno gana', async () => {
+    const db = await makeTestDb()
+    const { cliente, verifier, codigo } = await clienteConCodigo(db)
+    const d = { clientId: cliente.id, redirectUri: CALLBACK, codeVerifier: verifier }
+    const resultados = await Promise.allSettled([
+      canjearCodigo(db, codigo, d),
+      canjearCodigo(db, codigo, d),
+    ])
+    const ganadores = resultados.filter((r) => r.status === 'fulfilled')
+    const perdedores = resultados.filter((r) => r.status === 'rejected')
+    expect(ganadores).toHaveLength(1)
+    expect(perdedores).toHaveLength(1)
+  })
+
+  it('de dos rotaciones concurrentes del mismo refresh, exactamente una gana', async () => {
+    const db = await makeTestDb()
+    const cliente = await registrarCliente(db, { redirectUris: [CALLBACK] })
+    const primero = await emitirTokens(db, { clientId: cliente.id, scope: 'landscape' })
+    const resultados = await Promise.allSettled([
+      rotarRefresh(db, primero.refreshToken, { clientId: cliente.id }),
+      rotarRefresh(db, primero.refreshToken, { clientId: cliente.id }),
+    ])
+    const ganadores = resultados.filter((r) => r.status === 'fulfilled')
+    const perdedores = resultados.filter((r) => r.status === 'rejected')
+    expect(ganadores).toHaveLength(1)
+    expect(perdedores).toHaveLength(1)
+  })
+
+  it('reusar un refresh ya rotado revoca toda la familia del cliente', async () => {
+    const db = await makeTestDb()
+    const cliente = await registrarCliente(db, { redirectUris: [CALLBACK] })
+    const primero = await emitirTokens(db, { clientId: cliente.id, scope: 'landscape' })
+    const segundo = await rotarRefresh(db, primero.refreshToken, { clientId: cliente.id })
+    expect(await verificarAccessToken(db, segundo.accessToken)).not.toBeNull()
+
+    // Reuso del refresh ya rotado: alguien —el dueño legítimo perdiendo la carrera, o
+    // quien lo robó— presenta un token que ya murió al rotar.
+    await expect(rotarRefresh(db, primero.refreshToken, { clientId: cliente.id }))
+      .rejects.toThrow(ErrorOAuth)
+
+    // La familia entera queda muerta, incluido el access token que había salido de la
+    // rotación legítima: no alcanza con matar solo el refresh reusado.
+    expect(await verificarAccessToken(db, segundo.accessToken)).toBeNull()
+    await expect(rotarRefresh(db, segundo.refreshToken, { clientId: cliente.id }))
+      .rejects.toThrow(ErrorOAuth)
+  })
+
+  it('rechaza un refresh vencido', async () => {
+    const db = await makeTestDb()
+    const cliente = await registrarCliente(db, { redirectUris: [CALLBACK] })
+    const primero = await emitirTokens(db, { clientId: cliente.id, scope: 'landscape' })
+    const en31Dias = new Date(Date.now() + 31 * 24 * 3600_000)
+    await expect(rotarRefresh(db, primero.refreshToken, { clientId: cliente.id, ahora: en31Dias }))
+      .rejects.toThrow(ErrorOAuth)
+  })
 })
