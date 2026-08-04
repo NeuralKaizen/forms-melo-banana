@@ -9,7 +9,7 @@ import {
   approveLandscapeVersion, getCurrentVersion, selectTendencias,
   landscapeState, listLandscapeActivity, summarizeLandscape, ErrorDeValidacion, ErrorNoEncontrado,
 } from './store'
-import { answers, landscapeStages, landscapeVersions } from './schema'
+import { answers, landscapeStages, landscapeVersions, oauthClients, oauthCodes, oauthTokens } from './schema'
 
 type AnswerRow = typeof answers.$inferSelect
 
@@ -561,5 +561,27 @@ describe('landscape · zona horaria', () => {
       if (tzOriginal === undefined) delete process.env.TZ
       else process.env.TZ = tzOriginal
     }
+  })
+})
+
+describe('oauth · esquema', () => {
+  it('guarda un cliente y lo lee de vuelta', async () => {
+    const db = await makeTestDb()
+    const [c] = await db.insert(oauthClients).values({
+      id: 'cli_1',
+      redirectUris: ['https://claude.ai/api/mcp/auth_callback'],
+    }).returning()
+    expect(c.secretHash).toBeNull()
+    expect(c.redirectUris).toEqual(['https://claude.ai/api/mcp/auth_callback'])
+  })
+
+  it('el access hash es único', async () => {
+    const db = await makeTestDb()
+    const fila = {
+      accessHash: 'h1', clientId: 'cli_1', scope: 'landscape',
+      accessExpiresAt: new Date(Date.now() + 3600_000),
+    }
+    await db.insert(oauthTokens).values(fila)
+    await expect(db.insert(oauthTokens).values(fila)).rejects.toThrow()
   })
 })

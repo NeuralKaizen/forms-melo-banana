@@ -65,3 +65,37 @@ export const landscapeVersions = pgTable('landscape_versions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   approvedAt: timestamp('approved_at', { withTimezone: true }),
 }, (t) => [index('landscape_versions_project_stage').on(t.projectId, t.stage)])
+
+// Fase 2 · OAuth. La app es su propio servidor de autorización para el conector de
+// claude.ai. Ver docs/superpowers/specs/2026-08-03-fase2-mcp-servidor-design.md
+//
+// Nada se guarda en claro: `secret_hash`, `code`, `access_hash` y `refresh_hash` son
+// sha256 del valor real. Si la base se filtra, no hay credencial utilizable adentro.
+export const oauthClients = pgTable('oauth_clients', {
+  id: text('id').primaryKey(),
+  secretHash: text('secret_hash'),                    // null = cliente público (el caso de DCR)
+  name: text('name'),
+  redirectUris: jsonb('redirect_uris').notNull().$type<string[]>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const oauthCodes = pgTable('oauth_codes', {
+  code: text('code').primaryKey(),                    // hasheado
+  clientId: text('client_id').notNull(),
+  redirectUri: text('redirect_uri').notNull(),
+  codeChallenge: text('code_challenge').notNull(),    // PKCE S256
+  scope: text('scope').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+})
+
+export const oauthTokens = pgTable('oauth_tokens', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  accessHash: text('access_hash').notNull().unique(),
+  refreshHash: text('refresh_hash').unique(),
+  clientId: text('client_id').notNull(),
+  scope: text('scope').notNull(),
+  accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})

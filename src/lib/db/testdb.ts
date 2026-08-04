@@ -53,6 +53,32 @@ export async function makeTestDb() {
       approved_at timestamptz
     );
     CREATE INDEX landscape_versions_project_stage ON landscape_versions (project_id, stage);
+    CREATE TABLE oauth_clients (
+      id text PRIMARY KEY,
+      secret_hash text,
+      name text,
+      redirect_uris jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE oauth_codes (
+      code text PRIMARY KEY,
+      client_id text NOT NULL,
+      redirect_uri text NOT NULL,
+      code_challenge text NOT NULL,
+      scope text NOT NULL,
+      expires_at timestamptz NOT NULL,
+      used_at timestamptz
+    );
+    CREATE TABLE oauth_tokens (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      access_hash text NOT NULL UNIQUE,
+      refresh_hash text UNIQUE,
+      client_id text NOT NULL,
+      scope text NOT NULL,
+      access_expires_at timestamptz NOT NULL,
+      revoked_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
   `)
   return db
 }
