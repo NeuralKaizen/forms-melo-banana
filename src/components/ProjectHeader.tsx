@@ -73,10 +73,18 @@ function StepLink({ phase, dir }: { phase: Phase | null; dir: 'prev' | 'next' })
 export function ProjectHeader({ name, phases, active }: {
   name: string
   phases: Phase[]
-  active: PhaseKey
+  /**
+   * 'estrategia' (fase 3) todavía no es una fase de `derivePhases` — el pipeline de
+   * fases no se toca en esa tarea. El link de acá al lado se arma aparte, sin pasar
+   * por `neighbours`/`dependencia`, que solo conocen las cinco fases de siempre.
+   */
+  active: PhaseKey | 'estrategia'
 }) {
-  const dependencia = phases.find(p => p.key === active)?.dependencia
-  const { prev, next } = neighbours(phases, active)
+  const dependencia = active === 'estrategia' ? undefined : phases.find(p => p.key === active)?.dependencia
+  const { prev, next } = active === 'estrategia' ? { prev: null, next: null } : neighbours(phases, active)
+  // El landscape siempre está en `phases` (las cinco fases se devuelven siempre), así
+  // que su href es la forma más simple de llegar al proyecto sin agregar un prop nuevo.
+  const estrategiaHref = phases.find(p => p.key === 'landscape')?.href.replace(/\/landscape$/, '/estrategia') ?? '#'
 
   return (
     <header className="space-y-5">
@@ -93,13 +101,30 @@ export function ProjectHeader({ name, phases, active }: {
         <h1 className="mt-2 font-serif text-3xl font-medium leading-tight text-ink">{name}</h1>
       </div>
 
-      <nav aria-label="Fases del proyecto" className="flex items-center gap-1 rounded-2xl border border-black/5 bg-white p-2 shadow-sm">
-        <StepLink phase={prev} dir="prev" />
-        <ol className="grid min-w-0 flex-1 grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-5">
-          {phases.map(p => <PhaseCell key={p.key} phase={p} active={p.key === active} />)}
-        </ol>
-        <StepLink phase={next} dir="next" />
-      </nav>
+      <div className="flex flex-wrap items-center gap-2">
+        <nav aria-label="Fases del proyecto" className="flex flex-1 items-center gap-1 rounded-2xl border border-black/5 bg-white p-2 shadow-sm">
+          <StepLink phase={prev} dir="prev" />
+          <ol className="grid min-w-0 flex-1 grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-5">
+            {phases.map(p => <PhaseCell key={p.key} phase={p} active={p.key === active} />)}
+          </ol>
+          <StepLink phase={next} dir="next" />
+        </nav>
+
+        {/* La estrategia (fase 3) vive al lado del pipeline de siempre, no adentro: no es
+            una fase más de `derivePhases` en esta tarea, es la pantalla del bloque
+            siguiente. */}
+        <Link
+          href={estrategiaHref}
+          aria-current={active === 'estrategia' ? 'page' : undefined}
+          className={`flex-none rounded-xl border px-3.5 py-2.5 text-[13px] font-medium transition-colors duration-200 ${
+            active === 'estrategia'
+              ? 'border-[var(--banana)] bg-[#fffdf0] text-ink'
+              : 'border-black/5 bg-white text-[#6b6155] shadow-sm hover:border-black/15 hover:text-ink'
+          }`}
+        >
+          Estrategia
+        </Link>
+      </div>
 
       {dependencia && (
         <p className="flex items-start gap-2 rounded-xl border border-[#f0e3bc] bg-[#fffdf0] px-4 py-3 text-[13px] leading-relaxed text-[#6b5a2a]">
