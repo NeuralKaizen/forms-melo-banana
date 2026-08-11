@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { db } from '@/lib/db/client'
 import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
-import { derivePhases, currentPhase, type Phase, type PhaseStatus } from '@/lib/pipeline/phases'
+import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
+import { deriveGrupos, grupoActual, derivePantallas, type Grupo, type PhaseStatus } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { attentionItems, haceCuanto, type AttentionItem } from '@/lib/pipeline/attention'
 import { AdminShell } from '@/components/AdminShell'
@@ -9,18 +10,18 @@ import { AdminShell } from '@/components/AdminShell'
 export const dynamic = 'force-dynamic'
 
 /**
- * El recorrido del proyecto de un vistazo, sin abrirlo: cinco tramos.
+ * El recorrido del proyecto de un vistazo, sin abrirlo: tres tramos.
  * Amarillo lo aprobado, gris lleno donde está parado, hueco lo que falta.
  */
-function PhaseTrack({ phases, activeKey }: { phases: Phase[]; activeKey: string }) {
+function GrupoTrack({ grupos, activeKey }: { grupos: Grupo[]; activeKey: string }) {
   return (
     <span className="flex w-24 items-center gap-1" aria-hidden="true">
-      {phases.map(p => (
+      {grupos.map(g => (
         <span
-          key={p.key}
+          key={g.key}
           className={`h-1.5 flex-1 rounded-full ${
-            p.status === 'completa' ? 'bg-[var(--banana)]'
-              : p.key === activeKey ? 'bg-[#d9d0ba]'
+            g.status === 'completa' ? 'bg-[var(--banana)]'
+              : g.key === activeKey ? 'bg-[#d9d0ba]'
               : 'bg-[#efe9db]'
           }`}
         />
@@ -72,19 +73,22 @@ const Th = ({ children, className = '' }: { children?: React.ReactNode; classNam
 
 export default async function Admin() {
   const rows = await listProjectsWithCounts(db)
-  // Una lectura de landscapeState por proyecto: la lista no tiene un conteo agregado
-  // (no hay tabla que lo dé de un solo select), y estas dos tablas todavía ni existen
-  // en Neon. Con la cantidad de proyectos de un estudio interno, N+1 no pesa.
+  // Una lectura de landscapeState y de strategyState por proyecto: la lista no tiene un
+  // conteo agregado (no hay tabla que lo dé de un solo select). Con la cantidad de
+  // proyectos de un estudio interno, N+1 no pesa.
   const landscapeByProject = await Promise.all(rows.map(r => landscapeState(db, r.id)))
+  const estrategiaByProject = await Promise.all(rows.map(r => strategyState(db, r.id)))
   const projects = rows.map((r, idx) => {
-    const phases = derivePhases(r.id, projectSignals({
+    const señales = projectSignals({
       sessions: Array.from({ length: r.sessionsTotal }, (_, i) => ({
         status: i < r.sessionsCompleted ? 'completed' : 'in_progress',
       })),
       tieneEntregable: r.tieneEntregable,
       landscape: summarizeLandscape(landscapeByProject[idx]),
-    }))
-    return { ...r, phases, actual: currentPhase(phases) }
+      estrategia: summarizeStrategy(estrategiaByProject[idx]),
+    })
+    const grupos = deriveGrupos(r.id, señales)
+    return { ...r, grupos, actual: grupoActual(grupos), pantallas: derivePantallas(r.id, señales) }
   })
 
   const pendientes = attentionItems(projects)
@@ -168,7 +172,7 @@ export default async function Admin() {
                       </td>
                       <td className="px-5 py-4">
                         <span className="flex justify-end">
-                          <PhaseTrack phases={p.phases} activeKey={p.actual.key} />
+                          <GrupoTrack grupos={p.grupos} activeKey={p.actual.key} />
                         </span>
                       </td>
                     </tr>

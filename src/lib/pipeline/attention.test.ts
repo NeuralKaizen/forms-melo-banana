@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { derivePhases, type ProjectSignals } from './phases'
+import { derivePantallas, type ProjectSignals } from './phases'
 import { attentionItems, haceCuanto, type AttentionInput } from './attention'
 
 const señales = (over: Partial<ProjectSignals> = {}): ProjectSignals => ({
@@ -9,6 +9,8 @@ const señales = (over: Partial<ProjectSignals> = {}): ProjectSignals => ({
   tienePostTaller: false,
   landscapeEtapasAprobadas: 0,
   landscapeEtapasTotal: 6,
+  estrategiaEtapasAprobadas: 0,
+  estrategiaEtapasTotal: 14,
   ...over,
 })
 
@@ -16,7 +18,7 @@ const proyecto = (id: string, name: string, over: Partial<ProjectSignals> = {}, 
   const s = señales(over)
   return {
     id, name,
-    phases: derivePhases(id, s),
+    pantallas: derivePantallas(id, s),
     sessionsTotal: s.sessionsTotal,
     sessionsCompleted: s.sessionsCompleted,
     tieneEntregable: s.tieneEntregable,

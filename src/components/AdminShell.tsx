@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { db } from '@/lib/db/client'
 import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
-import { derivePhases, currentPhase } from '@/lib/pipeline/phases'
+import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
+import { deriveGrupos, grupoActual, derivePantallas } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { attentionItems } from '@/lib/pipeline/attention'
 import { Wordmark } from './Brand'
@@ -20,19 +21,23 @@ export async function AdminShell({ activeProjectId, children }: {
   children: React.ReactNode
 }) {
   const rows = await listProjectsWithCounts(db)
-  // Igual que en el listado de /admin: una lectura de landscapeState por proyecto,
-  // porque acá tampoco hay un conteo agregado. La lateral se pinta en cada pantalla,
-  // así que ya paga ese costo en cada navegación — aceptable para un puñado de proyectos.
+  // Igual que en el listado de /admin: una lectura de landscapeState y de strategyState
+  // por proyecto, porque acá tampoco hay un conteo agregado. La lateral se pinta en cada
+  // pantalla, así que ya paga ese costo en cada navegación — aceptable para un puñado de
+  // proyectos.
   const landscapeByProject = await Promise.all(rows.map(r => landscapeState(db, r.id)))
+  const estrategiaByProject = await Promise.all(rows.map(r => strategyState(db, r.id)))
   const proyectos = rows.map((r, idx) => {
-    const phases = derivePhases(r.id, projectSignals({
+    const señales = projectSignals({
       sessions: Array.from({ length: r.sessionsTotal }, (_, i) => ({
         status: i < r.sessionsCompleted ? 'completed' : 'in_progress',
       })),
       tieneEntregable: r.tieneEntregable,
       landscape: summarizeLandscape(landscapeByProject[idx]),
-    }))
-    return { ...r, phases, actual: currentPhase(phases) }
+      estrategia: summarizeStrategy(estrategiaByProject[idx]),
+    })
+    const grupos = deriveGrupos(r.id, señales)
+    return { ...r, grupos, actual: grupoActual(grupos), pantallas: derivePantallas(r.id, señales) }
   })
 
   // Un punto amarillo donde hay algo que el equipo puede destrabar hoy.

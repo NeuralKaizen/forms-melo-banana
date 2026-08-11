@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { neighbours, type Phase, type PhaseKey, type PhaseStatus } from '@/lib/pipeline/phases'
+import { grupoDePantalla, type Grupo, type PantallaKey, type PhaseStatus } from '@/lib/pipeline/phases'
 
 function Dot({ status }: { status: PhaseStatus }) {
   if (status === 'completa') return (
@@ -14,77 +14,19 @@ function Dot({ status }: { status: PhaseStatus }) {
   return <span className="h-4 w-4 rounded-full border border-black/15 bg-white" />
 }
 
-function PhaseCell({ phase, active }: { phase: Phase; active: boolean }) {
-  const inner = (
-    <>
-      <span className="flex items-center gap-2">
-        <Dot status={phase.status} />
-        <span aria-hidden="true" className="hidden h-px flex-1 bg-black/10 last:hidden md:block" />
-      </span>
-      <span className={`mt-2.5 block text-[13px] leading-tight ${active ? 'font-semibold text-ink' : 'text-[#6b6155]'}`}>
-        {phase.label}
-      </span>
-      <span className="mt-1 block text-[11.5px] leading-snug text-[#a59c89]">{phase.detalle}</span>
-    </>
-  )
-
-  return (
-    <li className="min-w-0">
-      <Link
-        href={phase.href}
-        aria-current={active ? 'step' : undefined}
-        className={`block rounded-xl px-3 py-3 transition-colors duration-200 ${active ? 'bg-[#fffdf0]' : 'hover:bg-[#faf7ee]'}`}
-      >
-        {inner}
-      </Link>
-    </li>
-  )
-}
-
-/** Un paso atrás o adelante en el recorrido, sin volver al listado de proyectos. */
-function StepLink({ phase, dir }: { phase: Phase | null; dir: 'prev' | 'next' }) {
-  const chevron = (
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={dir === 'prev' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} />
-    </svg>
-  )
-
-  if (!phase) {
-    return <span aria-hidden="true" className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-[#ded6c4]">{chevron}</span>
-  }
-
-  return (
-    <Link
-      href={phase.href}
-      title={phase.label}
-      aria-label={`${dir === 'prev' ? 'Fase anterior' : 'Fase siguiente'}: ${phase.label}`}
-      className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-[#8a8170] transition-colors duration-200 hover:bg-[#faf7ee] hover:text-ink"
-    >
-      {chevron}
-    </Link>
-  )
-}
-
 /**
- * Cabecera común de las pantallas de un proyecto: quién es y en qué fase está.
- * Hace visible el pipeline completo — entrevistas, propuesta, taller, landscape, entrega —
- * para que cada pantalla se lea como un tramo del mismo recorrido y no como una sección suelta.
+ * Cabecera común de las pantallas de un proyecto: quién es y en qué grupo del recorrido
+ * está. Los tres grupos —entrevistas/propuesta de valor, landscape, estrategia— se ven
+ * siempre; el primero abre tabs para sus tres pantallas cuando es el grupo activo.
  */
-export function ProjectHeader({ name, phases, active }: {
+export function ProjectHeader({ name, grupos, active }: {
   name: string
-  phases: Phase[]
-  /**
-   * 'estrategia' (fase 3) todavía no es una fase de `derivePhases` — el pipeline de
-   * fases no se toca en esa tarea. El link de acá al lado se arma aparte, sin pasar
-   * por `neighbours`/`dependencia`, que solo conocen las cinco fases de siempre.
-   */
-  active: PhaseKey | 'estrategia'
+  grupos: Grupo[]
+  active: PantallaKey
 }) {
-  const dependencia = active === 'estrategia' ? undefined : phases.find(p => p.key === active)?.dependencia
-  const { prev, next } = active === 'estrategia' ? { prev: null, next: null } : neighbours(phases, active)
-  // El landscape siempre está en `phases` (las cinco fases se devuelven siempre), así
-  // que su href es la forma más simple de llegar al proyecto sin agregar un prop nuevo.
-  const estrategiaHref = phases.find(p => p.key === 'landscape')?.href.replace(/\/landscape$/, '/estrategia') ?? '#'
+  const grupoActivoKey = grupoDePantalla(active)
+  const esActivo = (g: Grupo) => g.key === grupoActivoKey
+  const dependencia = grupos.find(esActivo)?.dependencia
 
   return (
     <header className="space-y-5">
@@ -101,30 +43,52 @@ export function ProjectHeader({ name, phases, active }: {
         <h1 className="mt-2 font-serif text-3xl font-medium leading-tight text-ink">{name}</h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <nav aria-label="Fases del proyecto" className="flex flex-1 items-center gap-1 rounded-2xl border border-black/5 bg-white p-2 shadow-sm">
-          <StepLink phase={prev} dir="prev" />
-          <ol className="grid min-w-0 flex-1 grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-5">
-            {phases.map(p => <PhaseCell key={p.key} phase={p} active={p.key === active} />)}
-          </ol>
-          <StepLink phase={next} dir="next" />
-        </nav>
+      <nav aria-label="Recorrido del proyecto">
+        <ol className="grid gap-2 sm:grid-cols-3">
+          {grupos.map(g => {
+            const activo = esActivo(g)
+            return (
+              <li key={g.key}>
+                <Link
+                  href={g.href}
+                  aria-current={activo ? 'step' : undefined}
+                  className={`block rounded-2xl border p-3 transition-colors duration-200 ${
+                    activo ? 'border-[var(--banana)] bg-[#fffdf0]' : 'border-black/5 bg-white hover:border-black/15'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Dot status={g.status} />
+                    <span className={`text-[13px] leading-tight ${activo ? 'font-semibold text-ink' : 'text-[#6b6155]'}`}>
+                      {g.label}
+                    </span>
+                  </span>
+                  <span className="mt-1 block text-[11.5px] leading-snug text-[#a59c89]">{g.detalle}</span>
+                </Link>
 
-        {/* La estrategia (fase 3) vive al lado del pipeline de siempre, no adentro: no es
-            una fase más de `derivePhases` en esta tarea, es la pantalla del bloque
-            siguiente. */}
-        <Link
-          href={estrategiaHref}
-          aria-current={active === 'estrategia' ? 'page' : undefined}
-          className={`flex-none rounded-xl border px-3.5 py-2.5 text-[13px] font-medium transition-colors duration-200 ${
-            active === 'estrategia'
-              ? 'border-[var(--banana)] bg-[#fffdf0] text-ink'
-              : 'border-black/5 bg-white text-[#6b6155] shadow-sm hover:border-black/15 hover:text-ink'
-          }`}
-        >
-          Estrategia
-        </Link>
-      </div>
+                {activo && g.tabs && (
+                  <div role="tablist" className="mt-1.5 flex gap-1 px-1">
+                    {g.tabs.map(t => (
+                      <Link
+                        key={t.key}
+                        href={t.href}
+                        role="tab"
+                        aria-selected={t.key === active}
+                        className={`rounded-lg px-2.5 py-1 text-[12.5px] transition-colors duration-200 ${
+                          t.key === active
+                            ? 'bg-[#fffdf0] font-semibold text-ink shadow-[inset_0_-2px_0_0_var(--banana)]'
+                            : 'text-[#6b6155] hover:bg-[#faf7ee]'
+                        }`}
+                      >
+                        {t.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ol>
+      </nav>
 
       {dependencia && (
         <p className="flex items-start gap-2 rounded-xl border border-[#f0e3bc] bg-[#fffdf0] px-4 py-3 text-[13px] leading-relaxed text-[#6b5a2a]">

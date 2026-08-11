@@ -1,4 +1,4 @@
-import type { Phase, PhaseKey } from './phases'
+import type { Pantalla, PantallaKey } from './phases'
 
 /**
  * Qué está esperando a alguien del equipo.
@@ -14,7 +14,7 @@ export interface AttentionItem {
   accion: string
   /** Dónde se resuelve. */
   href: string
-  fase: PhaseKey
+  fase: Exclude<PantallaKey, 'estrategia'>
   /** Quién destraba: el equipo acá, o algo de afuera. */
   bloqueo: 'equipo' | 'externo'
 }
@@ -22,7 +22,7 @@ export interface AttentionItem {
 export interface AttentionInput {
   id: string
   name: string
-  phases: Phase[]
+  pantallas: Record<Exclude<PantallaKey, 'estrategia'>, Pantalla>
   sessionsTotal: number
   sessionsCompleted: number
   tieneEntregable: boolean
@@ -30,26 +30,21 @@ export interface AttentionInput {
 }
 
 /** Primero lo que el equipo puede resolver hoy sin depender de nadie. */
-const RANGO: Record<PhaseKey, number> = {
+const RANGO: Record<Exclude<PantallaKey, 'estrategia'>, number> = {
   propuesta: 0,
   entrevistas: 1,
   landscape: 2,
   taller: 3,
-  entrega: 4,
 }
 
 export function attentionItems(projects: AttentionInput[]): AttentionItem[] {
   const items: AttentionItem[] = []
 
   for (const p of projects) {
-    const fase = (key: PhaseKey) => p.phases.find(f => f.key === key)!
-    const push = (f: Phase, accion: string, bloqueo: AttentionItem['bloqueo']) =>
-      items.push({ projectId: p.id, projectName: p.name, accion, href: f.href, fase: f.key, bloqueo })
+    const push = (pantalla: Pantalla, accion: string, bloqueo: AttentionItem['bloqueo']) =>
+      items.push({ projectId: p.id, projectName: p.name, accion, href: pantalla.href, fase: pantalla.key, bloqueo })
 
-    const entrevistas = fase('entrevistas')
-    const propuesta = fase('propuesta')
-    const taller = fase('taller')
-    const landscape = fase('landscape')
+    const { entrevistas, propuesta, taller, landscape } = p.pantallas
 
     // Lo que se puede hacer acá mismo, en orden de lo más directo.
     if (propuesta.status !== 'completa' && p.sessionsCompleted > 0) {

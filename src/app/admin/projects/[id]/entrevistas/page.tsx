@@ -3,7 +3,8 @@ import {
   getProjectWithSessions, getDeliverable, listProjects, answerCountsByProject,
   landscapeState, summarizeLandscape,
 } from '@/lib/db/store'
-import { derivePhases } from '@/lib/pipeline/phases'
+import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
+import { deriveGrupos } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
 import { ProjectHeader } from '@/components/ProjectHeader'
@@ -38,8 +39,9 @@ export default async function EntrevistasView({ params }: { params: Promise<{ id
   const counts = await answerCountsByProject(db, id)
   const rawSessions = project.sessions as SessionRow[]
   const estadoLandscape = await landscapeState(db, id)
-  const phases = derivePhases(id, projectSignals({
-    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estadoLandscape),
+  const estrategia = summarizeStrategy(await strategyState(db, id))
+  const grupos = deriveGrupos(id, projectSignals({
+    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estadoLandscape), estrategia,
   }))
 
   const respondents: Respondent[] = rawSessions.map(s => ({
@@ -57,7 +59,7 @@ export default async function EntrevistasView({ params }: { params: Promise<{ id
   return (
     <AdminShell activeProjectId={id}>
       <div className="space-y-8">
-      <ProjectHeader name={project.name} phases={phases} active="entrevistas" />
+      <ProjectHeader name={project.name} grupos={grupos} active="entrevistas" />
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">

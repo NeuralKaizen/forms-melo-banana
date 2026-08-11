@@ -37,6 +37,15 @@ export interface Grupo {
   dependencia?: string
 }
 
+/** El estado de una pantalla puntual — más fino que el de su grupo, que puede agrupar varias. */
+export interface Pantalla {
+  key: Exclude<PantallaKey, 'estrategia'>
+  label: string
+  status: PhaseStatus
+  detalle: string
+  href: string
+}
+
 export interface ProjectSignals {
   sessionsTotal: number
   sessionsCompleted: number
@@ -68,6 +77,46 @@ export function grupoDePantalla(p: PantallaKey): GrupoKey {
   return GRUPO_DE_PANTALLA[p]
 }
 
+const PANTALLA_LABEL: Record<Exclude<PantallaKey, 'estrategia'>, string> = {
+  entrevistas: 'Entrevistas',
+  propuesta: 'Propuesta de valor',
+  taller: 'Taller',
+  landscape: 'Landscape',
+}
+
+// El estado y el detalle de cada pantalla, aislados en una función por pantalla: los
+// reusan tanto `deriveGrupos` (que solo necesita el detalle de la que esté frenando al
+// grupo) como `derivePantallas` (que necesita las cuatro, una por una, para lo que
+// espera al equipo).
+function estadoEntrevistas(s: ProjectSignals): { status: PhaseStatus; detalle: string } {
+  if (s.sessionsTotal === 0) return { status: 'pendiente', detalle: 'Sin respondientes' }
+  if (s.sessionsCompleted < s.sessionsTotal) {
+    return { status: 'en_curso', detalle: `${s.sessionsCompleted} de ${s.sessionsTotal} completadas` }
+  }
+  return { status: 'completa', detalle: `${s.sessionsTotal} completadas` }
+}
+
+function estadoPropuesta(s: ProjectSignals): { status: PhaseStatus; detalle: string } {
+  if (s.tieneEntregable) return { status: 'completa', detalle: 'Generada' }
+  if (s.sessionsCompleted > 0) return { status: 'pendiente', detalle: 'Lista para generar' }
+  return { status: 'pendiente', detalle: 'Necesita entrevistas completas' }
+}
+
+function estadoTaller(s: ProjectSignals): { status: PhaseStatus; detalle: string } {
+  if (!s.tieneEntregable) return { status: 'pendiente', detalle: 'Necesita la propuesta de valor' }
+  if (s.tienePostTaller) return { status: 'completa', detalle: 'Conclusiones transcritas' }
+  return { status: 'espera', detalle: 'Se trabaja en Miro · faltan las conclusiones' }
+}
+
+function estadoLandscape(s: ProjectSignals): { status: PhaseStatus; detalle: string } {
+  const completo = s.landscapeEtapasTotal > 0 && s.landscapeEtapasAprobadas === s.landscapeEtapasTotal
+  if (completo) return { status: 'completa', detalle: 'Todas las etapas aprobadas' }
+  if (s.landscapeEtapasAprobadas > 0) {
+    return { status: 'en_curso', detalle: `${s.landscapeEtapasAprobadas} de ${s.landscapeEtapasTotal} etapas aprobadas` }
+  }
+  return { status: 'pendiente', detalle: 'Sin empezar' }
+}
+
 export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
   const href = (key: PantallaKey) => `/admin/projects/${projectId}/${key}`
   const entrevistasHref = href('entrevistas')
@@ -81,18 +130,6 @@ export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
   // habilita con la primera entrevista completa, y el taller —que ocurre en Miro, fuera
   // de la plataforma— espera que sus conclusiones vuelvan transcritas.
   const haySesiones = s.sessionsCompleted > 0
-  const detalleEntrevistas =
-    s.sessionsTotal === 0
-      ? 'Sin respondientes'
-      : s.sessionsCompleted < s.sessionsTotal
-        ? `${s.sessionsCompleted} de ${s.sessionsTotal} completadas`
-        : `${s.sessionsTotal} completadas`
-  const detallePropuesta = s.tieneEntregable ? 'Generada' : haySesiones ? 'Lista para generar' : 'Necesita entrevistas completas'
-  const detalleTaller = !s.tieneEntregable
-    ? 'Necesita la propuesta de valor'
-    : s.tienePostTaller
-      ? 'Conclusiones transcritas'
-      : 'Se trabaja en Miro · faltan las conclusiones'
 
   const propuestaValor: Grupo = {
     key: 'propuesta-valor',
@@ -105,7 +142,7 @@ export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
         : haySesiones
           ? 'en_curso'
           : 'pendiente',
-    detalle: s.tieneEntregable ? detalleTaller : haySesiones ? detallePropuesta : detalleEntrevistas,
+    detalle: s.tieneEntregable ? estadoTaller(s).detalle : haySesiones ? estadoPropuesta(s).detalle : estadoEntrevistas(s).detalle,
     tabs: [
       { key: 'entrevistas', label: 'Entrevistas', href: entrevistasHref },
       { key: 'propuesta', label: 'Propuesta de valor', href: propuestaHref },
@@ -113,16 +150,11 @@ export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
     ],
   }
 
-  const landscapeCompleto = s.landscapeEtapasTotal > 0 && s.landscapeEtapasAprobadas === s.landscapeEtapasTotal
   const landscape: Grupo = {
     key: 'landscape',
     label: GRUPO_LABEL.landscape,
     href: landscapeHref,
-    ...(landscapeCompleto
-      ? { status: 'completa' as const, detalle: 'Todas las etapas aprobadas' }
-      : s.landscapeEtapasAprobadas > 0
-        ? { status: 'en_curso' as const, detalle: `${s.landscapeEtapasAprobadas} de ${s.landscapeEtapasTotal} etapas aprobadas` }
-        : { status: 'pendiente' as const, detalle: 'Sin empezar' }),
+    ...estadoLandscape(s),
     // Dependencia real del proceso: el cuadro de brand assets se arma sobre los 4
     // competidores que se definen en el taller.
     ...(s.tienePostTaller ? {} : { dependencia: 'El panorama de categoría necesita los competidores del taller' }),
@@ -146,4 +178,20 @@ export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
 /** El grupo donde está parado el proyecto: el primero que no está completo. */
 export function grupoActual(grupos: Grupo[]): Grupo {
   return grupos.find(g => g.status !== 'completa') ?? grupos[grupos.length - 1]
+}
+
+/**
+ * El estado fino de cada pantalla, pantalla por pantalla — la granularidad que
+ * `deriveGrupos` esconde adentro del grupo 'propuesta-valor'. La usa `attention.ts`
+ * para decir con precisión qué le falta a cada proyecto y quién lo destraba; la
+ * estrategia (pantalla de la fase 3) todavía no entra acá.
+ */
+export function derivePantallas(projectId: string, s: ProjectSignals): Record<Exclude<PantallaKey, 'estrategia'>, Pantalla> {
+  const href = (key: Exclude<PantallaKey, 'estrategia'>) => `/admin/projects/${projectId}/${key}`
+  return {
+    entrevistas: { key: 'entrevistas', label: PANTALLA_LABEL.entrevistas, href: href('entrevistas'), ...estadoEntrevistas(s) },
+    propuesta: { key: 'propuesta', label: PANTALLA_LABEL.propuesta, href: href('propuesta'), ...estadoPropuesta(s) },
+    taller: { key: 'taller', label: PANTALLA_LABEL.taller, href: href('taller'), ...estadoTaller(s) },
+    landscape: { key: 'landscape', label: PANTALLA_LABEL.landscape, href: href('landscape'), ...estadoLandscape(s) },
+  }
 }

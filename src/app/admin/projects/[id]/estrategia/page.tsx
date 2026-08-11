@@ -1,7 +1,7 @@
 import { db } from '@/lib/db/client'
 import { getProjectWithSessions, getDeliverable, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { derivePhases } from '@/lib/pipeline/phases'
+import { deriveGrupos } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
 import { ProjectHeader } from '@/components/ProjectHeader'
@@ -21,17 +21,15 @@ export default async function EstrategiaView({ params }: { params: Promise<{ id:
 
   const deliverable = await getDeliverable(db, id)
   const rawSessions = project.sessions as { status?: string | null }[]
-  // La cabecera muestra el mismo pipeline de fases que el resto del proyecto. Todavía no
-  // hay una fase "estrategia" en `derivePhases` — se calcula exactamente igual que en la
-  // página de landscape, sin inventar señales nuevas para esta pantalla.
   const landscapeEstado = await landscapeState(db, id)
-  const phases = derivePhases(id, projectSignals({
-    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(landscapeEstado),
-  }))
-
   const estado = await strategyState(db, id)
   const etapas = buildEtapasEstrategia(estado)
   const resumen = summarizeStrategy(estado)
+  // La cabecera muestra el mismo recorrido por grupos que el resto del proyecto — acá ya
+  // no arma su propio link a estrategia, es un grupo más de `deriveGrupos`.
+  const grupos = deriveGrupos(id, projectSignals({
+    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(landscapeEstado), estrategia: resumen,
+  }))
 
   const contenidoPorEtapa = Object.fromEntries(
     estado.map(e => [
@@ -54,7 +52,7 @@ export default async function EstrategiaView({ params }: { params: Promise<{ id:
   return (
     <AdminShell activeProjectId={id}>
       <div className="space-y-8">
-      <ProjectHeader name={project.name} phases={phases} active="estrategia" />
+      <ProjectHeader name={project.name} grupos={grupos} active="estrategia" />
       <EstrategiaWorkspace
         projectId={id}
         etapas={etapas}
