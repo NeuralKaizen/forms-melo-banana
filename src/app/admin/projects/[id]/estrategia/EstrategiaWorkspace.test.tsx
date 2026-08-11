@@ -44,6 +44,10 @@ describe('EstrategiaWorkspace', () => {
     // Con scope al nav: "Diagnóstico" es la etapa por defecto, así que también aparece
     // en el encabezado del contenido — acá interesa solo la lista de etapas.
     const nav = within(screen.getByRole('navigation', { name: 'Etapas de la estrategia' }))
+    // El carril arranca agrupado y solo el grupo activo (diagnóstico) expandido —
+    // hay que abrir los otros dos para ver las 14 etapas.
+    fireEvent.click(nav.getByText('Esencia de marca'))
+    fireEvent.click(nav.getByText('Cierre'))
     expect(nav.getByText('Diagnóstico')).toBeTruthy()
     expect(nav.getByText('Consumidor')).toBeTruthy()
     expect(nav.getByText('RTBs')).toBeTruthy()
@@ -88,5 +92,69 @@ describe('EstrategiaWorkspace', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accion: 'aprobar', versionId: 'v2' }),
     })
+  })
+
+  it('agrupa el carril en tres grupos con contador propio; solo el grupo activo arranca expandido', () => {
+    armarPanel({ conBorrador: false })
+    const nav = within(screen.getByRole('navigation', { name: 'Etapas de la estrategia' }))
+
+    expect(nav.getByText('Diagnóstico y consumidor')).toBeTruthy()
+    expect(nav.getByText('Esencia de marca')).toBeTruthy()
+    expect(nav.getByText('Cierre')).toBeTruthy()
+
+    // Consumidor está aprobada, diagnóstico no; ninguna etapa es 'no_aplica'.
+    expect(nav.getByText('1 de 2')).toBeTruthy()
+    expect(nav.getByText('0 de 11')).toBeTruthy()
+    expect(nav.getByText('0 de 1')).toBeTruthy()
+
+    // El grupo de la etapa activa (diagnóstico) arranca expandido.
+    expect(nav.getByText('Diagnóstico')).toBeTruthy()
+    expect(nav.getByText('Consumidor')).toBeTruthy()
+
+    // Los otros dos grupos arrancan plegados: sus filas no están en el DOM.
+    expect(nav.queryByText('RTBs')).toBeNull()
+    expect(nav.queryByText('Cuadros finales')).toBeNull()
+  })
+
+  it('clic en la cabecera de un grupo plegado muestra sus filas', () => {
+    armarPanel({ conBorrador: false })
+    const nav = within(screen.getByRole('navigation', { name: 'Etapas de la estrategia' }))
+
+    expect(nav.queryByText('RTBs')).toBeNull()
+    fireEvent.click(nav.getByText('Esencia de marca'))
+    expect(nav.getByText('RTBs')).toBeTruthy()
+  })
+
+  it('el pie muestra anterior/siguiente para una etapa del medio y navega expandiendo el grupo destino', () => {
+    armarPanel({ conBorrador: false })
+    irAConsumidor()
+
+    // Consumidor: anterior Diagnóstico, siguiente RTBs (cruza a "Esencia de marca").
+    expect(screen.getByText('‹ Diagnóstico')).toBeTruthy()
+    expect(screen.getByText('RTBs ›')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('RTBs ›'))
+
+    expect(screen.getByRole('heading', { name: 'RTBs' })).toBeTruthy()
+
+    const nav = within(screen.getByRole('navigation', { name: 'Etapas de la estrategia' }))
+    // Se expandió el grupo destino ("Esencia de marca")...
+    expect(nav.getByText('Concepto estratégico')).toBeTruthy()
+    // ...y se plegó el grupo anterior ("Diagnóstico y consumidor").
+    expect(nav.queryByText('Diagnóstico')).toBeNull()
+  })
+
+  it('en diagnóstico (primera) no hay anterior; en cuadros (última) no hay siguiente', () => {
+    armarPanel({ conBorrador: false })
+
+    expect(screen.queryByText(/‹/)).toBeNull()
+    expect(screen.getByText('Consumidor ›')).toBeTruthy()
+
+    const nav = within(screen.getByRole('navigation', { name: 'Etapas de la estrategia' }))
+    fireEvent.click(nav.getByText('Cierre'))
+    fireEvent.click(nav.getByText('Cuadros finales'))
+
+    expect(screen.getByText('‹ Manifiesto')).toBeTruthy()
+    expect(screen.queryByText(/›/)).toBeNull()
   })
 })
