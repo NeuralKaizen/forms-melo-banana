@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { db } from '@/lib/db/client'
 import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveGrupos, grupoActual, derivePantallas, type Grupo, type PhaseStatus } from '@/lib/pipeline/phases'
+import { deriveGrupos, grupoActual, derivePantallas, pantallaActual, type Grupo, type PhaseStatus } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { attentionItems, haceCuanto, type AttentionItem } from '@/lib/pipeline/attention'
 import { AdminShell } from '@/components/AdminShell'
@@ -88,7 +88,8 @@ export default async function Admin() {
       estrategia: summarizeStrategy(estrategiaByProject[idx]),
     })
     const grupos = deriveGrupos(r.id, señales)
-    return { ...r, grupos, actual: grupoActual(grupos), pantallas: derivePantallas(r.id, señales) }
+    const pantallas = derivePantallas(r.id, señales)
+    return { ...r, grupos, actual: grupoActual(grupos), pantallaFina: pantallaActual(grupos, pantallas), pantallas }
   })
 
   const pendientes = attentionItems(projects)
@@ -160,7 +161,7 @@ export default async function Admin() {
                       </td>
                       <td className="px-5 py-4">
                         <span className="flex flex-wrap items-center gap-2">
-                          <span className="text-[13px] font-medium text-ink">{p.actual.label}</span>
+                          <span className="text-[13px] font-medium text-ink">{p.pantallaFina.label}</span>
                           <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-medium ${CHIP[p.actual.status].clase}`}>
                             {CHIP[p.actual.status].texto}
                           </span>

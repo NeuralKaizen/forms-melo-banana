@@ -180,13 +180,16 @@ export function grupoActual(grupos: Grupo[]): Grupo {
   return grupos.find(g => g.status !== 'completa') ?? grupos[grupos.length - 1]
 }
 
+/** Lo que devuelve `derivePantallas`: las cuatro pantallas de fase 2, por key. */
+export type Pantallas = Record<Exclude<PantallaKey, 'estrategia'>, Pantalla>
+
 /**
  * El estado fino de cada pantalla, pantalla por pantalla — la granularidad que
  * `deriveGrupos` esconde adentro del grupo 'propuesta-valor'. La usa `attention.ts`
  * para decir con precisión qué le falta a cada proyecto y quién lo destraba; la
  * estrategia (pantalla de la fase 3) todavía no entra acá.
  */
-export function derivePantallas(projectId: string, s: ProjectSignals): Record<Exclude<PantallaKey, 'estrategia'>, Pantalla> {
+export function derivePantallas(projectId: string, s: ProjectSignals): Pantallas {
   const href = (key: Exclude<PantallaKey, 'estrategia'>) => `/admin/projects/${projectId}/${key}`
   return {
     entrevistas: { key: 'entrevistas', label: PANTALLA_LABEL.entrevistas, href: href('entrevistas'), ...estadoEntrevistas(s) },
@@ -194,4 +197,32 @@ export function derivePantallas(projectId: string, s: ProjectSignals): Record<Ex
     taller: { key: 'taller', label: PANTALLA_LABEL.taller, href: href('taller'), ...estadoTaller(s) },
     landscape: { key: 'landscape', label: PANTALLA_LABEL.landscape, href: href('landscape'), ...estadoLandscape(s) },
   }
+}
+
+/**
+ * Lo que devuelve `pantallaActual`: mismo shape que `Pantalla`, pero el `key` puede ser
+ * también 'estrategia'. Decisión: no se ensancha `Pantalla.key` en sí, porque
+ * `attention.ts` (fuera de este arreglo) tipa `AttentionItem.fase` asumiendo que una
+ * `Pantalla` nunca es 'estrategia' — esa función todavía no maneja fase 3. En vez de tocar
+ * ese contrato, este tipo hermano solo se usa acá, donde sí hace falta nombrar la
+ * pantalla de estrategia.
+ */
+export type PantallaActual = Omit<Pantalla, 'key'> & { key: PantallaKey }
+
+/**
+ * La pantalla donde está parado el proyecto: dentro del grupo 1, la primera sub-pantalla
+ * no completa (entrevistas → propuesta → taller, con fallback a taller si las tres están
+ * completas — hoy imposible porque `tienePostTaller` está hardcodeada en `false`, pero la
+ * función no depende de eso); en los otros grupos, su única pantalla. Landscape ya vive en
+ * `derivePantallas`; estrategia no, así que se arma su `Pantalla` al vuelo a partir del
+ * grupo — mismo status/detalle/href que ya calcula `deriveGrupos`.
+ */
+export function pantallaActual(grupos: Grupo[], pantallas: Pantallas): PantallaActual {
+  const g = grupoActual(grupos)
+  if (g.key === 'propuesta-valor') {
+    const candidatas: Pantalla[] = [pantallas.entrevistas, pantallas.propuesta, pantallas.taller]
+    return candidatas.find(p => p.status !== 'completa') ?? pantallas.taller
+  }
+  if (g.key === 'landscape') return pantallas.landscape
+  return { key: 'estrategia', label: g.label, status: g.status, detalle: g.detalle, href: g.href }
 }

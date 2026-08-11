@@ -2,7 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import { db } from '@/lib/db/client'
 import { getProjectWithSessions, getDeliverable, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveGrupos, grupoActual } from '@/lib/pipeline/phases'
+import { deriveGrupos, derivePantallas, pantallaActual } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 
 export const dynamic = 'force-dynamic'
@@ -19,12 +19,13 @@ export default async function ProjectView({ params }: { params: Promise<{ id: st
   const deliverable = await getDeliverable(db, id)
   const estadoLandscape = await landscapeState(db, id)
   const estrategia = summarizeStrategy(await strategyState(db, id))
-  const grupos = deriveGrupos(id, projectSignals({
+  const señales = projectSignals({
     sessions: project.sessions as { status?: string | null }[],
     tieneEntregable: !!deliverable,
     landscape: summarizeLandscape(estadoLandscape),
     estrategia,
-  }))
+  })
+  const grupos = deriveGrupos(id, señales)
 
-  redirect(grupoActual(grupos).href)
+  redirect(pantallaActual(grupos, derivePantallas(id, señales)).href)
 }
