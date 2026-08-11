@@ -26,7 +26,7 @@ const CODIGO_FK_VIOLADA = '23503'
  * `drizzle-orm` envuelve el error del driver en `DrizzleQueryError`; el código de Postgres
  * viaja en la excepción original, en `cause` (verificado a mano contra PGlite).
  */
-function esViolacionDeForeignKey(e: unknown): boolean {
+export function esViolacionDeForeignKey(e: unknown): boolean {
   const causa = e instanceof Error ? (e as { cause?: unknown }).cause : undefined
   return Boolean(
     causa && typeof causa === 'object' && 'code' in causa && (causa as { code?: unknown }).code === CODIGO_FK_VIOLADA,
