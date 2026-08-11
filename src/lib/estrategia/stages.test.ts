@@ -9,7 +9,10 @@ describe('etapas de estrategia', () => {
   })
 
   it('la esencia son las 11 etapas entre consumidor y cuadros', () => {
-    expect(ESENCIA).toEqual(ETAPA_ORDER.slice(2, 13))
+    expect(ESENCIA).toEqual([
+      'rtbs', 'concepto', 'beneficios', 'arquetipo', 'personalidad', 'valores',
+      'territorio', 'brand_ideal', 'ingredients', 'tagline', 'manifiesto',
+    ])
   })
 
   it('toda etapa tiene label, y cuadros tiene su hint', () => {

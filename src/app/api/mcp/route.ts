@@ -64,7 +64,7 @@ const handler = createMcpHandler(
     }, async ({ proyecto }) => responder(() => estadoEstrategia(db, proyecto)))
 
     server.registerTool('guardar_etapa', {
-      title: 'Guardar una etapa del landscape',
+      title: 'Guardar una etapa del proceso',
       description:
         'Guarda el resultado de una etapa en la plataforma. **Llamá a esto cada vez que termines ' +
         'de redactar una etapa**, sin esperar a que te lo pidan: si no la guardás, el trabajo se ' +
@@ -75,7 +75,13 @@ const handler = createMcpHandler(
         '4 o 5 principales es decisión del equipo. Para las etapas de estrategia mandá fase: ' +
         '"estrategia"; las claves son las 14 del Proceso de Estrategia (diagnostico, consumidor, ' +
         'rtbs, concepto, beneficios, arquetipo, personalidad, valores, territorio, brand_ideal, ' +
-        'ingredients, tagline, manifiesto, cuadros). Los cuadros se llenan desde contenido aprobado.',
+        'ingredients, tagline, manifiesto, cuadros). Cada etapa de estrategia tiene su forma mínima: ' +
+        'diagnostico es problema, insight, ventaja y diferenciales (lista); consumidor es metodologia ' +
+        'y frases (lista); rtbs e ingredients son items (lista); concepto es concepto y racional; ' +
+        'beneficios es funcionales y emocionales (listas); arquetipo es arquetipo y justificacion; ' +
+        'personalidad es rasgos (lista); valores es items, lista de { valor, validacion }; territorio, ' +
+        'brand_ideal, tagline y manifiesto son solo texto; cuadros es brandEssence y consumidor, cada ' +
+        'uno un objeto de pares campo→texto. Los cuadros se llenan desde contenido aprobado.',
       inputSchema: z.object({
         proyecto: z.string().describe('Nombre de la marca o id del proyecto'),
         fase: z.enum(['landscape', 'estrategia']).default('landscape')
