@@ -66,6 +66,28 @@ export const landscapeVersions = pgTable('landscape_versions', {
   approvedAt: timestamp('approved_at', { withTimezone: true }),
 }, (t) => [index('landscape_versions_project_stage').on(t.projectId, t.stage)])
 
+// Fase 3 · Estrategia. Ver valkyria/specs/2026-08-11-fase3-pipeline-estrategia-design.md
+// Espejo del patrón del landscape: estado por etapa + versiones append-only.
+/** Una fila por etapa de estrategia de un proyecto. El estado, y nada más. */
+export const strategyStages = pgTable('strategy_stages', {
+  projectId: uuid('project_id').notNull().references(() => projects.id),
+  stage: text('stage').notNull(),                          // EstrategiaKey
+  status: text('status').notNull().default('pendiente'),   // StageStatus
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.projectId, t.stage] })])
+
+/** Append-only: nada se pisa, igual que `landscape_versions`. */
+export const strategyVersions = pgTable('strategy_versions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').notNull().references(() => projects.id),
+  stage: text('stage').notNull(),                          // EstrategiaKey
+  content: jsonb('content').notNull(),
+  author: text('author').notNull(),                        // 'claude' | 'humano'
+  authorLabel: text('author_label'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+}, (t) => [index('strategy_versions_project_stage').on(t.projectId, t.stage)])
+
 // Fase 2 · OAuth. La app es su propio servidor de autorización para el conector de
 // claude.ai. Ver docs/superpowers/specs/2026-08-03-fase2-mcp-servidor-design.md
 //
