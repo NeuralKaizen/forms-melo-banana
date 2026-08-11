@@ -1,12 +1,15 @@
 /**
- * Las fases por las que pasa un proyecto, de punta a punta.
+ * Los grupos por los que pasa un proyecto, de punta a punta.
  *
- * Es la columna vertebral del panel: cada pantalla es una fase, y el estado de cada una
- * se deriva de lo que hay guardado — no se marca a mano. Ver
+ * Es la columna vertebral del panel: cada grupo es un tramo del recorrido, y el estado de
+ * cada uno se deriva de lo que hay guardado — no se marca a mano. Adentro de
+ * 'propuesta-valor' viven las pantallas de entrevistas, propuesta y taller, que se navegan
+ * como tabs sin salir del grupo. Ver
  * docs/superpowers/specs/2026-07-28-fase2-landscape-columna-vertebral-design.md
  */
 
-export type PhaseKey = 'entrevistas' | 'propuesta' | 'taller' | 'landscape' | 'entrega'
+export type PantallaKey = 'entrevistas' | 'propuesta' | 'taller' | 'landscape' | 'estrategia'
+export type GrupoKey = 'propuesta-valor' | 'landscape' | 'estrategia'
 
 export type PhaseStatus =
   | 'pendiente'  // todavía no le toca, o le toca y nadie la empezó
@@ -14,15 +17,23 @@ export type PhaseStatus =
   | 'espera'     // hecha por fuera de la plataforma, esperando que vuelva
   | 'completa'
 
-export interface Phase {
-  key: PhaseKey
+export interface Tab {
+  key: PantallaKey
+  label: string
+  href: string
+}
+
+export interface Grupo {
+  key: GrupoKey
   label: string
   status: PhaseStatus
   /** Una línea que explica por qué está en ese estado. */
   detalle: string
-  /** Dónde se trabaja. Toda fase tiene pantalla: el recorrido se navega entero. */
+  /** Dónde va el clic en el grupo. */
   href: string
-  /** Algo que esta fase necesita de otra y que aún no llegó. */
+  /** Solo el grupo 'propuesta-valor' las tiene: entrevistas, propuesta y taller. */
+  tabs?: Tab[]
+  /** Algo que este grupo necesita de otro y que aún no llegó. */
   dependencia?: string
 }
 
@@ -34,48 +45,78 @@ export interface ProjectSignals {
   tienePostTaller: boolean
   landscapeEtapasAprobadas: number
   landscapeEtapasTotal: number
+  estrategiaEtapasAprobadas: number
+  estrategiaEtapasTotal: number
 }
 
-export const PHASE_LABEL: Record<PhaseKey, string> = {
-  entrevistas: 'Entrevistas',
-  propuesta: 'Propuesta de valor',
-  taller: 'Taller',
+const GRUPO_LABEL: Record<GrupoKey, string> = {
+  'propuesta-valor': 'Entrevistas / Propuesta de valor',
   landscape: 'Landscape',
-  entrega: 'Entrega',
+  estrategia: 'Estrategia',
 }
 
-export function derivePhases(projectId: string, s: ProjectSignals): Phase[] {
-  const href = (key: PhaseKey) => `/admin/projects/${projectId}/${key}`
+const GRUPO_DE_PANTALLA: Record<PantallaKey, GrupoKey> = {
+  entrevistas: 'propuesta-valor',
+  propuesta: 'propuesta-valor',
+  taller: 'propuesta-valor',
+  landscape: 'landscape',
+  estrategia: 'estrategia',
+}
+
+/** A qué grupo del recorrido pertenece una pantalla. */
+export function grupoDePantalla(p: PantallaKey): GrupoKey {
+  return GRUPO_DE_PANTALLA[p]
+}
+
+export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
+  const href = (key: PantallaKey) => `/admin/projects/${projectId}/${key}`
   const entrevistasHref = href('entrevistas')
   const propuestaHref = href('propuesta')
   const tallerHref = href('taller')
   const landscapeHref = href('landscape')
+  const estrategiaHref = href('estrategia')
 
-  const entrevistas: Phase =
+  // Detalle de cada sub-fase, para saber cuál está frenando al grupo. La lógica es la
+  // misma que tenían las fases sueltas: entrevistas cuenta completadas, propuesta se
+  // habilita con la primera entrevista completa, y el taller —que ocurre en Miro, fuera
+  // de la plataforma— espera que sus conclusiones vuelvan transcritas.
+  const haySesiones = s.sessionsCompleted > 0
+  const detalleEntrevistas =
     s.sessionsTotal === 0
-      ? { key: 'entrevistas', label: PHASE_LABEL.entrevistas, status: 'pendiente', detalle: 'Sin respondientes', href: entrevistasHref }
+      ? 'Sin respondientes'
       : s.sessionsCompleted < s.sessionsTotal
-        ? { key: 'entrevistas', label: PHASE_LABEL.entrevistas, status: 'en_curso', detalle: `${s.sessionsCompleted} de ${s.sessionsTotal} completadas`, href: entrevistasHref }
-        : { key: 'entrevistas', label: PHASE_LABEL.entrevistas, status: 'completa', detalle: `${s.sessionsTotal} completadas`, href: entrevistasHref }
-
-  const propuesta: Phase = s.tieneEntregable
-    ? { key: 'propuesta', label: PHASE_LABEL.propuesta, status: 'completa', detalle: 'Generada', href: propuestaHref }
-    : s.sessionsCompleted > 0
-      ? { key: 'propuesta', label: PHASE_LABEL.propuesta, status: 'pendiente', detalle: 'Lista para generar', href: propuestaHref }
-      : { key: 'propuesta', label: PHASE_LABEL.propuesta, status: 'pendiente', detalle: 'Necesita entrevistas completas', href: propuestaHref }
-
-  // El taller ocurre en Miro, fuera de la plataforma. Lo que importa acá es si las
-  // conclusiones volvieron: el landscape depende de ellas.
-  const taller: Phase = !s.tieneEntregable
-    ? { key: 'taller', label: PHASE_LABEL.taller, status: 'pendiente', detalle: 'Necesita la propuesta de valor', href: tallerHref }
+        ? `${s.sessionsCompleted} de ${s.sessionsTotal} completadas`
+        : `${s.sessionsTotal} completadas`
+  const detallePropuesta = s.tieneEntregable ? 'Generada' : haySesiones ? 'Lista para generar' : 'Necesita entrevistas completas'
+  const detalleTaller = !s.tieneEntregable
+    ? 'Necesita la propuesta de valor'
     : s.tienePostTaller
-      ? { key: 'taller', label: PHASE_LABEL.taller, status: 'completa', detalle: 'Conclusiones transcritas', href: tallerHref }
-      : { key: 'taller', label: PHASE_LABEL.taller, status: 'espera', detalle: 'Se trabaja en Miro · faltan las conclusiones', href: tallerHref }
+      ? 'Conclusiones transcritas'
+      : 'Se trabaja en Miro · faltan las conclusiones'
+
+  const propuestaValor: Grupo = {
+    key: 'propuesta-valor',
+    label: GRUPO_LABEL['propuesta-valor'],
+    href: entrevistasHref,
+    status: s.tienePostTaller
+      ? 'completa'
+      : s.tieneEntregable
+        ? 'espera'
+        : haySesiones
+          ? 'en_curso'
+          : 'pendiente',
+    detalle: s.tieneEntregable ? detalleTaller : haySesiones ? detallePropuesta : detalleEntrevistas,
+    tabs: [
+      { key: 'entrevistas', label: 'Entrevistas', href: entrevistasHref },
+      { key: 'propuesta', label: 'Propuesta de valor', href: propuestaHref },
+      { key: 'taller', label: 'Taller', href: tallerHref },
+    ],
+  }
 
   const landscapeCompleto = s.landscapeEtapasTotal > 0 && s.landscapeEtapasAprobadas === s.landscapeEtapasTotal
-  const landscape: Phase = {
+  const landscape: Grupo = {
     key: 'landscape',
-    label: PHASE_LABEL.landscape,
+    label: GRUPO_LABEL.landscape,
     href: landscapeHref,
     ...(landscapeCompleto
       ? { status: 'completa' as const, detalle: 'Todas las etapas aprobadas' }
@@ -87,23 +128,22 @@ export function derivePhases(projectId: string, s: ProjectSignals): Phase[] {
     ...(s.tienePostTaller ? {} : { dependencia: 'El panorama de categoría necesita los competidores del taller' }),
   }
 
-  const entrega: Phase = landscapeCompleto
-    ? { key: 'entrega', label: PHASE_LABEL.entrega, status: 'pendiente', detalle: 'Lista para presentar', href: href('entrega') }
-    : { key: 'entrega', label: PHASE_LABEL.entrega, status: 'pendiente', detalle: 'Espera el landscape', href: href('entrega') }
-
-  return [entrevistas, propuesta, taller, landscape, entrega]
-}
-
-/** La fase donde está parado el proyecto: la primera que no está completa. */
-export function currentPhase(phases: Phase[]): Phase {
-  return phases.find(p => p.status !== 'completa') ?? phases[phases.length - 1]
-}
-
-/** La anterior y la siguiente, para moverse por el recorrido sin volver al listado. */
-export function neighbours(phases: Phase[], key: PhaseKey): { prev: Phase | null; next: Phase | null } {
-  const i = phases.findIndex(p => p.key === key)
-  return {
-    prev: i > 0 ? phases[i - 1] : null,
-    next: i >= 0 && i < phases.length - 1 ? phases[i + 1] : null,
+  const estrategiaCompleta = s.estrategiaEtapasTotal > 0 && s.estrategiaEtapasAprobadas === s.estrategiaEtapasTotal
+  const estrategia: Grupo = {
+    key: 'estrategia',
+    label: GRUPO_LABEL.estrategia,
+    href: estrategiaHref,
+    ...(estrategiaCompleta
+      ? { status: 'completa' as const, detalle: 'Todas las etapas aprobadas' }
+      : s.estrategiaEtapasAprobadas > 0
+        ? { status: 'en_curso' as const, detalle: `${s.estrategiaEtapasAprobadas} de ${s.estrategiaEtapasTotal} aprobadas` }
+        : { status: 'pendiente' as const, detalle: 'Sin empezar' }),
   }
+
+  return [propuestaValor, landscape, estrategia]
+}
+
+/** El grupo donde está parado el proyecto: el primero que no está completo. */
+export function grupoActual(grupos: Grupo[]): Grupo {
+  return grupos.find(g => g.status !== 'completa') ?? grupos[grupos.length - 1]
 }
