@@ -1,12 +1,13 @@
-import { describe, it, expect } from 'vitest'
-import { makeTestDb } from '@/lib/db/testdb'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { makeTestDb, type TestDb } from '@/lib/db/testdb'
 import {
   findOrCreateProject, landscapeState, listLandscapeVersions, approveLandscapeVersion,
   saveLandscapeVersion, createSession, assignSessionToProject,
 } from '@/lib/db/store'
+import { strategyState, approveStrategyVersion } from '@/lib/db/strategy-store'
 import { STAGE_ORDER } from '@/lib/landscape/stages'
 import { ErrorDeHerramienta } from './errores'
-import { listarProyectos, contextoProyecto, estadoLandscape, guardarEtapa } from './tools'
+import { listarProyectos, contextoProyecto, estadoLandscape, estadoEstrategia, guardarEtapa } from './tools'
 
 describe('mcp · herramientas', () => {
   it('lista los proyectos con su avance', async () => {
@@ -140,5 +141,103 @@ describe('mcp · herramientas', () => {
     await guardarEtapa(db, { proyecto: 'Fruta Viva', etapa: 'contexto', contenido: { datos: 'y' } })
     const aprobadaConBorradorNuevo = (await estadoLandscape(db, 'Fruta Viva')).etapas.find(e => e.etapa === 'contexto')!
     expect(aprobadaConBorradorNuevo.hayBorradorEsperandoAprobacion).toBe(true)
+  })
+})
+
+describe('guardarEtapa con fase estrategia', () => {
+  let db: TestDb
+  let projectId: string
+
+  beforeEach(async () => {
+    db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Marca Test')
+    projectId = p.id
+  })
+
+  it('clave inválida lista las etapas de estrategia', async () => {
+    await expect(guardarEtapa(db, { proyecto: 'Marca Test', etapa: 'setup', contenido: {}, fase: 'estrategia' }))
+      // Equivalente a /diagnostico.*cuadros/s (dotAll): el target ES2017 del tsconfig
+      // no admite el flag 's' en un literal de regex (TS1501).
+      .rejects.toThrow(/diagnostico[\s\S]*cuadros/)
+  })
+
+  it('contenido inválido no deja rastro', async () => {
+    await expect(guardarEtapa(db, { proyecto: 'Marca Test', etapa: 'concepto', contenido: { concepto: 'x' }, fase: 'estrategia' }))
+      .rejects.toBeInstanceOf(ErrorDeHerramienta)
+    const estado = await strategyState(db, projectId)
+    expect(estado.find(e => e.stage === 'concepto')?.versiones).toBe(0)
+  })
+
+  it('camino feliz: borrador esperando aprobación', async () => {
+    const r = await guardarEtapa(db, {
+      proyecto: 'Marca Test', etapa: 'concepto',
+      contenido: { concepto: 'c', racional: 'r' }, fase: 'estrategia',
+    })
+    expect(r.esperandoAprobacion).toBe(true)
+    expect(r.etapa).toBe('concepto')
+  })
+
+  it('cuadros con esencia sin aprobar avisa sin bloquear', async () => {
+    const r = await guardarEtapa(db, {
+      proyecto: 'Marca Test', etapa: 'cuadros',
+      contenido: { brandEssence: { proposito: 'p' }, consumidor: { jtbd: 'j' } }, fase: 'estrategia',
+    })
+    expect(r.mensaje).toMatch(/aviso, no un bloqueo/)
+  })
+
+  it('sin fase sigue siendo landscape puro (regresión)', async () => {
+    await expect(guardarEtapa(db, { proyecto: 'Marca Test', etapa: 'concepto', contenido: {} }))
+      .rejects.toThrow(/no es una etapa del landscape/)
+  })
+})
+
+describe('estadoEstrategia', () => {
+  let db: TestDb
+
+  beforeEach(async () => {
+    db = await makeTestDb()
+    await findOrCreateProject(db, 'Marca Test')
+  })
+
+  it('con cero versiones el bloqueo dice que falta el borrador, no manda al panel', async () => {
+    const r = await estadoEstrategia(db, 'Marca Test')
+    expect(r.etapas).toHaveLength(14)
+    expect(r.etapas[0].bloqueo).toMatch(/no hay ningún borrador/)
+    expect(r.etapas[0].hayBorradorEsperandoAprobacion).toBe(false)
+  })
+
+  it('con un borrador guardado pide aprobación desde el panel', async () => {
+    await guardarEtapa(db, {
+      proyecto: 'Marca Test', etapa: 'concepto',
+      contenido: { concepto: 'c', racional: 'r' }, fase: 'estrategia',
+    })
+    const etapa = (await estadoEstrategia(db, 'Marca Test')).etapas.find(e => e.etapa === 'concepto')!
+    expect(etapa.hayBorradorEsperandoAprobacion).toBe(true)
+    expect(etapa.bloqueo).toMatch(/apruebe/)
+  })
+})
+
+describe('contextoProyecto con estrategia', () => {
+  let db: TestDb
+  let projectId: string
+
+  beforeEach(async () => {
+    db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Marca Test')
+    projectId = p.id
+  })
+
+  it('incluye solo el contenido aprobado', async () => {
+    const r1 = await guardarEtapa(db, {
+      proyecto: 'Marca Test', etapa: 'concepto',
+      contenido: { concepto: 'c', racional: 'r' }, fase: 'estrategia',
+    })
+    let ctx = await contextoProyecto(db, 'Marca Test')
+    expect(ctx.estrategia.find((e: { etapa: string }) => e.etapa === 'concepto')?.contenidoAprobado).toBeNull()
+
+    await approveStrategyVersion(db, r1.versionId, { projectId, stage: 'concepto' })
+    ctx = await contextoProyecto(db, 'Marca Test')
+    expect(ctx.estrategia.find((e: { etapa: string }) => e.etapa === 'concepto')?.contenidoAprobado)
+      .toEqual({ concepto: 'c', racional: 'r' })
   })
 })

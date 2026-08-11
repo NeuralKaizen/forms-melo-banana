@@ -3,11 +3,14 @@ import {
   listProjectsWithCounts, getProjectWithSessions, getSessionWithAnswers, getDeliverable,
   landscapeState, summarizeLandscape, saveLandscapeVersion,
 } from '@/lib/db/store'
+import { strategyState, summarizeStrategy, saveStrategyVersion } from '@/lib/db/strategy-store'
 import { sessions, answers } from '@/lib/db/schema'
 import { STAGE_LABEL, STAGE_ORDER, type StageKey } from '@/lib/landscape/stages'
+import { ETAPA_LABEL, ETAPA_ORDER, ESENCIA, type EstrategiaKey } from '@/lib/estrategia/stages'
 import { ErrorDeHerramienta } from './errores'
 import { resolverProyecto } from './resolver'
 import { validarContenidoEtapa } from './validar'
+import { validarContenidoEstrategia } from './validar-estrategia'
 
 // `AnyDb` hace que todo lo que sale del store llegue tipado `any`: estas dos anotan el
 // parámetro de cada `.map` con el tipo real de la fila, así un nombre de campo mal escrito
@@ -37,6 +40,7 @@ export async function contextoProyecto(db: AnyDb, ref: string) {
   const proyecto = await getProjectWithSessions(db, id)
   const entregable = await getDeliverable(db, id)
   const estado = await landscapeState(db, id)
+  const estadoEst = await strategyState(db, id)
 
   // `getProjectWithSessions` trae las sesiones sin sus respuestas: sin este paso las
   // entrevistas llegarían vacías, que es justamente el material que Claude necesita.
@@ -70,6 +74,14 @@ export async function contextoProyecto(db: AnyDb, ref: string) {
       titulo: STAGE_LABEL[e.stage],
       estado: e.status,
       // Solo lo aprobado: un borrador sin aprobar todavía no es la versión que manda.
+      contenidoAprobado: e.aprobada ? e.actual?.content ?? null : null,
+    })),
+    // Espejo del landscape de arriba, mismo criterio: solo lo aprobado sale del store
+    // hacia el chat.
+    estrategia: estadoEst.map(e => ({
+      etapa: e.stage,
+      titulo: ETAPA_LABEL[e.stage],
+      estado: e.status,
       contenidoAprobado: e.aprobada ? e.actual?.content ?? null : null,
     })),
   }
@@ -114,9 +126,37 @@ function bloqueoDe(stage: StageKey, status: string, versiones: number): string |
   return 'Necesita que el equipo apruebe una versión desde el panel.'
 }
 
+export async function estadoEstrategia(db: AnyDb, ref: string) {
+  const { id, name } = await resolverProyecto(db, ref)
+  const estado = await strategyState(db, id)
+  return {
+    marca: name,
+    resumen: summarizeStrategy(estado),
+    etapas: estado.map(e => ({
+      etapa: e.stage,
+      titulo: ETAPA_LABEL[e.stage],
+      estado: e.status,
+      versiones: e.versiones,
+      // Mismo criterio que en landscape: ver el comentario de `estadoLandscape`.
+      hayBorradorEsperandoAprobacion: e.versiones > 0 && (!e.aprobada || e.borradorNuevo !== null),
+      bloqueo: bloqueoDeEstrategia(e.stage, e.status, e.versiones),
+    })),
+  }
+}
+
+// Espejo de `bloqueoDe`, sin la rama de tendencias: la estrategia no tiene una long list
+// que elegir, así que con cero versiones el mensaje es siempre "no hay ningún borrador".
+function bloqueoDeEstrategia(stage: EstrategiaKey, status: string, versiones: number): string | null {
+  if (status === 'aprobada' || status === 'no_aplica') return null
+  if (versiones === 0) return `Todavía no hay ningún borrador de ${ETAPA_LABEL[stage]} escrito.`
+  return 'Necesita que el equipo apruebe una versión desde el panel.'
+}
+
 export async function guardarEtapa(db: AnyDb, d: {
-  proyecto: string; etapa: string; contenido: unknown
+  proyecto: string; etapa: string; contenido: unknown; fase?: 'landscape' | 'estrategia'
 }) {
+  if (d.fase === 'estrategia') return guardarEtapaEstrategia(db, d)
+
   if (!STAGE_ORDER.includes(d.etapa as StageKey))
     throw new ErrorDeHerramienta(
       `“${d.etapa}” no es una etapa del landscape. Las etapas son: ${STAGE_ORDER.join(', ')}.`,
@@ -150,5 +190,62 @@ export async function guardarEtapa(db: AnyDb, d: {
         'si lo aprueba. No pisé nada.'
       : `Guardé un borrador de ${STAGE_LABEL[etapa]}. Queda pendiente de aprobación: el ` +
         'equipo la aprueba desde el panel.',
+  }
+}
+
+// Espejo de la rama landscape de `guardarEtapa`, mismos cuatro pasos: clave válida,
+// validar antes de resolver el proyecto, guardar siempre como borrador de 'claude', y un
+// mensaje que nunca dice que se pisó algo aprobado.
+async function guardarEtapaEstrategia(db: AnyDb, d: {
+  proyecto: string; etapa: string; contenido: unknown
+}) {
+  if (!ETAPA_ORDER.includes(d.etapa as EstrategiaKey))
+    throw new ErrorDeHerramienta(
+      `“${d.etapa}” no es una etapa de la estrategia. Las etapas son: ${ETAPA_ORDER.join(', ')}.`,
+    )
+  const etapa = d.etapa as EstrategiaKey
+
+  // Validar antes de resolver el proyecto y antes de tocar la base: una escritura mal
+  // formada no deja rastro.
+  validarContenidoEstrategia(etapa, d.contenido)
+
+  const { id, name } = await resolverProyecto(db, d.proyecto)
+  const antes = (await strategyState(db, id)).find(e => e.stage === etapa)
+  const yaEstabaAprobada = antes?.aprobada ?? false
+
+  // Siempre borrador, siempre autor 'claude'. No hay herramienta que apruebe: aprobar
+  // es un acto humano y vive en el panel.
+  const version = await saveStrategyVersion(db, id, etapa, {
+    content: d.contenido,
+    author: 'claude',
+  })
+
+  let mensaje = yaEstabaAprobada
+    ? `Guardé un borrador nuevo de ${ETAPA_LABEL[etapa]}. La etapa sigue aprobada con la ` +
+      'versión anterior: el borrador queda visible en el panel para que el equipo decida ' +
+      'si lo aprueba. No pisé nada.'
+    : `Guardé un borrador de ${ETAPA_LABEL[etapa]}. Queda pendiente de aprobación: el ` +
+      'equipo la aprueba desde el panel.'
+
+  // Los cuadros se llenan desde lo que la esencia ya tiene aprobado: si guardar un
+  // borrador de cuadros deja etapas de esencia sin aprobar (y sin marcar 'no_aplica'),
+  // el resultado va a salir incompleto sin que nadie lo note. No bloquea la escritura
+  // —Claude puede guardar igual— pero sí avisa.
+  if (etapa === 'cuadros') {
+    const estado = await strategyState(db, id)
+    const faltantes = estado
+      .filter(e => ESENCIA.includes(e.stage) && e.status !== 'aprobada' && e.status !== 'no_aplica')
+      .map(e => ETAPA_LABEL[e.stage])
+    if (faltantes.length)
+      mensaje += ' Ojo: los cuadros se llenan desde contenido aprobado y estas etapas de ' +
+        `esencia todavía no lo están: ${faltantes.join(', ')}. Es un aviso, no un bloqueo.`
+  }
+
+  return {
+    versionId: version.id,
+    marca: name,
+    etapa,
+    esperandoAprobacion: true,
+    mensaje,
   }
 }
