@@ -178,6 +178,33 @@ describe('GET/POST /api/oauth/authorize — validaciones', () => {
     expect(bodyA.error).toBe(bodyB.error)
   })
 
+  it('un POST con Origin ajeno devuelve 403 y no emite código, aun con sesión válida ' +
+    '(CSRF: una página ajena no puede autoenviar el formulario de consentimiento)', async () => {
+    const { body: cliente } = await registrarViaRuta()
+    const { challenge } = pkce()
+    cookieJar.set('admin', ADMIN_PW)
+
+    const url = `http://localhost/api/oauth/authorize?client_id=${cliente.client_id}` +
+      `&redirect_uri=${encodeURIComponent(CALLBACK)}&code_challenge=${challenge}` +
+      `&code_challenge_method=S256`
+    const res = await authorizePOST(req(url, { method: 'POST', headers: { origin: 'https://atacante.example' } }))
+    expect(res.status).toBe(403)
+    expect(res.headers.get('location')).toBeNull()
+  })
+
+  it('un POST sin Origin devuelve 403 (los navegadores siempre lo mandan en POST; ' +
+    'su ausencia no es el formulario de consentimiento)', async () => {
+    const { body: cliente } = await registrarViaRuta()
+    const { challenge } = pkce()
+    cookieJar.set('admin', ADMIN_PW)
+
+    const url = `http://localhost/api/oauth/authorize?client_id=${cliente.client_id}` +
+      `&redirect_uri=${encodeURIComponent(CALLBACK)}&code_challenge=${challenge}` +
+      `&code_challenge_method=S256`
+    const res = await authorizePOST(req(url, { method: 'POST' }))
+    expect(res.status).toBe(403)
+  })
+
   it('con scope=landscape%20admin otorga solo landscape (no rechaza, filtra)', async () => {
     const { body: cliente } = await registrarViaRuta()
     const { verifier, challenge } = pkce()
@@ -186,7 +213,7 @@ describe('GET/POST /api/oauth/authorize — validaciones', () => {
     const url = `http://localhost/api/oauth/authorize?client_id=${cliente.client_id}` +
       `&redirect_uri=${encodeURIComponent(CALLBACK)}&code_challenge=${challenge}` +
       `&code_challenge_method=S256&scope=${encodeURIComponent('landscape admin')}`
-    const autorizado = await authorizePOST(req(url, { method: 'POST' }))
+    const autorizado = await authorizePOST(req(url, { method: 'POST', headers: { origin: 'http://localhost' } }))
     expect(autorizado.status).toBe(303)
     const codigo = new URL(autorizado.headers.get('location')!).searchParams.get('code')
 
@@ -271,7 +298,7 @@ describe('flujo completo: registrar → autorizar → canjear', () => {
 
     // Con la cookie admin puesta, consiente y emite el código.
     cookieJar.set('admin', ADMIN_PW)
-    const autorizado = await authorizePOST(req(urlAutorizar, { method: 'POST' }))
+    const autorizado = await authorizePOST(req(urlAutorizar, { method: 'POST', headers: { origin: 'http://localhost' } }))
     expect(autorizado.status).toBe(303)
     const location = autorizado.headers.get('location')
     expect(location).toBeTruthy()

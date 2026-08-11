@@ -120,6 +120,16 @@ export async function POST(req: Request) {
   const cookie = (await cookies()).get('admin')?.value
   if (!isValidAdminToken(cookie)) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
+  // Este POST solo puede venir del formulario de consentimiento de arriba, y los
+  // navegadores mandan siempre `Origin` en los POST. Un Origin ajeno o ausente es una
+  // página de terceros autoenviando el formulario para llevarse el código (CSRF) —
+  // segunda capa detrás del SameSite=Lax de la cookie admin. Se comparan hosts y no
+  // origins completos porque detrás del proxy el protocolo de `req.url` no es de fiar.
+  const origin = req.headers.get('origin')
+  const originHost = origin ? URL.parse(origin)?.host ?? null : null
+  if (!originHost || originHost !== url.host)
+    return NextResponse.json({ error: 'El consentimiento solo puede enviarse desde la pantalla propia' }, { status: 403 })
+
   const codigo = await crearCodigo(db, {
     clientId: pedido.clientId,
     redirectUri: pedido.redirectUri,
