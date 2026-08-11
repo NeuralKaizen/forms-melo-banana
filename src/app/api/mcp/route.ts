@@ -3,8 +3,7 @@ import { createMcpHandler, withMcpAuth } from 'mcp-handler'
 import { db } from '@/lib/db/client'
 import { verificarAccessToken } from '@/lib/oauth/store'
 import { ErrorDeHerramienta } from '@/lib/mcp/errores'
-import { listarProyectos, contextoProyecto, estadoLandscape, guardarEtapa } from '@/lib/mcp/tools'
-import { STAGE_ORDER } from '@/lib/landscape/stages'
+import { listarProyectos, contextoProyecto, estadoLandscape, estadoEstrategia, guardarEtapa } from '@/lib/mcp/tools'
 
 /**
  * Devuelve el error como resultado de herramienta y no como excepción: así Claude lo
@@ -35,9 +34,9 @@ const handler = createMcpHandler(
       title: 'Contexto de un proyecto',
       description:
         'Trae todo el contexto de un proyecto, entero: la marca, las entrevistas con sus ' +
-        'respuestas, la propuesta de valor y el estado del landscape con el contenido de las ' +
-        'etapas aprobadas. Llamá a esto al empezar a trabajar en un proyecto, antes de escribir ' +
-        'nada, para no repetir lo que ya se decidió.',
+        'respuestas, la propuesta de valor, el estado del landscape y el de la estrategia, con ' +
+        'el contenido de las etapas aprobadas de ambos. Llamá a esto al empezar a trabajar en ' +
+        'un proyecto, antes de escribir nada, para no repetir lo que ya se decidió.',
       inputSchema: z.object({
         proyecto: z.string().describe('Nombre de la marca o id del proyecto'),
       }),
@@ -53,23 +52,39 @@ const handler = createMcpHandler(
       }),
     }, async ({ proyecto }) => responder(() => estadoLandscape(db, proyecto)))
 
+    server.registerTool('estado_estrategia', {
+      title: 'Estado de la estrategia',
+      description:
+        'Qué etapa del Proceso de Estrategia está en curso, cuál está aprobada, si hay un borrador ' +
+        'esperando aprobación y qué bloquea el avance. Llamá a esto cuando pregunten en qué va la ' +
+        'estrategia o qué falta.',
+      inputSchema: z.object({
+        proyecto: z.string().describe('Nombre de la marca o id del proyecto'),
+      }),
+    }, async ({ proyecto }) => responder(() => estadoEstrategia(db, proyecto)))
+
     server.registerTool('guardar_etapa', {
       title: 'Guardar una etapa del landscape',
       description:
-        'Guarda el resultado de una etapa del landscape en la plataforma. **Llamá a esto cada vez ' +
-        'que termines de redactar una etapa**, sin esperar a que te lo pidan: si no la guardás, el ' +
-        'trabajo se queda solo en este chat y no llega al panel del estudio. Siempre entra como ' +
-        'borrador — vos nunca aprobás, el equipo aprueba desde el panel. Para la etapa "tendencias" ' +
-        'mandá la long list completa en "candidatas", cada una con id, eje (Marca, Estrategia o ' +
+        'Guarda el resultado de una etapa en la plataforma. **Llamá a esto cada vez que termines ' +
+        'de redactar una etapa**, sin esperar a que te lo pidan: si no la guardás, el trabajo se ' +
+        'queda solo en este chat y no llega al panel del estudio. Siempre entra como borrador — ' +
+        'vos nunca aprobás, el equipo aprueba desde el panel. Para la etapa "tendencias" mandá ' +
+        'la long list completa en "candidatas", cada una con id, eje (Marca, Estrategia o ' +
         'Comunicación), titulo, descripcion y fuentes; no mandes "seleccionadas", que elegir las ' +
-        '4 o 5 principales es decisión del equipo.',
+        '4 o 5 principales es decisión del equipo. Para las etapas de estrategia mandá fase: ' +
+        '"estrategia"; las claves son las 14 del Proceso de Estrategia (diagnostico, consumidor, ' +
+        'rtbs, concepto, beneficios, arquetipo, personalidad, valores, territorio, brand_ideal, ' +
+        'ingredients, tagline, manifiesto, cuadros). Los cuadros se llenan desde contenido aprobado.',
       inputSchema: z.object({
         proyecto: z.string().describe('Nombre de la marca o id del proyecto'),
-        etapa: z.enum(STAGE_ORDER as [string, ...string[]]).describe('Etapa del landscape'),
+        fase: z.enum(['landscape', 'estrategia']).default('landscape')
+          .describe('A qué proceso pertenece la etapa'),
+        etapa: z.string().describe('Clave de la etapa dentro de la fase'),
         contenido: z.record(z.string(), z.unknown()).describe('El resultado de la etapa, como objeto JSON'),
       }),
-    }, async ({ proyecto, etapa, contenido }) =>
-      responder(() => guardarEtapa(db, { proyecto, etapa, contenido })))
+    }, async ({ proyecto, etapa, contenido, fase }) =>
+      responder(() => guardarEtapa(db, { proyecto, etapa, contenido, fase })))
   },
   { serverInfo: { name: 'melo-banana', version: '1.0.0' } },
 )
