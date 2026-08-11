@@ -1,0 +1,8 @@
+# El deploy solo necesita el código. Todo esto infla la subida y no se usa en runtime.
+.next
+node_modules
+tmp
+docs
+inspo
+forms-pages
+.superpowers
