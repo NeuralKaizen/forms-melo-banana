@@ -4,33 +4,76 @@ import {
   landscapeState, listLandscapeActivity, summarizeLandscape, type TendenciasContent,
 } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveFases } from '@/lib/pipeline/phases'
+import { deriveFases, derivePantallas, pantallaActual } from '@/lib/pipeline/phases'
+import { construirIndice, esperanDecision } from '@/lib/pipeline/indice'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
-import { ProjectHeader } from '@/components/ProjectHeader'
-import { buildStages, haceCuanto, textoActividad } from '@/lib/landscape/stages'
+import { ProjectIndex } from '@/components/ProjectIndex'
+import { buildStages, haceCuanto, textoActividad, STAGE_ORDER, type StageKey } from '@/lib/landscape/stages'
+import { buildEtapasEstrategia } from '@/lib/estrategia/stages'
 import { LandscapeWorkspace } from './LandscapeWorkspace'
 
 export const dynamic = 'force-dynamic'
 
-export default async function LandscapeView({ params }: { params: Promise<{ id: string }> }) {
+/**
+ * De dónde viene la versión que se está mirando, para el pie de decisión. Se arma en el
+ * servidor por la misma razón que el texto de la actividad: `haceCuanto` compara contra
+ * un “ahora”, y dos ahoras distintos —el del render y el de la hidratación— harían bailar
+ * el texto.
+ */
+type VersionVista = { author: string; authorLabel: string | null; createdAt: Date; approvedAt: Date | null }
+function procedenciaDe(v: VersionVista, ahora: Date): string {
+  const quien = v.author === 'claude' ? 'Claude' : v.authorLabel ?? 'el equipo'
+  return `Escrito por ${quien} · ${haceCuanto(v.createdAt, ahora)} · ${v.approvedAt ? 'aprobada' : 'sin aprobar'}`
+}
+
+export default async function LandscapeView({ params, searchParams }: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ etapa?: string }>
+}) {
   const { id } = await params
+  const { etapa } = await searchParams
   const project = await getProjectWithSessions(db, id)
   if (!project) return (
     <AdminShell activeProjectId={id}>
-      <p className="pt-16 text-center text-[15px] text-[#8a8170]">Proyecto no encontrado.</p>
+      <p className="pt-16 text-center text-[15px] text-[var(--secundario)]">Proyecto no encontrado.</p>
     </AdminShell>
   )
 
   const deliverable = await getDeliverable(db, id)
   const rawSessions = project.sessions as { status?: string | null }[]
   const estado = await landscapeState(db, id)
-  const estrategia = summarizeStrategy(await strategyState(db, id))
-  const fases = deriveFases(id, projectSignals({
-    sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estado), estrategia,
-  }))
+  const estrategiaEstado = await strategyState(db, id)
+  const señales = projectSignals({
+    sessions: rawSessions,
+    tieneEntregable: !!deliverable,
+    landscape: summarizeLandscape(estado),
+    estrategia: summarizeStrategy(estrategiaEstado),
+  })
 
   const stages = buildStages(estado)
+
+  // La query manda, pero sólo si nombra una etapa real: una `?etapa=` inventada cae a la
+  // primera sin aprobar en vez de romper la página.
+  const primeraSinAprobar = stages.find(s => s.status !== 'aprobada')?.key ?? STAGE_ORDER[0]
+  const etapaActiva: StageKey =
+    etapa && (STAGE_ORDER as string[]).includes(etapa) ? (etapa as StageKey) : primeraSinAprobar
+
+  const fases = deriveFases(id, señales)
+  const pantallas = derivePantallas(id, señales)
+  const indice = construirIndice({
+    projectId: id,
+    fases,
+    pantallas,
+    etapaActiva: `landscape:${etapaActiva}`,
+    stagesLandscape: stages,
+    etapasEstrategia: buildEtapasEstrategia(estrategiaEstado),
+    esperanDecision: [
+      ...esperanDecision('landscape', estado),
+      ...esperanDecision('estrategia', estrategiaEstado),
+    ],
+  })
+  const actual = pantallaActual(fases, pantallas)
 
   const etapaTendencias = estado.find(e => e.stage === 'tendencias')!
   // La long list se toma de la versión más nueva, igual criterio que el gate en
@@ -60,10 +103,16 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
             id: e.actual.id,
             content: e.actual.content,
             aprobada: !!e.actual.approvedAt,
+            procedencia: procedenciaDe(e.actual, ahora),
+            cuando: haceCuanto(e.actual.createdAt, ahora),
             // Lo que Claude escribió después de la aprobación: no desplaza a lo aprobado,
             // pero el panel lo tiene que poder mostrar y ofrecer al gate humano.
             borradorNuevo: e.borradorNuevo
-              ? { id: e.borradorNuevo.id, content: e.borradorNuevo.content }
+              ? {
+                  id: e.borradorNuevo.id,
+                  content: e.borradorNuevo.content,
+                  cuando: haceCuanto(e.borradorNuevo.createdAt, ahora),
+                }
               : null,
           }
         : null,
@@ -71,11 +120,19 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
   )
 
   return (
-    <AdminShell activeProjectId={id}>
-      <div className="space-y-8">
-      <ProjectHeader name={project.name} fases={fases} active="landscape" />
+    <AdminShell
+      activeProjectId={id}
+      indice={
+        <ProjectIndex
+          nombre={project.name}
+          subtitulo={`${actual.label} · ${actual.detalle}`}
+          fases={indice}
+        />
+      }
+    >
       <LandscapeWorkspace
         projectId={id}
+        etapaActiva={etapaActiva}
         stages={stages}
         tendencias={tendenciasContent?.candidatas ?? []}
         seleccionAprobada={seleccionAprobada}
@@ -83,7 +140,6 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
         contenidoPorEtapa={contenidoPorEtapa}
         actividad={actividad}
       />
-      </div>
     </AdminShell>
   )
 }
