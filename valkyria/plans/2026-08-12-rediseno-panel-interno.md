@@ -193,7 +193,12 @@ export interface EntradaIndice {
 export interface FaseIndice {
   key: FaseKey
   label: string
-  /** '6/6', '✓', '6 de 14' — lo que va a la derecha del título. */
+  /**
+   * El contador que va a la derecha del título de la fase, **siempre con barra**:
+   * '6/6', '4/11', '0/1' — también cuando la fase está completa. La forma "6 de 14 etapas"
+   * pertenece al subtítulo del proyecto, que es otro lugar de la pantalla; no se mezclan.
+   * Las fases sin etapas propias (la primera) usan el `detalle` de la fase: 'Sin respondientes'.
+   */
   avance: string
   entradas: EntradaIndice[]
   /** Cuántas quedaron ocultas por el colapso. 0 si no se colapsó nada. */
