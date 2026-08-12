@@ -1315,7 +1315,9 @@ const panel = [
 
 describe('lenguaje visual del panel', () => {
   it('no quedan grises del lenguaje viejo', () => {
-    const viejos = ['#a59c89', '#8a8170', '#6b6155', '#4a4438', '#b3ab9b', '#fffdf0', '#faf7ee']
+    // `#1a1510` es el `--ink` viejo: la Task 3 lo cambió a `#15120C` en globals.css, pero
+    // varios componentes del panel lo tenían hardcodeado en vez de usar la variable.
+    const viejos = ['#a59c89', '#8a8170', '#6b6155', '#4a4438', '#b3ab9b', '#fffdf0', '#faf7ee', '#1a1510']
     for (const f of panel) {
       const src = readFileSync(f, 'utf8').toLowerCase()
       for (const g of viejos) expect(`${f}: ${src.includes(g) ? g : 'ok'}`).toBe(`${f}: ok`)
