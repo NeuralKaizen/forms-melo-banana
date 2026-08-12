@@ -1383,6 +1383,11 @@ sembrado:
 - [ ] Clic en un proyecto — la barra se recoge a riel, aparece el índice, no se desplaza el contenido.
 - [ ] Hover en el riel — la barra se abre encima con los nombres; `Escape` la cierra; con teclado
       el botón `»` responde y expone `aria-expanded`.
+- [ ] **Con la barra abierta, hacer clic en el botón `»` con el mouse.** La capa flotante (230px,
+      `z-40`) se superpone al riel (58px, `z-30`) justo en la franja donde vive el botón. En jsdom
+      el evento llega igual porque no hay hit-testing por z-index, así que **ningún test puede
+      cubrir esto**: en un navegador real el clic podría caer sobre la capa en vez del botón y
+      dejar sin efecto el fijar/soltar. Es previo al arreglo del hover, no lo introdujo.
 - [ ] Landscape — 6 etapas en el índice, documento editorial, pie de decisión, anterior/siguiente.
 - [ ] Estrategia — 14 etapas con los tres bloques rotulados, colapso con `＋ n etapas más`.
 - [ ] Una etapa con borrador nuevo — el comparador de dos columnas con las dos decisiones.
