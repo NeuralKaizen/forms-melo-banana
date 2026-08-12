@@ -1,178 +1,84 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { StageStatus } from '@/lib/landscape/stages'
 import type { EstrategiaKey, EtapaEstrategia } from '@/lib/estrategia/stages'
-import { ETAPA_LABEL, ETAPA_ORDER, BLOQUES } from '@/lib/estrategia/stages'
-import { ContenidoEtapa } from '../landscape/ContenidoEtapa'
+import { ETAPA_LABEL, ETAPA_ORDER } from '@/lib/estrategia/stages'
+import { EtapaDocumento } from '@/components/EtapaDocumento'
+import { ComparadorVersiones } from '@/components/ComparadorVersiones'
 
 /**
  * Espejo de `LandscapeWorkspace`, con dos restas: no hay gate de tendencias (la
- * estrategia no tiene una etapa como esa, todas se aprueban igual) y no hay columna
- * de actividad (`listLandscapeActivity` no tiene equivalente todavía).
+ * estrategia no tiene una etapa como esa, todas se aprueban igual) y no hay actividad
+ * (`listLandscapeActivity` no tiene equivalente todavía). Los bloques del proceso ya no
+ * viven acá: los rinde el índice del proyecto.
  */
 
 type ContenidoEtapaVista = {
   id: string
   content: unknown
   aprobada: boolean
+  /** “Escrito por Claude · hace 2 h · sin aprobar”: se arma en el servidor, con la hora del servidor. */
+  procedencia: string
+  /** Cuándo se escribió. Es la cabecera de su columna en el comparador. */
+  cuando: string
   /** Lo que Claude guardó después de la aprobación. Ver `StrategyStageState.borradorNuevo`. */
-  borradorNuevo: { id: string; content: unknown } | null
+  borradorNuevo: { id: string; content: unknown; cuando: string } | null
 } | null
 
-const STATUS_LABEL: Record<StageStatus, string> = {
-  pendiente: 'Pendiente',
-  en_curso: 'En curso',
-  aprobada: 'Aprobada',
-  no_aplica: 'No aplica',
-}
-
-function EtapaDot({ status }: { status: StageStatus }) {
-  const base = 'h-3.5 w-3.5 flex-none rounded-full border'
-  if (status === 'aprobada') return <span className={`${base} border-[var(--banana)] bg-[var(--banana)]`} />
-  if (status === 'en_curso') return <span className={`${base} border-[var(--banana)] bg-white`} />
-  return <span className={`${base} border-black/15 bg-white`} />
-}
-
-function EtapaRow({ etapa, active, onSelect }: { etapa: EtapaEstrategia; active: boolean; onSelect: () => void }) {
-  const muted = etapa.status === 'no_aplica'
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-current={active ? 'step' : undefined}
-      className={`flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors duration-200
-        ${active ? 'bg-[#fffdf0] shadow-[inset_3px_0_0_0_var(--banana)]' : 'hover:bg-[#faf7ee]'}`}
-    >
-      <span className="mt-0.5"><EtapaDot status={etapa.status} /></span>
-      <span className="min-w-0">
-        <span className={`block text-[14px] leading-tight ${muted ? 'text-[#b3ab9b]' : active ? 'font-semibold text-ink' : 'text-[#6b6155]'}`}>
-          {etapa.label}
-        </span>
-        <span className="mt-0.5 block text-[11.5px] text-[#a59c89]">
-          {etapa.hint ?? STATUS_LABEL[etapa.status]}
-        </span>
-      </span>
-    </button>
-  )
-}
-
-/** A qué bloque del carril pertenece una etapa. */
-function bloqueDe(key: EstrategiaKey): string {
-  return BLOQUES.find(g => g.etapas.includes(key))?.titulo ?? BLOQUES[0].titulo
-}
+type Vecina = { label: string; href: string } | undefined
 
 /**
- * Cabecera de bloque del carril: clickeable, con el contador propio del bloque (mismo
- * criterio que `summarizeStrategy` — `no_aplica` no suma en ningún lado) y un chevron
- * que indica abierto/cerrado. Sin transición en el chevron: el usuario es sensible al
- * movimiento, así que el giro es instantáneo, no animado.
+ * Anterior y siguiente para las pantallas que no son el documento — el vacío y el
+ * conflicto de versiones. `EtapaDocumento` trae los suyos; avanzar de a una etapa tiene
+ * que poder hacerse igual cuando todavía no hay nada escrito.
  */
-function BloqueHeader({
-  titulo,
-  aprobadas,
-  total,
-  abierto,
-  onToggle,
-}: {
-  titulo: string
-  aprobadas: number
-  total: number
-  abierto: boolean
-  onToggle: () => void
-}) {
+function Vecinas({ anterior, siguiente }: { anterior: Vecina; siguiente: Vecina }) {
+  if (!anterior && !siguiente) return null
+  const estilo = 'rounded-full border border-[var(--line)] px-3 py-1.5 text-[13px] text-[var(--secundario)] transition-colors duration-200 hover:border-[var(--ink)] hover:text-[var(--ink)] motion-reduce:transition-none'
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={abierto}
-      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-left"
-    >
-      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">{titulo}</span>
-      <span className="flex items-center gap-1 text-[10.5px] text-[#a59c89]">
-        {aprobadas} de {total}
-        <svg
-          viewBox="0 0 24 24"
-          width="12"
-          height="12"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          aria-hidden="true"
-          className={abierto ? undefined : '-rotate-90'}
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </span>
-    </button>
-  )
-}
-
-/**
- * Claude escribió sobre una etapa que el equipo ya había aprobado. Lo aprobado sigue
- * mandando —una escritura desde un chat no deshace una decisión— pero lo nuevo tiene
- * que estar a un clic, no perdido.
- */
-function AvisoBorradorNuevo({ viendoBorrador, onCambiar }: { viendoBorrador: boolean; onCambiar: () => void }) {
-  return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--banana)]/45 bg-[#fffdf0] px-4 py-3">
-      <p className="text-[12.5px] leading-relaxed text-[#6b6155]">
-        Claude guardó una versión más nueva después de la aprobación.
-        <span className="text-[#a59c89]"> La aprobada sigue vigente hasta que el equipo decida.</span>
-      </p>
-      <button
-        type="button"
-        onClick={onCambiar}
-        className="rounded-xl border border-black/10 bg-white px-3 py-1.5 text-[12.5px] font-medium text-ink transition-colors duration-200 hover:border-black/25"
-      >
-        {viendoBorrador ? 'Ver la aprobada' : 'Ver la nueva'}
-      </button>
-    </div>
+    <nav aria-label="Etapas vecinas" className="mt-10 flex items-center justify-between border-t border-[var(--line)] pt-5">
+      {anterior
+        ? <Link href={anterior.href} className={estilo}><span aria-hidden="true">‹</span> {anterior.label}</Link>
+        : <span />}
+      {siguiente
+        ? <Link href={siguiente.href} className={estilo}>{siguiente.label} <span aria-hidden="true">›</span></Link>
+        : <span />}
+    </nav>
   )
 }
 
 export function EstrategiaWorkspace({
   projectId,
+  etapaActiva,
   etapas,
-  resumen,
   contenidoPorEtapa,
 }: {
   projectId: string
+  /** La etapa que se está mirando. Viene de `?etapa=`, ya validada por la página. */
+  etapaActiva: EstrategiaKey
   etapas: EtapaEstrategia[]
-  /** De `summarizeStrategy`: cuántas de las 14 etapas están aprobadas. */
-  resumen: { aprobadas: number; total: number }
   contenidoPorEtapa: Record<string, ContenidoEtapaVista>
 }) {
   const router = useRouter()
-  const etapaInicial = etapas.find(e => e.status === 'en_curso')?.key ?? etapas[0].key
-  const [etapa, setEtapa] = useState<EstrategiaKey>(etapaInicial)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Qué se está mirando cuando la etapa tiene una aprobada y un borrador más nuevo.
-  // Arranca en la aprobada: es la que manda hasta que el equipo decida otra cosa.
-  const [viendoBorrador, setViendoBorrador] = useState(false)
-  // Bloques del carril desplegados (por título). Arranca con solo el bloque de la etapa
-  // activa abierto — no tiene sentido mostrar las 14 etapas de una si el equipo está
-  // mirando una sola.
-  const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set([bloqueDe(etapaInicial)]))
+  // El equipo eligió quedarse con lo aprobado. No hay dónde registrarlo: el borrador de
+  // Claude no se descarta —nada se pisa, la tabla es append-only— así que “mantener” no es
+  // una escritura, es no decidir todavía. Vale para esta vista: al volver a la etapa, el
+  // conflicto vuelve a aparecer, que es lo honesto.
+  const [mantenida, setMantenida] = useState(false)
 
-  function irAEtapa(key: EstrategiaKey) {
-    setEtapa(key)
-    setViendoBorrador(false)
+  // Navegar ahora es cambiar la URL, no un `setState`: el componente sigue montado entre
+  // etapas, así que lo que era de la etapa anterior —el error, la decisión de mantener—
+  // se limpia al cambiar de etapa o queda pegado. Se ajusta durante el render, no en un
+  // efecto: un efecto pintaría primero la etapa nueva con el estado de la vieja.
+  const [etapaPrevia, setEtapaPrevia] = useState<EstrategiaKey>(etapaActiva)
+  if (etapaPrevia !== etapaActiva) {
+    setEtapaPrevia(etapaActiva)
     setError(null)
-    // Ir a una etapa es una decisión de foco: se expande su bloque y se pliegan los
-    // demás, no se acumulan bloques abiertos etapa tras etapa.
-    setAbiertos(new Set([bloqueDe(key)]))
-  }
-
-  function toggleBloque(titulo: string) {
-    setAbiertos(prev => {
-      const next = new Set(prev)
-      if (next.has(titulo)) next.delete(titulo)
-      else next.add(titulo)
-      return next
-    })
+    setMantenida(false)
   }
 
   // Aprobar una versión ya guardada: Claude guarda por MCP, el equipo aprueba después
@@ -196,143 +102,66 @@ export function EstrategiaWorkspace({
     }
   }
 
-  const etapaActual = etapas.find(e => e.key === etapa)
-  const contenido = contenidoPorEtapa[etapa]
+  const posicion = Math.max(0, ETAPA_ORDER.indexOf(etapaActiva))
+  const ubicacion = `Estrategia · etapa ${posicion + 1} de ${ETAPA_ORDER.length}`
+  const titulo = etapas.find(e => e.key === etapaActiva)?.label ?? ETAPA_LABEL[etapaActiva]
 
-  // Lo aprobado manda: la vista arranca en `contenido` y solo cambia si el equipo pide
-  // ver el borrador. `vista` es lo que se muestra y lo que aprueba el botón de abajo.
+  const href = (key: EstrategiaKey) => `/admin/projects/${projectId}/estrategia?etapa=${key}`
+  const anterior = posicion > 0
+    ? { label: ETAPA_LABEL[ETAPA_ORDER[posicion - 1]], href: href(ETAPA_ORDER[posicion - 1]) }
+    : undefined
+  const siguiente = posicion < ETAPA_ORDER.length - 1
+    ? { label: ETAPA_LABEL[ETAPA_ORDER[posicion + 1]], href: href(ETAPA_ORDER[posicion + 1]) }
+    : undefined
+
+  const contenido = contenidoPorEtapa[etapaActiva] ?? null
   const borradorNuevo = contenido?.borradorNuevo ?? null
-  const mostrandoBorrador = !!borradorNuevo && viendoBorrador
-  const vista = mostrandoBorrador
-    ? { id: borradorNuevo.id, content: borradorNuevo.content, aprobada: false }
-    : contenido
-
-  // Posición de la etapa activa para el breadcrumb y el pie de siguiente/anterior.
-  const indiceEtapa = ETAPA_ORDER.indexOf(etapa)
-  const bloqueActual = bloqueDe(etapa)
-  const etapaAnterior = indiceEtapa > 0 ? ETAPA_ORDER[indiceEtapa - 1] : null
-  const etapaSiguiente = indiceEtapa < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[indiceEtapa + 1] : null
-
-  const etapaPorKey = new Map(etapas.map(e => [e.key, e]))
+  // Lo aprobado manda: mientras haya conflicto se ven las dos versiones enteras, sin que
+  // ninguna de las dos se pise, hasta que el equipo elija una.
+  const enConflicto = !!contenido && !!borradorNuevo && !mantenida
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-
-      {/* Etapas, agrupadas en tres bloques plegables (diagnóstico/consumidor, esencia,
-          cierre) — 14 etapas en una lista plana era demasiado para un carril. */}
-      <nav aria-label="Etapas de la estrategia" className="lg:sticky lg:top-6 lg:self-start">
-        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#b08a1e]">Etapas</p>
-        <p className="mb-3 px-3 text-[10.5px] text-[#a59c89]">
-          {resumen.aprobadas} de {resumen.total} aprobadas
-        </p>
-        <div className="space-y-1">
-          {BLOQUES.map(bloque => {
-            const filas = bloque.etapas
-              .map(k => etapaPorKey.get(k))
-              .filter((e): e is EtapaEstrategia => !!e)
-            const aplicables = filas.filter(e => e.status !== 'no_aplica')
-            const aprobadas = aplicables.filter(e => e.status === 'aprobada').length
-            const abierto = abiertos.has(bloque.titulo)
-            return (
-              <div key={bloque.titulo}>
-                <BloqueHeader
-                  titulo={bloque.titulo}
-                  aprobadas={aprobadas}
-                  total={aplicables.length}
-                  abierto={abierto}
-                  onToggle={() => toggleBloque(bloque.titulo)}
-                />
-                {abierto && (
-                  <div className="space-y-0.5">
-                    {filas.map(e => (
-                      <EtapaRow key={e.key} etapa={e} active={e.key === etapa} onSelect={() => irAEtapa(e.key)} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-        <p className="mt-4 flex items-center gap-1.5 px-3 text-[11px] leading-relaxed text-[#a59c89]">
-          <span className="h-1.5 w-1.5 flex-none rounded-full bg-[#5aa469]" aria-hidden="true" />
-          Conectado a Claude — este proyecto es contexto del equipo en sus conversaciones.
-        </p>
-      </nav>
-
-      {/* Contenido de la etapa */}
-      <section className="min-w-0">
-        <p className="mb-1.5 text-[11px] text-[#a59c89]">
-          {bloqueActual} · etapa {indiceEtapa + 1} de {ETAPA_ORDER.length}
-        </p>
-        {contenido && vista ? (
-          <>
-            <header className="mb-5 flex items-baseline justify-between gap-3">
-              <h2 className="font-serif text-xl font-medium text-ink">{etapaActual?.label}</h2>
-              <span className="text-[11px] text-[#a59c89]">
-                {vista.aprobada ? 'Versión aprobada' : 'Borrador sin aprobar'}
-              </span>
-            </header>
-
-            {borradorNuevo && (
-              <AvisoBorradorNuevo
-                viendoBorrador={viendoBorrador}
-                onCambiar={() => setViendoBorrador(v => !v)}
-              />
-            )}
-
-            <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-              <ContenidoEtapa content={vista.content} />
-            </div>
-
-            {/* Gate humano: aprueba lo que se está viendo, así el borrador nuevo se sella
-                sin pasar por otra pantalla. */}
-            {!vista.aprobada && (
-              <div className="sticky bottom-4 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--ink)] px-5 py-3.5 shadow-[0_8px_24px_-12px_rgba(26,21,16,0.5)]">
-                <p className="text-[13px] text-white/85">
-                  {mostrandoBorrador ? 'Versión más nueva, sin aprobar' : 'Sin aprobar'}
-                  <span className="text-white/50"> · decide el equipo, no el agente</span>
-                  {error && <span className="ml-1 text-[#ff9c8a]">{error}</span>}
-                </p>
-                <button
-                  type="button"
-                  disabled={guardando}
-                  onClick={() => aprobarVersion(etapa, vista.id)}
-                  className="rounded-xl bg-[var(--banana)] px-4 py-2 text-[13px] font-semibold text-[#1a1510] transition-opacity duration-200 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  {guardando ? 'Guardando…' : mostrandoBorrador ? 'Aprobar esta versión' : 'Aprobar'}
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="rounded-2xl border border-black/5 bg-white p-10 text-center shadow-sm">
-            <h2 className="font-serif text-lg font-medium text-ink">{etapaActual?.label}</h2>
-            <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-[#8a8170]">
-              Esta etapa todavía no tiene una versión guardada. Cuando el equipo la trabaje en Claude,
-              el resultado aparece aquí para revisar y aprobar.
-            </p>
+    <div className="min-w-0">
+      {enConflicto && contenido && borradorNuevo ? (
+        <article>
+          <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[var(--rotulo)]">{ubicacion}</p>
+          <h1 className="mt-2 font-serif text-[30px] font-normal tracking-[-.02em] text-[var(--ink)]">{titulo}</h1>
+          <div className="mt-8">
+            <ComparadorVersiones
+              aprobada={{ content: contenido.content, cuando: contenido.cuando }}
+              nueva={{ content: borradorNuevo.content, cuando: borradorNuevo.cuando }}
+              onMantener={() => setMantenida(true)}
+              onAprobarNueva={() => aprobarVersion(etapaActiva, borradorNuevo.id)}
+              guardando={guardando}
+            />
           </div>
-        )}
-
-        {/* Siguiente/anterior por `ETAPA_ORDER`: el lado que no existe (en los extremos)
-            no se renderiza. */}
-        <div className="mt-4 flex items-center justify-between text-[13px]">
-          {etapaAnterior && (
-            <button type="button" onClick={() => irAEtapa(etapaAnterior)} className="text-[#6b6155] hover:text-ink">
-              ‹ {ETAPA_LABEL[etapaAnterior]}
-            </button>
-          )}
-          {etapaSiguiente && (
-            <button
-              type="button"
-              onClick={() => irAEtapa(etapaSiguiente)}
-              className="ml-auto font-medium text-ink hover:text-ink"
-            >
-              {ETAPA_LABEL[etapaSiguiente]} ›
-            </button>
-          )}
-        </div>
-      </section>
+          {error && <p className="mt-3 text-[13px] text-[#ff9c8a]">{error}</p>}
+          <Vecinas anterior={anterior} siguiente={siguiente} />
+        </article>
+      ) : contenido ? (
+        <EtapaDocumento
+          ubicacion={ubicacion}
+          titulo={titulo}
+          content={contenido.content}
+          procedencia={contenido.procedencia}
+          aprobada={contenido.aprobada}
+          anterior={anterior}
+          siguiente={siguiente}
+          onAprobar={() => aprobarVersion(etapaActiva, contenido.id)}
+          guardando={guardando}
+          error={error}
+        />
+      ) : (
+        <article>
+          <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[var(--rotulo)]">{ubicacion}</p>
+          <h1 className="mt-2 font-serif text-[30px] font-normal tracking-[-.02em] text-[var(--ink)]">{titulo}</h1>
+          <p className="mt-6 max-w-[60ch] text-[14px] leading-[1.66] text-[var(--secundario)]">
+            Esta etapa todavía no tiene una versión guardada. Cuando el equipo la trabaje en Claude,
+            el resultado aparece acá para revisar y aprobar.
+          </p>
+          <Vecinas anterior={anterior} siguiente={siguiente} />
+        </article>
+      )}
     </div>
   )
 }
