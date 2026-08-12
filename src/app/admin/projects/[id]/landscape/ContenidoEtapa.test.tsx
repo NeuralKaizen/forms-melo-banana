@@ -65,4 +65,11 @@ describe('ContenidoEtapa', () => {
     // La lista exterior más las dos interiores: al menos tres <ul>.
     expect(container.querySelectorAll('ul').length).toBeGreaterThanOrEqual(3)
   })
+
+  it('rinde cada campo como fila de rótulo y valor, no como caja anidada', () => {
+    const { container } = render(<ContenidoEtapa content={{ territorio_central: 'La pausa' }} />)
+    expect(screen.getByText('Territorio central')).toBeTruthy()
+    expect(screen.getByText('La pausa')).toBeTruthy()
+    expect(container.querySelector('.bg-\\[\\#faf7ee\\]')).toBeNull()
+  })
 })
