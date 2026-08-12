@@ -59,18 +59,30 @@ export function AvatarProyecto({ iniciales, activo, espera }: { iniciales: strin
  * proyecto, y la misma barra abierta **encima** del contenido —flotando, con velo— cuando
  * el mouse entra al riel o se toca el control `»`. Nada del contenido de la derecha se
  * desplaza: la capa abierta es absoluta.
+ *
+ * El hover abre mientras el mouse está encima; el botón fija. Son dos estados separados a
+ * propósito: un clic no puede cerrar lo que el hover abrió medio segundo antes.
  */
 export function BarraProyectos({ proyectos, activeProjectId }: {
   proyectos: ProyectoBarra[]
   activeProjectId: string
 }) {
-  const [abierta, setAbierta] = useState(false)
+  // Dos maneras de estar abierta, y hay que distinguirlas: el hover es efímero —entra el
+  // mouse, se abre; sale, se recoge— y el botón *fija*. Si fueran un solo estado, el clic
+  // del mouse cerraría la barra que el hover acababa de abrir, porque el botón vive adentro
+  // del riel y el hover siempre llega primero.
+  const [porHover, setPorHover] = useState(false)
+  const [fijada, setFijada] = useState(false)
+  const abierta = porHover || fijada
   // El foco entra al primer proyecto sólo cuando la barra se abrió a propósito (teclado o
   // clic). Con el mouse por encima, robar el foco sería un manotazo.
   const [conFoco, setConFoco] = useState(false)
   const primero = useRef<HTMLAnchorElement>(null)
 
-  const cerrar = useCallback(() => setAbierta(false), [])
+  const cerrar = useCallback(() => {
+    setPorHover(false)
+    setFijada(false)
+  }, [])
   useCerrarConEscape(cerrar, abierta)
 
   useEffect(() => {
@@ -83,7 +95,7 @@ export function BarraProyectos({ proyectos, activeProjectId }: {
         aria-label="Proyectos del estudio"
         onMouseEnter={() => {
           setConFoco(false)
-          setAbierta(true)
+          setPorHover(true)
         }}
         className="sticky top-0 z-30 hidden h-screen w-[58px] flex-none flex-col items-center gap-2 bg-[var(--banana)] py-4 md:flex"
       >
@@ -114,9 +126,12 @@ export function BarraProyectos({ proyectos, activeProjectId }: {
           type="button"
           aria-expanded={abierta}
           aria-label="Ver los nombres de los proyectos"
+          // Fija y suelta; nunca cierra lo que el hover abrió. Con el mouse encima, soltar
+          // la fijación deja la barra abierta hasta que el mouse se vaya, que es lo que el
+          // usuario está viendo.
           onClick={() => {
             setConFoco(true)
-            setAbierta(a => !a)
+            setFijada(f => !f)
           }}
           className="mt-auto grid h-[30px] w-[30px] flex-none place-items-center rounded-[9px] text-[15px] leading-none text-[var(--ink)] transition-colors duration-200 hover:bg-[rgba(21,18,12,.1)] motion-reduce:transition-none"
         >
@@ -132,7 +147,9 @@ export function BarraProyectos({ proyectos, activeProjectId }: {
             className="absolute inset-0 z-30 hidden bg-[rgba(21,18,12,.14)] md:block"
           />
           <div
-            onMouseLeave={cerrar}
+            // Salir con el mouse recoge lo que el mouse abrió; si el usuario la fijó con el
+            // botón, se queda hasta que él la suelte, la cierre con Escape o toque el velo.
+            onMouseLeave={() => setPorHover(false)}
             className="absolute inset-y-0 left-0 z-40 hidden w-[230px] flex-col bg-[var(--banana)] px-3 py-4 shadow-[14px_0_34px_rgba(0,0,0,.22)] md:flex"
           >
             <p className="px-1 pb-3 text-[10px] font-bold uppercase tracking-[.14em] text-[rgba(21,18,12,.45)]">

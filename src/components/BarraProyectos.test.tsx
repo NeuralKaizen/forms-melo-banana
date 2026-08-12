@@ -25,6 +25,39 @@ describe('BarraProyectos', () => {
     expect(screen.getByText('Café Lunar')).toBeTruthy()
   })
 
+  // Regresión: el botón vive adentro del riel, así que con mouse el hover siempre llega
+  // antes que el clic. Cuando hover y botón compartían un solo estado, ese clic cerraba la
+  // barra que el hover acababa de abrir.
+  it('el clic del mouse después del hover no la cierra: la fija', () => {
+    render(<BarraProyectos proyectos={proyectos} activeProjectId="a" />)
+    const boton = screen.getByRole('button', { name: /Ver los nombres/ })
+    fireEvent.mouseOver(screen.getByRole('complementary', { name: /Proyectos del estudio/ }))
+    expect(boton.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(boton)
+    expect(boton.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText('Café Lunar')).toBeTruthy()
+  })
+
+  it('Escape cierra también lo que el botón fijó tras el hover', () => {
+    render(<BarraProyectos proyectos={proyectos} activeProjectId="a" />)
+    const boton = screen.getByRole('button', { name: /Ver los nombres/ })
+    fireEvent.mouseOver(screen.getByRole('complementary', { name: /Proyectos del estudio/ }))
+    fireEvent.click(boton)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(boton.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText('Café Lunar')).toBeNull()
+  })
+
+  it('sin hover previo —teclado y touch— el botón abre y cierra', () => {
+    render(<BarraProyectos proyectos={proyectos} activeProjectId="a" />)
+    const boton = screen.getByRole('button', { name: /Ver los nombres/ })
+    fireEvent.click(boton)
+    expect(boton.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(boton)
+    expect(boton.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText('Café Lunar')).toBeNull()
+  })
+
   it('Escape la vuelve a recoger', () => {
     render(<BarraProyectos proyectos={proyectos} activeProjectId="a" />)
     fireEvent.click(screen.getByRole('button', { name: /Ver los nombres/ }))
