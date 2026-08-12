@@ -8,12 +8,6 @@ const PUNTO: Record<EntradaIndice['estado'], string> = {
   no_aplica: 'bg-transparent ring-1 ring-[#E0DCD0]',
 }
 
-/** La base de la fase, sin el query de la etapa activa, para armar el link a “todas”. */
-function hrefFase(fase: FaseIndice): string {
-  const primera = fase.entradas[0]
-  return primera ? primera.href.split('?')[0] : '#'
-}
-
 export function ProjectIndex({
   nombre,
   subtitulo,
@@ -60,7 +54,7 @@ export function ProjectIndex({
             ))}
           </ul>
           {fase.ocultas > 0 && (
-            <Link href={`${hrefFase(fase)}?todas=1`} className="mt-1 block px-3 text-[11.5px] text-[var(--apagado)]">
+            <Link href={fase.hrefTodas} className="mt-1 block px-3 text-[11.5px] text-[var(--apagado)]">
               ＋ {fase.ocultas} etapas más
             </Link>
           )}

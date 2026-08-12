@@ -21,10 +21,10 @@ function procedenciaDe(v: VersionVista, ahora: Date): string {
 
 export default async function EstrategiaView({ params, searchParams }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ etapa?: string }>
+  searchParams: Promise<{ etapa?: string; todas?: string }>
 }) {
   const { id } = await params
-  const { etapa } = await searchParams
+  const { etapa, todas } = await searchParams
   const project = await getProjectWithSessions(db, id)
   if (!project) return (
     <AdminShell activeProjectId={id}>
@@ -64,6 +64,7 @@ export default async function EstrategiaView({ params, searchParams }: {
       ...esperanDecision('landscape', landscapeEstado),
       ...esperanDecision('estrategia', estado),
     ],
+    todas: todas === '1',
   })
   const actual = pantallaActual(fases, pantallas)
 

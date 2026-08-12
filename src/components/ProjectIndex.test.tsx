@@ -7,6 +7,7 @@ import type { FaseIndice } from '@/lib/pipeline/indice'
 const fases: FaseIndice[] = [
   {
     key: 'landscape', label: 'Landscape', avance: '2/6', ocultas: 0,
+    hrefTodas: '/x?etapa=tendencias&todas=1',
     entradas: [
       { key: 'landscape:setup', label: 'Setup', href: '/x?etapa=setup', estado: 'aprobada', espera: false },
       { key: 'landscape:tendencias', label: 'Tendencias', href: '/x?etapa=tendencias', estado: 'actual', espera: false },
@@ -15,6 +16,7 @@ const fases: FaseIndice[] = [
   },
   {
     key: 'estrategia', label: 'Estrategia', avance: '6 de 14', ocultas: 8,
+    hrefTodas: '/y?etapa=personalidad&todas=1',
     entradas: [
       { key: 'estrategia:personalidad', label: 'Personalidad', href: '/y?etapa=personalidad', estado: 'pendiente', bloque: 'Esencia de marca', espera: false },
     ],
@@ -48,9 +50,12 @@ describe('ProjectIndex', () => {
     expect(panorama.textContent).toContain('Espera al equipo')
   })
 
-  it('ofrece revelar las etapas ocultas cuando la fase está colapsada', () => {
+  it('ofrece revelar las etapas ocultas y lo manda al href que le dieron', () => {
     render(<ProjectIndex nombre="Café Lunar" subtitulo="—" fases={fases} />)
-    expect(screen.getByText('＋ 8 etapas más')).toBeTruthy()
+    const revelar = screen.getByRole('link', { name: '＋ 8 etapas más' })
+    // El componente no arma URLs: rinde la que viene de `construirIndice`, que es quien
+    // sabe qué etapa está activa y no la puede perder.
+    expect(revelar.getAttribute('href')).toBe('/y?etapa=personalidad&todas=1')
   })
 
   it('no ofrece revelar nada cuando la fase no está colapsada', () => {
