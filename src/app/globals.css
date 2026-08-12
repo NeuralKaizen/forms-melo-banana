@@ -1,9 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --cream: #fffdf2;
-  --ink: #1a1510;
-  --banana: #ffd400;
+  --cream: #fffdf2;        /* sólo la entrevista pública */
+  --ink: #15120C;
+  --banana: #FFD400;
+  --line: #EDEAE1;
+  --aprobado: #FFF3B8;
+  --cuerpo: #2C281F;
+  --secundario: #5C5648;
+  --rotulo: #A8A296;
+  --apagado: #B5AF9F;
 }
 
 @theme inline {
@@ -16,8 +22,8 @@
 .underline-banana { box-shadow: inset 0 -0.34em 0 var(--banana); }
 
 body {
-  background: var(--cream);
-  color: var(--ink);
+  background: #fff;
+  color: var(--cuerpo);
   font-family: var(--font-geist), system-ui, sans-serif;
 }
 
