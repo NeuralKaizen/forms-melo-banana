@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { construirIndice, esperanDecision } from './indice'
 import { deriveFases, derivePantallas } from './phases'
 import { projectSignals } from './signals'
-import { buildStages } from '@/lib/landscape/stages'
-import { buildEtapasEstrategia } from '@/lib/estrategia/stages'
+import { buildStages, STAGE_ORDER } from '@/lib/landscape/stages'
+import { buildEtapasEstrategia, ETAPA_ORDER } from '@/lib/estrategia/stages'
 
 const señales = projectSignals({ sessions: [], tieneEntregable: false })
 
@@ -61,6 +61,20 @@ describe('construirIndice', () => {
   it('el avance de una fase sin etapas propias sale del estado de la fase', () => {
     const [primera] = construirIndice(base())
     expect(primera.avance).toBe('Sin respondientes')
+  })
+
+  it('el avance de landscape y estrategia va siempre con barra, también con la fase completa', () => {
+    const sinNada = construirIndice(base())
+    expect(sinNada.find(f => f.key === 'landscape')!.avance).toBe('0/6')
+    expect(sinNada.find(f => f.key === 'estrategia')!.avance).toBe('0/14')
+
+    const completas = construirIndice({
+      ...base(),
+      stagesLandscape: buildStages(STAGE_ORDER.map(stage => ({ stage, status: 'aprobada' as const }))),
+      etapasEstrategia: buildEtapasEstrategia(ETAPA_ORDER.map(stage => ({ stage, status: 'aprobada' as const }))),
+    })
+    expect(completas.find(f => f.key === 'landscape')!.avance).toBe('6/6')
+    expect(completas.find(f => f.key === 'estrategia')!.avance).toBe('14/14')
   })
 })
 

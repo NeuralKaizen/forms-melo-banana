@@ -28,7 +28,7 @@ export interface EntradaIndice {
 export interface FaseIndice {
   key: FaseKey
   label: string
-  /** '6/6', '✓', '6 de 14' — lo que va a la derecha del título. */
+  /** '6/6', '4/11', '0/1' — o el detalle de la fase cuando no tiene etapas propias. */
   avance: string
   entradas: EntradaIndice[]
   /** Cuántas quedaron ocultas por el colapso. 0 si no se colapsó nada. */
@@ -137,15 +137,13 @@ export function construirIndice(input: {
   const iActivaEstrategia = entradasEstrategia.findIndex(e => e.key === etapaActiva)
   const { visibles: estrategiaVisibles, ocultas: estrategiaOcultas } = colapsar(entradasEstrategia, iActivaEstrategia)
 
+  // El contador va siempre con barra, incluso con la fase completa ('6/6', nunca '✓'):
+  // “X de Y etapas” es del subtítulo del proyecto, no de acá.
   const aprobadasLandscape = stagesLandscape.filter(s => s.status === 'aprobada').length
-  const avanceLandscape = aprobadasLandscape === stagesLandscape.length
-    ? '✓'
-    : `${aprobadasLandscape}/${stagesLandscape.length}`
+  const avanceLandscape = `${aprobadasLandscape}/${stagesLandscape.length}`
 
   const aprobadasEstrategia = etapasEstrategia.filter(e => e.status === 'aprobada').length
-  const avanceEstrategia = aprobadasEstrategia === etapasEstrategia.length
-    ? '✓'
-    : `${aprobadasEstrategia} de ${etapasEstrategia.length}`
+  const avanceEstrategia = `${aprobadasEstrategia}/${etapasEstrategia.length}`
 
   return [
     {
@@ -176,7 +174,7 @@ export function construirIndice(input: {
 /**
  * Qué etapas tienen una versión guardada sin aprobar — es decir, esperan al equipo.
  * Se exporta acá y no en el store porque es criterio de presentación: el store no sabe
- * de "esperar".
+ * de “esperar”.
  */
 export function esperanDecision(
   fase: 'landscape' | 'estrategia',
