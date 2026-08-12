@@ -730,15 +730,19 @@ con anillo **y** `<span className="sr-only">Tiene algo esperando</span>`.
 Run: `npx vitest run src/components/BarraProyectos.test.tsx`
 Expected: PASS, 7 tests.
 
-- [ ] **Step 5: Escribir el test del shell**
+- [ ] **Step 5: Escribir el test de las funciones puras de la barra**
 
-Create `src/components/AdminShell.test.tsx`. `AdminShell` es async y consulta la base, así que el
-test cubre sólo la decisión de estado, con la lógica extraída a una función pura exportada:
+Create `src/components/barra.ts` **y** `src/components/barra.test.ts`.
 
-```tsx
-// @vitest-environment jsdom
+**Por qué un módulo aparte y no `AdminShell.tsx`:** `AdminShell` importa `@/lib/db/client`, que
+ejecuta `neon(process.env.DATABASE_URL!)` en el momento del import. Cualquier test que importe
+`AdminShell` falla con *"No database connection string was provided to `neon()`"* antes de correr
+una sola aserción. Verificado. Las funciones puras viven en `barra.ts`, que no importa nada de
+base, y `AdminShell` las importa desde ahí.
+
+```ts
 import { describe, it, expect } from 'vitest'
-import { estadoBarra, iniciales } from './AdminShell'
+import { estadoBarra, iniciales } from './barra'
 
 describe('estadoBarra', () => {
   it('es ancha sin proyecto activo y riel con uno', () => {
@@ -761,22 +765,27 @@ describe('iniciales', () => {
 
 - [ ] **Step 6: Correr el test para verificar que falla**
 
-Run: `npx vitest run src/components/AdminShell.test.tsx`
-Expected: FAIL — `estadoBarra` e `iniciales` no existen.
+Run: `npx vitest run src/components/barra.test.ts`
+Expected: FAIL con "Failed to resolve import ./barra".
 
-- [ ] **Step 7: Reescribir `AdminShell`**
+- [ ] **Step 7: Crear `barra.ts` y reescribir `AdminShell`**
 
-Modify `src/components/AdminShell.tsx`. Exportar las dos funciones puras:
+Create `src/components/barra.ts` — sin imports de base, sin JSX:
 
 ```ts
-export const estadoBarra = (activeProjectId?: string) => activeProjectId ? 'riel' : 'ancha'
+/** Ancha cuando elegís proyecto, riel cuando estás adentro de uno. Sale de la ruta, no de estado. */
+export const estadoBarra = (activeProjectId?: string): 'ancha' | 'riel' =>
+  activeProjectId ? 'riel' : 'ancha'
 
+/** 'Café Lunar' → 'CL'. Con una sola palabra, sus dos primeras letras. */
 export function iniciales(nombre: string): string {
   const palabras = nombre.trim().split(/\s+/)
   if (palabras.length === 1) return palabras[0].slice(0, 2).toUpperCase()
   return (palabras[0][0] + palabras[1][0]).toUpperCase()
 }
 ```
+
+Modify `src/components/AdminShell.tsx` para importarlas de `./barra`.
 
 El componente mantiene su carga de datos actual (`listProjectsWithCounts` + `landscapeState` +
 `strategyState` por proyecto, con el N+1 aceptado y ya comentado). Con `estadoBarra === 'ancha'`
@@ -812,7 +821,7 @@ Expected: PASS. `ProjectHeader.test.tsx` sigue verde: todavía no se tocó.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/components/BarraProyectos.tsx src/components/BarraProyectos.test.tsx src/components/AdminShell.tsx src/components/AdminShell.test.tsx
+git add src/components/BarraProyectos.tsx src/components/BarraProyectos.test.tsx src/components/barra.ts src/components/barra.test.ts src/components/AdminShell.tsx
 git commit -m "feat(ux): barra amarilla de tres estados — ancha, riel y abierta encima"
 ```
 
@@ -1199,16 +1208,20 @@ git commit -m "feat(ux): el índice reemplaza la cabecera por grupos y los carri
 
 **Files:**
 - Modify: `src/app/admin/page.tsx`
-- Create: `src/app/admin/page.test.tsx`
+- Modify: `src/lib/pipeline/attention.ts`
+- Modify: `src/lib/pipeline/attention.test.ts`
 
 - [ ] **Step 1: Escribir el test que falla**
 
-`Admin` es async y consulta la base. Se extrae la decisión probable a una función pura en el mismo
-archivo y se prueba eso:
+**Mismo motivo que en la Task 5:** `admin/page.tsx` importa `@/lib/db/client`, que ejecuta
+`neon(process.env.DATABASE_URL!)` al importarse, así que un test que importe la página falla antes
+de la primera aserción. La función pura va a `attention.ts` — sólo importa tipos de `./phases` y es
+su tema natural, la cola del equipo.
+
+Agregar al final de `src/lib/pipeline/attention.test.ts` (el import de `vitest` ya está arriba):
 
 ```ts
-import { describe, it, expect } from 'vitest'
-import { mostrarSeccionEsperando } from './page'
+import { mostrarSeccionEsperando } from './attention'
 
 describe('mostrarSeccionEsperando', () => {
   it('con tres pendientes o menos, la barra ya los muestra y la sección sobra', () => {
@@ -1224,15 +1237,19 @@ describe('mostrarSeccionEsperando', () => {
 
 - [ ] **Step 2: Correr para verificar que falla**
 
-Run: `npx vitest run src/app/admin/page.test.ts`
+Run: `npx vitest run src/lib/pipeline/attention.test.ts`
 Expected: FAIL — `mostrarSeccionEsperando` no existe.
 
-- [ ] **Step 3: Reescribir el listado**
+- [ ] **Step 3: Agregar la función y reescribir el listado**
+
+En `src/lib/pipeline/attention.ts`:
 
 ```ts
 /** La barra amarilla ya muestra hasta tres pendientes; repetirlos es el ruido que estamos sacando. */
 export const mostrarSeccionEsperando = (pendientes: number) => pendientes > 3
 ```
+
+`admin/page.tsx` la importa de `@/lib/pipeline/attention`.
 
 La `<table>` con `<thead>` gris se reemplaza por filas hairline: nombre en
 `font-serif text-[19px]`, fase actual y detalle debajo en `text-[12.5px] text-[var(--secundario)]`,
@@ -1248,7 +1265,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/app/admin/page.tsx src/app/admin/page.test.ts
+git add src/app/admin/page.tsx src/lib/pipeline/attention.ts src/lib/pipeline/attention.test.ts
 git commit -m "feat(ux): listado de proyectos con hairlines, sin tabla ni tarjetas"
 ```
 
