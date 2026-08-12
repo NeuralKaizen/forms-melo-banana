@@ -4,7 +4,7 @@ import {
   landscapeState, listLandscapeActivity, summarizeLandscape, type TendenciasContent,
 } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveGrupos } from '@/lib/pipeline/phases'
+import { deriveFases } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
 import { ProjectHeader } from '@/components/ProjectHeader'
@@ -26,7 +26,7 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
   const rawSessions = project.sessions as { status?: string | null }[]
   const estado = await landscapeState(db, id)
   const estrategia = summarizeStrategy(await strategyState(db, id))
-  const grupos = deriveGrupos(id, projectSignals({
+  const fases = deriveFases(id, projectSignals({
     sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estado), estrategia,
   }))
 
@@ -73,7 +73,7 @@ export default async function LandscapeView({ params }: { params: Promise<{ id: 
   return (
     <AdminShell activeProjectId={id}>
       <div className="space-y-8">
-      <ProjectHeader name={project.name} grupos={grupos} active="landscape" />
+      <ProjectHeader name={project.name} fases={fases} active="landscape" />
       <LandscapeWorkspace
         projectId={id}
         stages={stages}

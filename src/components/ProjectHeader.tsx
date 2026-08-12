@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { grupoDePantalla, type Grupo, type PantallaKey, type PhaseStatus } from '@/lib/pipeline/phases'
+import { faseDeEtapa, type Fase, type EtapaKey, type PhaseStatus } from '@/lib/pipeline/phases'
 
 function Dot({ status }: { status: PhaseStatus }) {
   if (status === 'completa') return (
@@ -15,18 +15,18 @@ function Dot({ status }: { status: PhaseStatus }) {
 }
 
 /**
- * Cabecera común de las pantallas de un proyecto: quién es y en qué grupo del recorrido
- * está. Los tres grupos —entrevistas/propuesta de valor, landscape, estrategia— se ven
- * siempre; el primero abre tabs para sus tres pantallas cuando es el grupo activo.
+ * Cabecera común de las pantallas de un proyecto: quién es y en qué fase del recorrido
+ * está. Las tres fases —entrevistas/propuesta de valor, landscape, estrategia— se ven
+ * siempre; la primera abre tabs para sus tres pantallas cuando es la fase activa.
  */
-export function ProjectHeader({ name, grupos, active }: {
+export function ProjectHeader({ name, fases, active }: {
   name: string
-  grupos: Grupo[]
-  active: PantallaKey
+  fases: Fase[]
+  active: EtapaKey
 }) {
-  const grupoActivoKey = grupoDePantalla(active)
-  const esActivo = (g: Grupo) => g.key === grupoActivoKey
-  const dependencia = grupos.find(esActivo)?.dependencia
+  const faseActivaKey = faseDeEtapa(active)
+  const esActivo = (g: Fase) => g.key === faseActivaKey
+  const dependencia = fases.find(esActivo)?.dependencia
 
   return (
     <header className="space-y-5">
@@ -45,7 +45,7 @@ export function ProjectHeader({ name, grupos, active }: {
 
       <nav aria-label="Recorrido del proyecto">
         <ol className="grid gap-2 sm:grid-cols-3">
-          {grupos.map(g => {
+          {fases.map(g => {
             const activo = esActivo(g)
             return (
               <li key={g.key}>

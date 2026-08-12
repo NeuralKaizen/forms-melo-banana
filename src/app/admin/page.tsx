@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { db } from '@/lib/db/client'
 import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveGrupos, grupoActual, derivePantallas, pantallaActual, type Grupo, type PhaseStatus } from '@/lib/pipeline/phases'
+import { deriveFases, faseActual, derivePantallas, pantallaActual, type Fase, type PhaseStatus } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { attentionItems, haceCuanto, type AttentionItem } from '@/lib/pipeline/attention'
 import { AdminShell } from '@/components/AdminShell'
@@ -13,10 +13,10 @@ export const dynamic = 'force-dynamic'
  * El recorrido del proyecto de un vistazo, sin abrirlo: tres tramos.
  * Amarillo lo aprobado, gris lleno donde está parado, hueco lo que falta.
  */
-function GrupoTrack({ grupos, activeKey }: { grupos: Grupo[]; activeKey: string }) {
+function FaseTrack({ fases, activeKey }: { fases: Fase[]; activeKey: string }) {
   return (
     <span className="flex w-24 items-center gap-1" aria-hidden="true">
-      {grupos.map(g => (
+      {fases.map(g => (
         <span
           key={g.key}
           className={`h-1.5 flex-1 rounded-full ${
@@ -87,9 +87,9 @@ export default async function Admin() {
       landscape: summarizeLandscape(landscapeByProject[idx]),
       estrategia: summarizeStrategy(estrategiaByProject[idx]),
     })
-    const grupos = deriveGrupos(r.id, señales)
+    const fases = deriveFases(r.id, señales)
     const pantallas = derivePantallas(r.id, señales)
-    return { ...r, grupos, actual: grupoActual(grupos), pantallaFina: pantallaActual(grupos, pantallas), pantallas }
+    return { ...r, fases, actual: faseActual(fases), pantallaFina: pantallaActual(fases, pantallas), pantallas }
   })
 
   const pendientes = attentionItems(projects)
@@ -173,7 +173,7 @@ export default async function Admin() {
                       </td>
                       <td className="px-5 py-4">
                         <span className="flex justify-end">
-                          <GrupoTrack grupos={p.grupos} activeKey={p.actual.key} />
+                          <FaseTrack fases={p.fases} activeKey={p.actual.key} />
                         </span>
                       </td>
                     </tr>

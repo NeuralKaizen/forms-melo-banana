@@ -1,15 +1,15 @@
 /**
- * Los grupos por los que pasa un proyecto, de punta a punta.
+ * Las fases por las que pasa un proyecto, de punta a punta.
  *
- * Es la columna vertebral del panel: cada grupo es un tramo del recorrido, y el estado de
- * cada uno se deriva de lo que hay guardado — no se marca a mano. Adentro de
+ * Es la columna vertebral del panel: cada fase es un tramo del recorrido, y el estado de
+ * cada una se deriva de lo que hay guardado — no se marca a mano. Adentro de
  * 'propuesta-valor' viven las pantallas de entrevistas, propuesta y taller, que se navegan
- * como tabs sin salir del grupo. Ver
+ * como tabs sin salir de la fase. Ver
  * docs/superpowers/specs/2026-07-28-fase2-landscape-columna-vertebral-design.md
  */
 
-export type PantallaKey = 'entrevistas' | 'propuesta' | 'taller' | 'landscape' | 'estrategia'
-export type GrupoKey = 'propuesta-valor' | 'landscape' | 'estrategia'
+export type EtapaKey = 'entrevistas' | 'propuesta' | 'taller' | 'landscape' | 'estrategia'
+export type FaseKey = 'propuesta-valor' | 'landscape' | 'estrategia'
 
 export type PhaseStatus =
   | 'pendiente'  // todavía no le toca, o le toca y nadie la empezó
@@ -18,28 +18,28 @@ export type PhaseStatus =
   | 'completa'
 
 export interface Tab {
-  key: PantallaKey
+  key: EtapaKey
   label: string
   href: string
 }
 
-export interface Grupo {
-  key: GrupoKey
+export interface Fase {
+  key: FaseKey
   label: string
   status: PhaseStatus
   /** Una línea que explica por qué está en ese estado. */
   detalle: string
-  /** Dónde va el clic en el grupo. */
+  /** Dónde va el clic en la fase. */
   href: string
-  /** Solo el grupo 'propuesta-valor' las tiene: entrevistas, propuesta y taller. */
+  /** Solo la fase 'propuesta-valor' las tiene: entrevistas, propuesta y taller. */
   tabs?: Tab[]
-  /** Algo que este grupo necesita de otro y que aún no llegó. */
+  /** Algo que esta fase necesita de otra y que aún no llegó. */
   dependencia?: string
 }
 
-/** El estado de una pantalla puntual — más fino que el de su grupo, que puede agrupar varias. */
+/** El estado de una pantalla puntual — más fino que el de su fase, que puede agrupar varias. */
 export interface Pantalla {
-  key: Exclude<PantallaKey, 'estrategia'>
+  key: Exclude<EtapaKey, 'estrategia'>
   label: string
   status: PhaseStatus
   detalle: string
@@ -58,13 +58,13 @@ export interface ProjectSignals {
   estrategiaEtapasTotal: number
 }
 
-const GRUPO_LABEL: Record<GrupoKey, string> = {
+const FASE_LABEL: Record<FaseKey, string> = {
   'propuesta-valor': 'Entrevistas / Propuesta de valor',
   landscape: 'Landscape',
   estrategia: 'Estrategia',
 }
 
-const GRUPO_DE_PANTALLA: Record<PantallaKey, GrupoKey> = {
+const FASE_DE_ETAPA: Record<EtapaKey, FaseKey> = {
   entrevistas: 'propuesta-valor',
   propuesta: 'propuesta-valor',
   taller: 'propuesta-valor',
@@ -72,12 +72,12 @@ const GRUPO_DE_PANTALLA: Record<PantallaKey, GrupoKey> = {
   estrategia: 'estrategia',
 }
 
-/** A qué grupo del recorrido pertenece una pantalla. */
-export function grupoDePantalla(p: PantallaKey): GrupoKey {
-  return GRUPO_DE_PANTALLA[p]
+/** A qué fase del recorrido pertenece una etapa. */
+export function faseDeEtapa(e: EtapaKey): FaseKey {
+  return FASE_DE_ETAPA[e]
 }
 
-const PANTALLA_LABEL: Record<Exclude<PantallaKey, 'estrategia'>, string> = {
+const PANTALLA_LABEL: Record<Exclude<EtapaKey, 'estrategia'>, string> = {
   entrevistas: 'Entrevistas',
   propuesta: 'Propuesta de valor',
   taller: 'Taller',
@@ -85,8 +85,8 @@ const PANTALLA_LABEL: Record<Exclude<PantallaKey, 'estrategia'>, string> = {
 }
 
 // El estado y el detalle de cada pantalla, aislados en una función por pantalla: los
-// reusan tanto `deriveGrupos` (que solo necesita el detalle de la que esté frenando al
-// grupo) como `derivePantallas` (que necesita las cuatro, una por una, para lo que
+// reusan tanto `deriveFases` (que solo necesita el detalle de la que esté frenando a la
+// fase) como `derivePantallas` (que necesita las cuatro, una por una, para lo que
 // espera al equipo).
 function estadoEntrevistas(s: ProjectSignals): { status: PhaseStatus; detalle: string } {
   if (s.sessionsTotal === 0) return { status: 'pendiente', detalle: 'Sin respondientes' }
@@ -117,23 +117,23 @@ function estadoLandscape(s: ProjectSignals): { status: PhaseStatus; detalle: str
   return { status: 'pendiente', detalle: 'Sin empezar' }
 }
 
-export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
-  const href = (key: PantallaKey) => `/admin/projects/${projectId}/${key}`
+export function deriveFases(projectId: string, s: ProjectSignals): Fase[] {
+  const href = (key: EtapaKey) => `/admin/projects/${projectId}/${key}`
   const entrevistasHref = href('entrevistas')
   const propuestaHref = href('propuesta')
   const tallerHref = href('taller')
   const landscapeHref = href('landscape')
   const estrategiaHref = href('estrategia')
 
-  // Detalle de cada sub-fase, para saber cuál está frenando al grupo. La lógica es la
+  // Detalle de cada sub-fase, para saber cuál está frenando a la fase. La lógica es la
   // misma que tenían las fases sueltas: entrevistas cuenta completadas, propuesta se
   // habilita con la primera entrevista completa, y el taller —que ocurre en Miro, fuera
   // de la plataforma— espera que sus conclusiones vuelvan transcritas.
   const haySesiones = s.sessionsCompleted > 0
 
-  const propuestaValor: Grupo = {
+  const propuestaValor: Fase = {
     key: 'propuesta-valor',
-    label: GRUPO_LABEL['propuesta-valor'],
+    label: FASE_LABEL['propuesta-valor'],
     href: entrevistasHref,
     status: s.tienePostTaller
       ? 'completa'
@@ -150,9 +150,9 @@ export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
     ],
   }
 
-  const landscape: Grupo = {
+  const landscape: Fase = {
     key: 'landscape',
-    label: GRUPO_LABEL.landscape,
+    label: FASE_LABEL.landscape,
     href: landscapeHref,
     ...estadoLandscape(s),
     // Dependencia real del proceso: el cuadro de brand assets se arma sobre los 4
@@ -161,9 +161,9 @@ export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
   }
 
   const estrategiaCompleta = s.estrategiaEtapasTotal > 0 && s.estrategiaEtapasAprobadas === s.estrategiaEtapasTotal
-  const estrategia: Grupo = {
+  const estrategia: Fase = {
     key: 'estrategia',
-    label: GRUPO_LABEL.estrategia,
+    label: FASE_LABEL.estrategia,
     href: estrategiaHref,
     ...(estrategiaCompleta
       ? { status: 'completa' as const, detalle: 'Todas las etapas aprobadas' }
@@ -175,22 +175,22 @@ export function deriveGrupos(projectId: string, s: ProjectSignals): Grupo[] {
   return [propuestaValor, landscape, estrategia]
 }
 
-/** El grupo donde está parado el proyecto: el primero que no está completo. */
-export function grupoActual(grupos: Grupo[]): Grupo {
-  return grupos.find(g => g.status !== 'completa') ?? grupos[grupos.length - 1]
+/** La fase donde está parado el proyecto: la primera que no está completa. */
+export function faseActual(fases: Fase[]): Fase {
+  return fases.find(f => f.status !== 'completa') ?? fases[fases.length - 1]
 }
 
 /** Lo que devuelve `derivePantallas`: las cuatro pantallas de fase 2, por key. */
-export type Pantallas = Record<Exclude<PantallaKey, 'estrategia'>, Pantalla>
+export type Pantallas = Record<Exclude<EtapaKey, 'estrategia'>, Pantalla>
 
 /**
  * El estado fino de cada pantalla, pantalla por pantalla — la granularidad que
- * `deriveGrupos` esconde adentro del grupo 'propuesta-valor'. La usa `attention.ts`
+ * `deriveFases` esconde adentro de la fase 'propuesta-valor'. La usa `attention.ts`
  * para decir con precisión qué le falta a cada proyecto y quién lo destraba; la
  * estrategia (pantalla de la fase 3) todavía no entra acá.
  */
 export function derivePantallas(projectId: string, s: ProjectSignals): Pantallas {
-  const href = (key: Exclude<PantallaKey, 'estrategia'>) => `/admin/projects/${projectId}/${key}`
+  const href = (key: Exclude<EtapaKey, 'estrategia'>) => `/admin/projects/${projectId}/${key}`
   return {
     entrevistas: { key: 'entrevistas', label: PANTALLA_LABEL.entrevistas, href: href('entrevistas'), ...estadoEntrevistas(s) },
     propuesta: { key: 'propuesta', label: PANTALLA_LABEL.propuesta, href: href('propuesta'), ...estadoPropuesta(s) },
@@ -207,22 +207,22 @@ export function derivePantallas(projectId: string, s: ProjectSignals): Pantallas
  * ese contrato, este tipo hermano solo se usa acá, donde sí hace falta nombrar la
  * pantalla de estrategia.
  */
-export type PantallaActual = Omit<Pantalla, 'key'> & { key: PantallaKey }
+export type PantallaActual = Omit<Pantalla, 'key'> & { key: EtapaKey }
 
 /**
- * La pantalla donde está parado el proyecto: dentro del grupo 1, la primera sub-pantalla
+ * La pantalla donde está parado el proyecto: dentro de la fase 1, la primera sub-pantalla
  * no completa (entrevistas → propuesta → taller, con fallback a taller si las tres están
  * completas — hoy imposible porque `tienePostTaller` está hardcodeada en `false`, pero la
- * función no depende de eso); en los otros grupos, su única pantalla. Landscape ya vive en
- * `derivePantallas`; estrategia no, así que se arma su `Pantalla` al vuelo a partir del
- * grupo — mismo status/detalle/href que ya calcula `deriveGrupos`.
+ * función no depende de eso); en las otras fases, su única pantalla. Landscape ya vive en
+ * `derivePantallas`; estrategia no, así que se arma su `Pantalla` al vuelo a partir de la
+ * fase — mismo status/detalle/href que ya calcula `deriveFases`.
  */
-export function pantallaActual(grupos: Grupo[], pantallas: Pantallas): PantallaActual {
-  const g = grupoActual(grupos)
-  if (g.key === 'propuesta-valor') {
+export function pantallaActual(fases: Fase[], pantallas: Pantallas): PantallaActual {
+  const f = faseActual(fases)
+  if (f.key === 'propuesta-valor') {
     const candidatas: Pantalla[] = [pantallas.entrevistas, pantallas.propuesta, pantallas.taller]
     return candidatas.find(p => p.status !== 'completa') ?? pantallas.taller
   }
-  if (g.key === 'landscape') return pantallas.landscape
-  return { key: 'estrategia', label: g.label, status: g.status, detalle: g.detalle, href: g.href }
+  if (f.key === 'landscape') return pantallas.landscape
+  return { key: 'estrategia', label: f.label, status: f.status, detalle: f.detalle, href: f.href }
 }

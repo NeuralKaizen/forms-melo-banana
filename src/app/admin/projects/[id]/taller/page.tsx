@@ -1,7 +1,7 @@
 import { db } from '@/lib/db/client'
 import { getProjectWithSessions, getDeliverable, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveGrupos, derivePantallas } from '@/lib/pipeline/phases'
+import { deriveFases, derivePantallas } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
 import { ProjectHeader } from '@/components/ProjectHeader'
@@ -25,13 +25,13 @@ export default async function TallerView({ params }: { params: Promise<{ id: str
   const señales = projectSignals({
     sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(estadoLandscape), estrategia,
   })
-  const grupos = deriveGrupos(id, señales)
+  const fases = deriveFases(id, señales)
   const taller = derivePantallas(id, señales).taller
 
   return (
     <AdminShell activeProjectId={id}>
       <div className="space-y-8">
-      <ProjectHeader name={project.name} grupos={grupos} active="taller" />
+      <ProjectHeader name={project.name} fases={fases} active="taller" />
       <PhaseNote
         titulo="Taller"
         estado={taller.status}

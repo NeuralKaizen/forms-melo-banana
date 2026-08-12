@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { db } from '@/lib/db/client'
 import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveGrupos, grupoActual, derivePantallas, pantallaActual } from '@/lib/pipeline/phases'
+import { deriveFases, faseActual, derivePantallas, pantallaActual } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { attentionItems } from '@/lib/pipeline/attention'
 import { Wordmark } from './Brand'
@@ -36,9 +36,9 @@ export async function AdminShell({ activeProjectId, children }: {
       landscape: summarizeLandscape(landscapeByProject[idx]),
       estrategia: summarizeStrategy(estrategiaByProject[idx]),
     })
-    const grupos = deriveGrupos(r.id, señales)
+    const fases = deriveFases(r.id, señales)
     const pantallas = derivePantallas(r.id, señales)
-    return { ...r, grupos, actual: grupoActual(grupos), pantallaFina: pantallaActual(grupos, pantallas), pantallas }
+    return { ...r, fases, actual: faseActual(fases), pantallaFina: pantallaActual(fases, pantallas), pantallas }
   })
 
   // Un punto amarillo donde hay algo que el equipo puede destrabar hoy.

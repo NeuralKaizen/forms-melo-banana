@@ -1,4 +1,4 @@
-import type { Pantalla, PantallaKey } from './phases'
+import type { Pantalla, EtapaKey } from './phases'
 
 /**
  * Qué está esperando a alguien del equipo.
@@ -14,7 +14,7 @@ export interface AttentionItem {
   accion: string
   /** Dónde se resuelve. */
   href: string
-  fase: Exclude<PantallaKey, 'estrategia'>
+  fase: Exclude<EtapaKey, 'estrategia'>
   /** Quién destraba: el equipo acá, o algo de afuera. */
   bloqueo: 'equipo' | 'externo'
 }
@@ -22,7 +22,7 @@ export interface AttentionItem {
 export interface AttentionInput {
   id: string
   name: string
-  pantallas: Record<Exclude<PantallaKey, 'estrategia'>, Pantalla>
+  pantallas: Record<Exclude<EtapaKey, 'estrategia'>, Pantalla>
   sessionsTotal: number
   sessionsCompleted: number
   tieneEntregable: boolean
@@ -30,7 +30,7 @@ export interface AttentionInput {
 }
 
 /** Primero lo que el equipo puede resolver hoy sin depender de nadie. */
-const RANGO: Record<Exclude<PantallaKey, 'estrategia'>, number> = {
+const RANGO: Record<Exclude<EtapaKey, 'estrategia'>, number> = {
   propuesta: 0,
   entrevistas: 1,
   landscape: 2,

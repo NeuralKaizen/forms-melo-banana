@@ -1,7 +1,7 @@
 import { db } from '@/lib/db/client'
 import { getProjectWithSessions, getDeliverable, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveGrupos } from '@/lib/pipeline/phases'
+import { deriveFases } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
 import { ProjectHeader } from '@/components/ProjectHeader'
@@ -25,9 +25,9 @@ export default async function EstrategiaView({ params }: { params: Promise<{ id:
   const estado = await strategyState(db, id)
   const etapas = buildEtapasEstrategia(estado)
   const resumen = summarizeStrategy(estado)
-  // La cabecera muestra el mismo recorrido por grupos que el resto del proyecto — acá ya
-  // no arma su propio link a estrategia, es un grupo más de `deriveGrupos`.
-  const grupos = deriveGrupos(id, projectSignals({
+  // La cabecera muestra el mismo recorrido por fases que el resto del proyecto — acá ya
+  // no arma su propio link a estrategia, es una fase más de `deriveFases`.
+  const fases = deriveFases(id, projectSignals({
     sessions: rawSessions, tieneEntregable: !!deliverable, landscape: summarizeLandscape(landscapeEstado), estrategia: resumen,
   }))
 
@@ -52,7 +52,7 @@ export default async function EstrategiaView({ params }: { params: Promise<{ id:
   return (
     <AdminShell activeProjectId={id}>
       <div className="space-y-8">
-      <ProjectHeader name={project.name} grupos={grupos} active="estrategia" />
+      <ProjectHeader name={project.name} fases={fases} active="estrategia" />
       <EstrategiaWorkspace
         projectId={id}
         etapas={etapas}

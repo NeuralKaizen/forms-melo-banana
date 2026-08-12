@@ -26,16 +26,15 @@ export const ETAPA_ORDER: EstrategiaKey[] = [
 export const ESENCIA: EstrategiaKey[] = ETAPA_ORDER.slice(2, 13)
 
 /**
- * Agrupación del carril de navegación (fase 3 UX): las 14 etapas son demasiadas para
- * un listado plano, así que se muestran en tres grupos plegables que siguen los
- * bloques del PDF (diagnóstico/consumidor, esencia, cierre).
+ * Los bloques del proceso (PDF, bloques 1–4). El índice del proyecto los usa como
+ * sub-rótulo dentro de la fase Estrategia: 14 etapas planas no se leen.
  */
-export interface GrupoEtapas {
+export interface Bloque {
   titulo: string
   etapas: EstrategiaKey[]
 }
 
-export const GRUPOS_ETAPAS: GrupoEtapas[] = [
+export const BLOQUES: Bloque[] = [
   { titulo: 'Diagnóstico y consumidor', etapas: ['diagnostico', 'consumidor'] },
   { titulo: 'Esencia de marca', etapas: ESENCIA },
   { titulo: 'Cierre', etapas: ['cuadros'] },

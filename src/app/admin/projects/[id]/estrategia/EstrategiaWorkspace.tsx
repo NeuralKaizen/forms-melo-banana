@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { StageStatus } from '@/lib/landscape/stages'
 import type { EstrategiaKey, EtapaEstrategia } from '@/lib/estrategia/stages'
-import { ETAPA_LABEL, ETAPA_ORDER, GRUPOS_ETAPAS } from '@/lib/estrategia/stages'
+import { ETAPA_LABEL, ETAPA_ORDER, BLOQUES } from '@/lib/estrategia/stages'
 import { ContenidoEtapa } from '../landscape/ContenidoEtapa'
 
 /**
@@ -58,18 +58,18 @@ function EtapaRow({ etapa, active, onSelect }: { etapa: EtapaEstrategia; active:
   )
 }
 
-/** A qué grupo del carril pertenece una etapa. */
-function grupoDe(key: EstrategiaKey): string {
-  return GRUPOS_ETAPAS.find(g => g.etapas.includes(key))?.titulo ?? GRUPOS_ETAPAS[0].titulo
+/** A qué bloque del carril pertenece una etapa. */
+function bloqueDe(key: EstrategiaKey): string {
+  return BLOQUES.find(g => g.etapas.includes(key))?.titulo ?? BLOQUES[0].titulo
 }
 
 /**
- * Cabecera de grupo del carril: clickeable, con el contador propio del grupo (mismo
+ * Cabecera de bloque del carril: clickeable, con el contador propio del bloque (mismo
  * criterio que `summarizeStrategy` — `no_aplica` no suma en ningún lado) y un chevron
  * que indica abierto/cerrado. Sin transición en el chevron: el usuario es sensible al
  * movimiento, así que el giro es instantáneo, no animado.
  */
-function GrupoHeader({
+function BloqueHeader({
   titulo,
   aprobadas,
   total,
@@ -152,21 +152,21 @@ export function EstrategiaWorkspace({
   // Qué se está mirando cuando la etapa tiene una aprobada y un borrador más nuevo.
   // Arranca en la aprobada: es la que manda hasta que el equipo decida otra cosa.
   const [viendoBorrador, setViendoBorrador] = useState(false)
-  // Grupos del carril desplegados (por título). Arranca con solo el grupo de la etapa
+  // Bloques del carril desplegados (por título). Arranca con solo el bloque de la etapa
   // activa abierto — no tiene sentido mostrar las 14 etapas de una si el equipo está
   // mirando una sola.
-  const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set([grupoDe(etapaInicial)]))
+  const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set([bloqueDe(etapaInicial)]))
 
   function irAEtapa(key: EstrategiaKey) {
     setEtapa(key)
     setViendoBorrador(false)
     setError(null)
-    // Ir a una etapa es una decisión de foco: se expande su grupo y se pliegan los
-    // demás, no se acumulan grupos abiertos etapa tras etapa.
-    setAbiertos(new Set([grupoDe(key)]))
+    // Ir a una etapa es una decisión de foco: se expande su bloque y se pliegan los
+    // demás, no se acumulan bloques abiertos etapa tras etapa.
+    setAbiertos(new Set([bloqueDe(key)]))
   }
 
-  function toggleGrupo(titulo: string) {
+  function toggleBloque(titulo: string) {
     setAbiertos(prev => {
       const next = new Set(prev)
       if (next.has(titulo)) next.delete(titulo)
@@ -209,7 +209,7 @@ export function EstrategiaWorkspace({
 
   // Posición de la etapa activa para el breadcrumb y el pie de siguiente/anterior.
   const indiceEtapa = ETAPA_ORDER.indexOf(etapa)
-  const grupoActual = grupoDe(etapa)
+  const bloqueActual = bloqueDe(etapa)
   const etapaAnterior = indiceEtapa > 0 ? ETAPA_ORDER[indiceEtapa - 1] : null
   const etapaSiguiente = indiceEtapa < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[indiceEtapa + 1] : null
 
@@ -226,21 +226,21 @@ export function EstrategiaWorkspace({
           {resumen.aprobadas} de {resumen.total} aprobadas
         </p>
         <div className="space-y-1">
-          {GRUPOS_ETAPAS.map(grupo => {
-            const filas = grupo.etapas
+          {BLOQUES.map(bloque => {
+            const filas = bloque.etapas
               .map(k => etapaPorKey.get(k))
               .filter((e): e is EtapaEstrategia => !!e)
             const aplicables = filas.filter(e => e.status !== 'no_aplica')
             const aprobadas = aplicables.filter(e => e.status === 'aprobada').length
-            const abierto = abiertos.has(grupo.titulo)
+            const abierto = abiertos.has(bloque.titulo)
             return (
-              <div key={grupo.titulo}>
-                <GrupoHeader
-                  titulo={grupo.titulo}
+              <div key={bloque.titulo}>
+                <BloqueHeader
+                  titulo={bloque.titulo}
                   aprobadas={aprobadas}
                   total={aplicables.length}
                   abierto={abierto}
-                  onToggle={() => toggleGrupo(grupo.titulo)}
+                  onToggle={() => toggleBloque(bloque.titulo)}
                 />
                 {abierto && (
                   <div className="space-y-0.5">
@@ -262,7 +262,7 @@ export function EstrategiaWorkspace({
       {/* Contenido de la etapa */}
       <section className="min-w-0">
         <p className="mb-1.5 text-[11px] text-[#a59c89]">
-          {grupoActual} · etapa {indiceEtapa + 1} de {ETAPA_ORDER.length}
+          {bloqueActual} · etapa {indiceEtapa + 1} de {ETAPA_ORDER.length}
         </p>
         {contenido && vista ? (
           <>
