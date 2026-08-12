@@ -605,7 +605,9 @@ git commit -m "feat(ux): índice del proyecto — fases como títulos, etapas co
 - Create: `src/components/BarraProyectos.tsx`
 - Create: `src/components/BarraProyectos.test.tsx`
 - Modify: `src/components/AdminShell.tsx`
-- Create: `src/components/AdminShell.test.tsx`
+- Create: `src/components/barra.ts` + `src/components/barra.test.ts` (las funciones puras).
+  **No** se crea `AdminShell.test.tsx`: importar `AdminShell` en un test explota en
+  `@/lib/db/client`, que es exactamente el motivo por el que existe `barra.ts`.
 
 **Interfaces:**
 - Consumes: `Wordmark` de `./Brand`; `attentionItems`, `AttentionItem` de
