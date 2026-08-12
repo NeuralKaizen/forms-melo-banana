@@ -21,15 +21,18 @@ function Valor({ valor }: { valor: unknown }) {
     // Vacío: se ve como "Sin datos", no como una lista sin nada adentro.
     if (valor.length === 0) return SIN_DATOS
     return (
-      <ul className="space-y-1.5">
+      // Un elemento se separa del siguiente con un hairline, no con una caja: un objeto
+      // de la lista (competidores, candidatas de arquetipo) usa el mismo Campos sin fondo
+      // que cualquier otro objeto anidado — acá el borde es lo único que hace de límite.
+      <ul className="divide-y divide-[var(--line)]">
         {valor.map((item, i) => (
-          <li key={i} className="text-[14px] leading-[1.66] text-[var(--cuerpo)]">
+          <li key={i} className="py-2 text-[14px] leading-[1.66] text-[var(--cuerpo)] first:pt-0 last:pb-0">
             {Array.isArray(item)
               // Un array dentro de un array: se anida como lista, no como ficha de
               // campos "0", "1", "2" — Object.entries de un array numera sus índices.
               ? <Valor valor={item} />
               : typeof item === 'object' && item !== null
-                ? <Ficha objeto={item as Record<string, unknown>} />
+                ? <Campos objeto={item as Record<string, unknown>} />
                 : String(item)}
           </li>
         ))}
@@ -43,26 +46,9 @@ function Valor({ valor }: { valor: unknown }) {
   return <Campos objeto={valor as Record<string, unknown>} />
 }
 
-/**
- * Una ficha por elemento cuando un campo es un array de objetos (competidores,
- * candidatas de arquetipo). La caja sigue existiendo acá nada más: con varios
- * elementos en fila, el borde es lo que separa uno del siguiente.
- */
-function Ficha({ objeto }: { objeto: Record<string, unknown> }) {
-  return (
-    <div className="space-y-2 rounded-xl bg-[#faf7ee] p-3">
-      {Object.entries(objeto).map(([clave, valor]) => (
-        <div key={clave}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--rotulo)]">{humanizar(clave)}</p>
-          <div className="mt-0.5"><Valor valor={valor} /></div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// Fila de rótulo al margen y valor en columna de lectura — el patrón que usan
-// tanto un objeto anidado (acá) como el nivel superior del documento (abajo).
+// Fila de rótulo al margen y valor en columna de lectura — el patrón que usan un objeto
+// anidado (acá, incluido un elemento de un array de objetos) y el nivel superior del
+// documento (abajo). Sin caja: nada en el contenido de una etapa lleva fondo ni sombra.
 function Campos({ objeto }: { objeto: Record<string, unknown> }) {
   return (
     <div className="space-y-4">

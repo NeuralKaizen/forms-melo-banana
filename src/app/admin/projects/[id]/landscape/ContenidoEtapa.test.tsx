@@ -34,7 +34,7 @@ describe('ContenidoEtapa', () => {
     expect(screen.getByText('La categoría creció 7,4 % en 2025')).toBeTruthy()
   })
 
-  it('un array de objetos se muestra como fichas de campos, una por elemento', () => {
+  it('un array de objetos se muestra como campos de rótulo y valor, uno por elemento', () => {
     const { container } = render(
       <ContenidoEtapa content={{
         competidores: [
@@ -43,12 +43,14 @@ describe('ContenidoEtapa', () => {
         ],
       }} />,
     )
-    // Cada objeto del array se renderiza como una ficha (Campos), con sus propios campos.
-    expect(container.querySelectorAll('.bg-\\[\\#faf7ee\\]')).toHaveLength(2)
+    // Cada objeto del array rinde sus propios campos — rótulo y valor, sin caja: el
+    // límite entre un elemento y el siguiente lo pone el <li> que los contiene, no un
+    // fondo. La aserción es sobre lo que se lee, no sobre una clase de estilo.
     expect(screen.getByText('Bali Bowls')).toBeTruthy()
     expect(screen.getByText('Otra Marca')).toBeTruthy()
     expect(screen.getAllByText('Nombre')).toHaveLength(2)
     expect(screen.getAllByText('Pais')).toHaveLength(2)
+    expect(container.querySelectorAll('li')).toHaveLength(2)
   })
 
   it('un array de arrays se anida como listas, no como ficha de campos "0"/"1"', () => {
@@ -57,9 +59,8 @@ describe('ContenidoEtapa', () => {
     // Los cuatro valores están, como texto de lista anidada.
     for (const n of ['1', '2', '3', '4']) expect(screen.getByText(n)).toBeTruthy()
 
-    // Nada se renderizó como ficha de campos (eso pasaría si Object.entries tratara
+    // Nada se renderizó como campos de objeto (eso pasaría si Object.entries tratara
     // el array anidado como objeto, con claves "0" y "1").
-    expect(container.querySelectorAll('.bg-\\[\\#faf7ee\\]')).toHaveLength(0)
     expect(screen.queryByText('0')).toBeNull()
 
     // La lista exterior más las dos interiores: al menos tres <ul>.

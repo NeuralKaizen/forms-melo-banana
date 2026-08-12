@@ -25,7 +25,7 @@ export function ComparadorVersiones(props: {
 
       <div className="grid grid-cols-1 divide-y divide-[var(--line)] rounded-b-[9px] border border-t-0 border-[var(--line)] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
         <div>
-          <header className="bg-[#F8F6F0] px-4 py-3">
+          <header className="bg-[var(--superficie)] px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[var(--rotulo)]">
               Vigente · aprobada · {aprobada.cuando}
             </p>
