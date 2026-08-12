@@ -1386,6 +1386,12 @@ sembrado:
 - [ ] Una etapa con borrador nuevo — el comparador de dos columnas con las dos decisiones.
 - [ ] Móvil (DevTools, 390px) — cabecera oscura, índice como panel, campos en una columna.
 - [ ] `prefers-reduced-motion: reduce` activado — nada se mueve.
+- [ ] **La entrevista pública, que comparte `globals.css`** — abrir una sesión en `/interview/...`
+      y confirmar que no cambió nada. La Task 3 movió `--ink` de `#1a1510` a `#15120C` y ese token
+      lo consumen `MicButton`, `GenderChoice`, `ColorGrid`, `ImageGrid`, `AgeGrid`, `Breather`,
+      `InterviewScreen`, `ProjectiveScreen` e `IdentityForm`. La diferencia de luminancia es
+      mínima y ningún test la cubre: es lo único del rediseño que puede regresar en un producto
+      que está fuera de alcance, así que se mira con los ojos.
 
 ## Riesgos conocidos
 
