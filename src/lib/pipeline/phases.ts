@@ -3,8 +3,8 @@
  *
  * Es la columna vertebral del panel: cada fase es un tramo del recorrido, y el estado de
  * cada una se deriva de lo que hay guardado — no se marca a mano. Adentro de
- * 'propuesta-valor' viven las pantallas de entrevistas, propuesta y taller, que se navegan
- * como tabs sin salir de la fase. Ver
+ * 'propuesta-valor' viven las pantallas de entrevistas, propuesta y taller; el índice del
+ * proyecto es lo único que navega hasta ellas. Ver
  * docs/superpowers/specs/2026-07-28-fase2-landscape-columna-vertebral-design.md
  */
 
@@ -17,12 +17,6 @@ export type PhaseStatus =
   | 'espera'     // hecha por fuera de la plataforma, esperando que vuelva
   | 'completa'
 
-export interface Tab {
-  key: EtapaKey
-  label: string
-  href: string
-}
-
 export interface Fase {
   key: FaseKey
   label: string
@@ -31,8 +25,6 @@ export interface Fase {
   detalle: string
   /** Dónde va el clic en la fase. */
   href: string
-  /** Solo la fase 'propuesta-valor' las tiene: entrevistas, propuesta y taller. */
-  tabs?: Tab[]
   /** Algo que esta fase necesita de otra y que aún no llegó. */
   dependencia?: string
 }
@@ -62,19 +54,6 @@ const FASE_LABEL: Record<FaseKey, string> = {
   'propuesta-valor': 'Entrevistas / Propuesta de valor',
   landscape: 'Landscape',
   estrategia: 'Estrategia',
-}
-
-const FASE_DE_ETAPA: Record<EtapaKey, FaseKey> = {
-  entrevistas: 'propuesta-valor',
-  propuesta: 'propuesta-valor',
-  taller: 'propuesta-valor',
-  landscape: 'landscape',
-  estrategia: 'estrategia',
-}
-
-/** A qué fase del recorrido pertenece una etapa. */
-export function faseDeEtapa(e: EtapaKey): FaseKey {
-  return FASE_DE_ETAPA[e]
 }
 
 const PANTALLA_LABEL: Record<Exclude<EtapaKey, 'estrategia'>, string> = {
@@ -120,8 +99,6 @@ function estadoLandscape(s: ProjectSignals): { status: PhaseStatus; detalle: str
 export function deriveFases(projectId: string, s: ProjectSignals): Fase[] {
   const href = (key: EtapaKey) => `/admin/projects/${projectId}/${key}`
   const entrevistasHref = href('entrevistas')
-  const propuestaHref = href('propuesta')
-  const tallerHref = href('taller')
   const landscapeHref = href('landscape')
   const estrategiaHref = href('estrategia')
 
@@ -143,11 +120,6 @@ export function deriveFases(projectId: string, s: ProjectSignals): Fase[] {
           ? 'en_curso'
           : 'pendiente',
     detalle: s.tieneEntregable ? estadoTaller(s).detalle : haySesiones ? estadoPropuesta(s).detalle : estadoEntrevistas(s).detalle,
-    tabs: [
-      { key: 'entrevistas', label: 'Entrevistas', href: entrevistasHref },
-      { key: 'propuesta', label: 'Propuesta de valor', href: propuestaHref },
-      { key: 'taller', label: 'Taller', href: tallerHref },
-    ],
   }
 
   const landscape: Fase = {

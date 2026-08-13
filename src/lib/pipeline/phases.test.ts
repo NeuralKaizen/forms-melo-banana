@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveFases, faseDeEtapa, faseActual, derivePantallas, pantallaActual, type ProjectSignals, type Fase } from './phases'
+import { deriveFases, faseActual, derivePantallas, pantallaActual, type ProjectSignals, type Fase } from './phases'
 import { projectSignals } from './signals'
 
 const base = { sessions: [{ status: 'completed' }], tieneEntregable: true, landscape: { aprobadas: 4, total: 6 } }
@@ -8,13 +8,6 @@ describe('deriveFases', () => {
   it('devuelve las tres fases en orden, sin entrega', () => {
     const g = deriveFases('p1', projectSignals(base))
     expect(g.map(x => x.key)).toEqual(['propuesta-valor', 'landscape', 'estrategia'])
-  })
-
-  it('la fase 1 lleva las tres tabs con sus hrefs', () => {
-    const g = deriveFases('p1', projectSignals(base))
-    expect(g[0].tabs?.map(t => t.key)).toEqual(['entrevistas', 'propuesta', 'taller'])
-    expect(g[0].tabs?.[0].href).toBe('/admin/projects/p1/entrevistas')
-    expect(g[1].tabs).toBeUndefined()
   })
 
   it('estrategia muestra su avance cuando hay señal', () => {
@@ -32,13 +25,6 @@ describe('deriveFases', () => {
   it('landscape conserva su dependencia del taller', () => {
     const g = deriveFases('p1', projectSignals({ ...base }))
     expect(g[1].dependencia).toMatch(/competidores del taller/)
-  })
-
-  it('faseDeEtapa mapea las cinco etapas', () => {
-    expect(faseDeEtapa('entrevistas')).toBe('propuesta-valor')
-    expect(faseDeEtapa('taller')).toBe('propuesta-valor')
-    expect(faseDeEtapa('landscape')).toBe('landscape')
-    expect(faseDeEtapa('estrategia')).toBe('estrategia')
   })
 
   it('faseActual es la primera no completa', () => {
