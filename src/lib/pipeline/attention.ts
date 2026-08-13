@@ -73,6 +73,9 @@ export function attentionItems(projects: AttentionInput[]): AttentionItem[] {
   )
 }
 
+/** La barra amarilla ya muestra hasta tres pendientes; repetirlos es el ruido que estamos sacando. */
+export const mostrarSeccionEsperando = (pendientes: number) => pendientes > 3
+
 /** "hace 3 días", en corto, para la columna de actividad. */
 export function haceCuanto(fecha: Date | null | undefined, ahora: Date): string {
   if (!fecha) return '—'

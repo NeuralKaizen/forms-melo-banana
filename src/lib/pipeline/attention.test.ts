@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { derivePantallas, type ProjectSignals } from './phases'
-import { attentionItems, haceCuanto, type AttentionInput } from './attention'
+import { attentionItems, haceCuanto, mostrarSeccionEsperando, type AttentionInput } from './attention'
 
 const señales = (over: Partial<ProjectSignals> = {}): ProjectSignals => ({
   sessionsTotal: 0,
@@ -87,5 +87,16 @@ describe('haceCuanto', () => {
     expect(haceCuanto(new Date('2026-07-20T12:00:00Z'), ahora)).toBe('hace 8 días')
     expect(haceCuanto(new Date('2026-06-20T12:00:00Z'), ahora)).toBe('hace 1 mes')
     expect(haceCuanto(null, ahora)).toBe('—')
+  })
+})
+
+describe('mostrarSeccionEsperando', () => {
+  it('con tres pendientes o menos, la barra ya los muestra y la sección sobra', () => {
+    expect(mostrarSeccionEsperando(0)).toBe(false)
+    expect(mostrarSeccionEsperando(3)).toBe(false)
+  })
+
+  it('con más de tres, la sección se justifica', () => {
+    expect(mostrarSeccionEsperando(4)).toBe(true)
   })
 })

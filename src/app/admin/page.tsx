@@ -2,9 +2,9 @@ import Link from 'next/link'
 import { db } from '@/lib/db/client'
 import { listProjectsWithCounts, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
-import { deriveFases, faseActual, derivePantallas, pantallaActual, type Fase, type PhaseStatus } from '@/lib/pipeline/phases'
+import { deriveFases, faseActual, derivePantallas, pantallaActual, type Fase } from '@/lib/pipeline/phases'
 import { projectSignals } from '@/lib/pipeline/signals'
-import { attentionItems, haceCuanto, type AttentionItem } from '@/lib/pipeline/attention'
+import { attentionItems, haceCuanto, mostrarSeccionEsperando, type AttentionItem } from '@/lib/pipeline/attention'
 import { AdminShell } from '@/components/AdminShell'
 
 export const dynamic = 'force-dynamic'
@@ -30,11 +30,19 @@ function FaseTrack({ fases, activeKey }: { fases: Fase[]; activeKey: string }) {
   )
 }
 
-const CHIP: Record<PhaseStatus, { clase: string; texto: string }> = {
-  completa: { clase: 'bg-[#fffdf0] text-[#8a6d10]', texto: 'Completa' },
-  en_curso: { clase: 'bg-[#fffdf0] text-[#8a6d10]', texto: 'En curso' },
-  espera: { clase: 'bg-[#f7f3e6] text-[#8a6d10]', texto: 'En espera' },
-  pendiente: { clase: 'bg-[#f4f1e8] text-[#8a8170]', texto: 'Pendiente' },
+/** El chip binario: quién destraba lo que sigue en este proyecto. Sin item, no hay nada esperando. */
+function ChipEstado({ item }: { item?: AttentionItem }) {
+  if (!item) return null
+  const delEquipo = item.bloqueo === 'equipo'
+  return (
+    <span
+      className={`flex-none rounded-full px-2.5 py-1 text-[11px] font-medium ${
+        delEquipo ? 'bg-[var(--banana)] text-ink' : 'bg-[#F3F0E7] text-[#7E7868]'
+      }`}
+    >
+      {delEquipo ? 'Nos toca' : 'Esperando'}
+    </span>
+  )
 }
 
 /** Una cosa esperando: qué proyecto, qué falta, y quién la destraba. */
@@ -44,7 +52,7 @@ function AttentionRow({ item }: { item: AttentionItem }) {
     <li>
       <Link
         href={item.href}
-        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-[#fffdf0]"
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-[var(--superficie)]"
       >
         <span
           className={`h-1.5 w-1.5 flex-none rounded-full ${delEquipo ? 'bg-[var(--banana)]' : 'bg-[#d9d0ba]'}`}
@@ -54,22 +62,16 @@ function AttentionRow({ item }: { item: AttentionItem }) {
           <span className="block text-[13.5px] leading-snug text-ink">
             <strong className="font-medium">{item.projectName}</strong>
             <span className="text-[#c0b8a6]"> · </span>
-            <span className="text-[#6b6155]">{item.accion}</span>
+            <span className="text-[var(--secundario)]">{item.accion}</span>
           </span>
         </span>
-        <span className="flex-none text-[11px] text-[#a59c89]">
+        <span className="flex-none text-[11px] text-[var(--rotulo)]">
           {delEquipo ? 'Nos toca' : 'Esperando'}
         </span>
       </Link>
     </li>
   )
 }
-
-const Th = ({ children, className = '' }: { children?: React.ReactNode; className?: string }) => (
-  <th scope="col" className={`px-5 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#a59c89] ${className}`}>
-    {children}
-  </th>
-)
 
 export default async function Admin() {
   const rows = await listProjectsWithCounts(db)
@@ -94,6 +96,7 @@ export default async function Admin() {
 
   const pendientes = attentionItems(projects)
   const nosToca = pendientes.filter(i => i.bloqueo === 'equipo').length
+  const porProyecto = new Map(pendientes.map(i => [i.projectId, i]))
   const ahora = new Date()
 
   return (
@@ -102,86 +105,54 @@ export default async function Admin() {
         <h1 className="font-serif text-3xl font-medium leading-tight text-ink">
           <span className="underline-banana">Proyectos</span>
         </h1>
-        <p className="text-[13px] text-[#a59c89]">Todo lo que el estudio tiene en curso</p>
+        <p className="text-[13px] text-[var(--rotulo)]">Todo lo que el estudio tiene en curso</p>
       </div>
 
       {projects.length === 0 ? (
-        <p className="mt-16 text-center text-[15px] text-[#8a8170]">
+        <p className="mt-16 text-center text-[15px] text-[var(--secundario)]">
           Todavía no hay proyectos. Se crean al completarse una entrevista.
         </p>
       ) : (
         <>
-          <section aria-labelledby="atencion" className="mt-7 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 px-3">
-              <h2 id="atencion" className="text-[13px] font-semibold text-ink">Esperando</h2>
-              <p className="text-[11.5px] text-[#a59c89]">
-                {nosToca === 0
-                  ? 'Nada trabado de nuestro lado'
-                  : `${nosToca} ${nosToca === 1 ? 'cosa depende' : 'cosas dependen'} del equipo`}
-              </p>
-            </div>
-
-            {pendientes.length === 0 ? (
-              <p className="px-3 pt-3 text-[13.5px] text-[#8a8170]">Todo al día. Ningún proyecto espera nada.</p>
-            ) : (
-              <ul className="mt-2 divide-y divide-black/5">
+          {mostrarSeccionEsperando(nosToca) && (
+            <section aria-labelledby="atencion" className="mt-8">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="atencion" className="text-[13px] font-semibold text-ink">Esperando</h2>
+                <p className="text-[11.5px] text-[var(--rotulo)]">
+                  {nosToca} {nosToca === 1 ? 'cosa depende' : 'cosas dependen'} del equipo
+                </p>
+              </div>
+              <ul className="mt-3 divide-y divide-[var(--line)] border-y border-[var(--line)]">
                 {pendientes.map(i => <AttentionRow key={`${i.projectId}-${i.fase}`} item={i} />)}
               </ul>
-            )}
-          </section>
+            </section>
+          )}
 
-          <section className="mt-6 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[48rem] border-collapse">
-                <thead>
-                  <tr className="border-b border-black/5 bg-[#faf7ee]">
-                    <Th>Proyecto</Th>
-                    <Th>Entrevistas</Th>
-                    <Th>Propuesta</Th>
-                    <Th>Fase actual</Th>
-                    <Th>Movimiento</Th>
-                    <Th className="text-right">Recorrido</Th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {projects.map(p => (
-                    <tr key={p.id} className="transition-colors duration-200 hover:bg-[#fffdf0]">
-                      <td className="px-5 py-4">
-                        <Link href={`/admin/projects/${p.id}`} className="font-serif text-[17px] font-medium text-ink underline decoration-transparent underline-offset-4 transition-colors duration-200 hover:decoration-[var(--banana)]">
-                          {p.name}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-4 text-[13px] tabular-nums text-[#6b6155]">
-                        {p.sessionsTotal === 0
-                          ? <span className="text-[#c0b8a6]">—</span>
-                          : <>{p.sessionsCompleted}/{p.sessionsTotal} <span className="text-[#a59c89]">completas</span></>}
-                      </td>
-                      <td className="px-5 py-4 text-[13px] text-[#6b6155]">
-                        {p.tieneEntregable ? 'Generada' : <span className="text-[#c0b8a6]">—</span>}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="text-[13px] font-medium text-ink">{p.pantallaFina.label}</span>
-                          <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-medium ${CHIP[p.actual.status].clase}`}>
-                            {CHIP[p.actual.status].texto}
-                          </span>
-                        </span>
-                        <span className="mt-0.5 block text-[11.5px] text-[#a59c89]">{p.actual.detalle}</span>
-                      </td>
-                      <td className="px-5 py-4 text-[12.5px] text-[#8a8170]">
-                        {haceCuanto(p.ultimaActividad, ahora)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="flex justify-end">
-                          <FaseTrack fases={p.fases} activeKey={p.actual.key} />
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <ul aria-label="Listado de proyectos" className="mt-8 divide-y divide-[var(--line)] border-y border-[var(--line)]">
+            {projects.map(p => (
+              <li key={p.id}>
+                <Link
+                  href={`/admin/projects/${p.id}`}
+                  className="flex flex-wrap items-center gap-4 py-4 transition-colors duration-200 hover:bg-[var(--superficie)] sm:flex-nowrap"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-serif text-[19px] text-ink">{p.name}</span>
+                    <span className="mt-0.5 block truncate text-[12.5px] text-[var(--secundario)]">
+                      {p.pantallaFina.label} · {p.actual.detalle}
+                    </span>
+                  </span>
+
+                  <ChipEstado item={porProyecto.get(p.id)} />
+
+                  <FaseTrack fases={p.fases} activeKey={p.actual.key} />
+
+                  <span className="flex-none text-[12.5px] text-[var(--secundario)]">
+                    {haceCuanto(p.ultimaActividad, ahora)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </AdminShell>
