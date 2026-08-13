@@ -1,11 +1,37 @@
 import Link from 'next/link'
 import type { EntradaIndice, FaseIndice } from '@/lib/pipeline/indice'
 
-const PUNTO: Record<EntradaIndice['estado'], string> = {
-  aprobada: 'bg-[var(--banana)]',
-  actual: 'bg-white ring-1 ring-white/70',
-  pendiente: 'bg-[#E0DCD0]',
-  no_aplica: 'bg-transparent ring-1 ring-[#E0DCD0]',
+/**
+ * El punto de estado de cada etapa. `aprobada` y `pendiente` no se pueden distinguir sólo
+ * por color: `aprobada` lleva un tilde adentro. `pendiente` y `no_aplica` quedan huecas
+ * -por forma, contra el relleno de `aprobada`- pero huecas entre sí también se confunden,
+ * así que se separan por el trazo: `pendiente` es sólida y marcada porque es una etapa que
+ * todavía falta trabajar; `no_aplica` es punteada y apagada porque no se va a tocar nunca.
+ */
+function Punto({ estado }: { estado: EntradaIndice['estado'] }) {
+  if (estado === 'aprobada') {
+    // A 6px el tilde no se lee: sube a 8px, el mínimo que lo hace legible.
+    return (
+      <svg viewBox="0 0 8 8" className="h-[8px] w-[8px] flex-none" aria-hidden="true">
+        <circle cx="4" cy="4" r="4" fill="var(--banana)" />
+        <path
+          d="M2.3 4.3 L3.5 5.6 L5.7 2.6"
+          fill="none"
+          stroke="var(--ink)"
+          strokeWidth="1.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    )
+  }
+  if (estado === 'actual') {
+    return <span className="h-[6px] w-[6px] flex-none rounded-full bg-white ring-1 ring-white/70" />
+  }
+  if (estado === 'pendiente') {
+    return <span className="h-[6px] w-[6px] flex-none rounded-full border border-[var(--apagado)]" />
+  }
+  return <span className="h-[6px] w-[6px] flex-none rounded-full border border-dashed border-[#E0DCD0]" />
 }
 
 export function ProjectIndex({
@@ -46,7 +72,7 @@ export function ProjectIndex({
                       : 'flex items-center gap-2 px-3 py-1.5 text-[var(--cuerpo)]'
                   }
                 >
-                  <span className={`h-[6px] w-[6px] flex-none rounded-full ${PUNTO[entrada.estado]}`} />
+                  <Punto estado={entrada.estado} />
                   <span className="text-[13px]">{entrada.label}</span>
                   {entrada.espera && <span className="sr-only">Espera al equipo</span>}
                 </Link>

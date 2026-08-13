@@ -67,4 +67,16 @@ describe('ProjectIndex', () => {
     render(<ProjectIndex nombre="Café Lunar" subtitulo="—" fases={fases} />)
     expect(screen.getByText('Esencia de marca')).toBeTruthy()
   })
+
+  it('la etapa aprobada lleva un tilde adentro del punto, no sólo color', () => {
+    render(<ProjectIndex nombre="Café Lunar" subtitulo="—" fases={fases} />)
+    const setup = screen.getByRole('link', { name: /Setup/ })
+    expect(setup.querySelector('svg path')).toBeTruthy()
+  })
+
+  it('la etapa pendiente no lleva el tilde de la aprobada', () => {
+    render(<ProjectIndex nombre="Café Lunar" subtitulo="—" fases={fases} />)
+    const personalidad = screen.getByRole('link', { name: /Personalidad/ })
+    expect(personalidad.querySelector('svg path')).toBeNull()
+  })
 })
