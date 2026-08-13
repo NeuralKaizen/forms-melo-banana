@@ -14,14 +14,23 @@ function archivosDelPanel(dir: string, acc: string[] = []): string[] {
   return acc
 }
 
+/**
+ * Los componentes de la entrevista pública: conjunto cerrado y conocido, con lenguaje visual
+ * propio. Se excluyen por nombre en vez de mantener una lista blanca de qué sí revisar —
+ * así cualquier componente nuevo que se agregue a src/components/ queda cubierto por default,
+ * en vez de depender de que alguien se acuerde de sumarlo a mano.
+ */
+const DE_LA_ENTREVISTA = new Set([
+  'InterviewLayout', 'MicButton', 'ProjectiveScreen', 'InterviewScreen', 'ColorGrid',
+  'AgeGrid', 'GenderChoice', 'Breather', 'IdentityForm', 'ImageGrid', 'SectionNav',
+])
+
 const raiz = path.resolve(__dirname, '..')
 const panel = [
   ...archivosDelPanel(path.join(raiz, 'app', 'admin')),
-  path.join(raiz, 'components', 'AdminShell.tsx'),
-  path.join(raiz, 'components', 'ProjectIndex.tsx'),
-  path.join(raiz, 'components', 'EtapaDocumento.tsx'),
-  path.join(raiz, 'components', 'BarraProyectos.tsx'),
-  path.join(raiz, 'components', 'ComparadorVersiones.tsx'),
+  ...archivosDelPanel(path.join(raiz, 'components')).filter(
+    f => !DE_LA_ENTREVISTA.has(path.basename(f, '.tsx')),
+  ),
 ]
 
 describe('lenguaje visual del panel', () => {
