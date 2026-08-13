@@ -338,17 +338,12 @@ export async function selectTendencias(
 }
 
 /**
- * El mismo contenido, sin importar en qué orden vengan las claves: son objetos que
- * volvieron de una columna `jsonb`, y ahí el orden no es información.
- *
- * Para comparar uno contra muchos, estabilizá ese uno con `estabilizar` y compará los
- * strings: así el documento fijo se serializa una vez y no una por comparación.
+ * El contenido serializado con las claves ordenadas: son objetos que volvieron de una
+ * columna `jsonb`, y ahí el orden no es información. Dos contenidos son el mismo cuando
+ * sus strings estabilizados coinciden — comparando así, el documento fijo se serializa una
+ * sola vez y no una por comparación.
  */
-export function mismoContenido(a: unknown, b: unknown): boolean {
-  return estabilizar(a) === estabilizar(b)
-}
-
-export function estabilizar(valor: unknown): string {
+function estabilizar(valor: unknown): string {
   return JSON.stringify(valor, (_clave, v) =>
     v && typeof v === 'object' && !Array.isArray(v)
       ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1)))
