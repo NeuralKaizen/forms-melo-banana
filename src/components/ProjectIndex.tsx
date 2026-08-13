@@ -74,7 +74,17 @@ export function ProjectIndex({
                 >
                   <Punto estado={entrada.estado} />
                   <span className="text-[13px]">{entrada.label}</span>
-                  {entrada.espera && <span className="sr-only">Espera al equipo</span>}
+                  {entrada.espera && (
+                    <>
+                      {/* Al final del renglón, separado del punto de estado: no dice en qué anda
+                          la etapa sino que la pelota la tiene el equipo. */}
+                      <span
+                        className="ml-auto h-[6px] w-[6px] flex-none rounded-full bg-[var(--banana)]"
+                        aria-hidden="true"
+                      />
+                      <span className="sr-only">Espera al equipo</span>
+                    </>
+                  )}
                 </Link>
               </li>
             ))}

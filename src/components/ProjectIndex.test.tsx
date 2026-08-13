@@ -44,9 +44,14 @@ describe('ProjectIndex', () => {
     expect(actuales[0].textContent).toContain('Tendencias')
   })
 
-  it('la etapa que espera al equipo lo dice de forma accesible, no sólo con color', () => {
+  it('la etapa que espera al equipo lo marca con el punto banana y además lo dice', () => {
     render(<ProjectIndex nombre="Café Lunar" subtitulo="—" fases={fases} />)
     const panorama = screen.getByRole('link', { name: /Panorama/ })
+    // La marca visual: el único span decorativo del renglón, banana y empujado al final.
+    const punto = panorama.querySelector('span[aria-hidden="true"]')
+    expect(punto?.getAttribute('class')).toContain('bg-[var(--banana)]')
+    expect(punto?.getAttribute('class')).toContain('ml-auto')
+    // Y no queda sólo en el color: el mismo dato en texto para quien no lo ve.
     expect(panorama.textContent).toContain('Espera al equipo')
   })
 
