@@ -1467,6 +1467,54 @@ git commit -m "feat(ux): mantener la aprobada la reafirma de verdad, sin borrar 
 
 ---
 
+### Task 11: el setup de la base deja de vencerse
+
+**Origen:** diagnosticado durante la ejecución, cuando la suite empezó a devolver entre 5 y 15
+fallos por corrida completa, todos con `Hook timed out in 10000ms` y ninguno por aserción.
+
+**La causa.** `makeTestDb()` (`src/lib/db/testdb.ts`) levanta una instancia PGlite nueva —Postgres
+en WASM— y corre todo el DDL en **cada `beforeEach`**. `vitest.config.ts` declara
+`testTimeout: 30000` pero **no declara `hookTimeout`**, que queda en el default de 10s. Es
+incoherente darle 30 segundos a la prueba y 10 al montaje que esa prueba necesita; con los
+archivos corriendo en paralelo, bajo carga el montaje no entra.
+
+**Por qué importa ahora.** La suite pasó de 294 a 437 tests y de ~60s a ~200s. El ruido ya tapa
+fallos reales, justo antes de la revisión final de la rama, que es la que decide el merge.
+
+**Files:**
+- Modify: `vitest.config.ts`
+
+- [ ] **Step 1: Medir el estado actual**
+
+Run: `npm test` dos veces seguidas, anotando cuántos fallos y en qué archivos.
+Expected: fallos variables entre corridas, todos `Hook timed out in 10000ms`, ninguno por aserción.
+
+- [ ] **Step 2: Alinear el presupuesto del hook con el del test**
+
+```ts
+    testTimeout: 30000,
+    // El `beforeEach` de los tests de base levanta una instancia PGlite entera (Postgres en
+    // WASM) y corre el DDL completo. Con los archivos en paralelo eso no entra en los 10s del
+    // default, y los fallos aparecen como timeouts de hook, nunca como aserciones rotas.
+    hookTimeout: 30000,
+```
+
+- [ ] **Step 3: Verificar**
+
+Run: `npm test` tres veces seguidas.
+Expected: cero fallos en las tres. Si sobrevive alguno, **no subir más el timeout**: pasar a
+`poolOptions.forks.singleFork` para los tests de base, o compartir una instancia con `beforeAll`
+más truncado por test, y reportarlo.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add vitest.config.ts
+git commit -m "test: el setup de la base tiene el mismo presupuesto que la prueba que lo usa"
+```
+
+---
+
 ## Verificación final (manual, con el usuario)
 
 Antes de mergear, en el dev server (puerto 3001; el 3000 lo toma otro proyecto), con Cafe Lunar
