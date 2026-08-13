@@ -10,17 +10,22 @@ import { ContenidoEtapa } from '../app/admin/projects/[id]/landscape/ContenidoEt
  * la otra, cada una con su propio botón. La franja de arriba deja claro que lo aprobado no
  * se pisó solo: sigue vigente hasta que alguien elija.
  *
- * “Ver sólo la aprobada” no decide nada — cambia lo que estás mirando, y se vuelve. La
- * decisión que existe hoy es una sola: aprobar la nueva.
+ * Las dos decisiones son simétricas: “Mantener esta versión” ratifica la aprobada —queda
+ * escrito que el equipo miró el borrador y eligió lo anterior— y “Aprobar la nueva” la
+ * reemplaza. Ninguna de las dos borra nada: el historial se queda con todo.
+ *
+ * “Ver sólo la aprobada” no decide: cambia lo que estás mirando, y se vuelve. Por eso es
+ * el botón liviano de la columna, al lado del que sí decide.
  */
 export function ComparadorVersiones(props: {
   aprobada: { content: unknown; cuando: string }
   nueva: { content: unknown; cuando: string; autor: string }
+  onMantener: () => void
   onVerSoloAprobada: () => void
   onAprobarNueva: () => void
   guardando?: boolean
 }) {
-  const { aprobada, nueva, onVerSoloAprobada, onAprobarNueva, guardando } = props
+  const { aprobada, nueva, onMantener, onVerSoloAprobada, onAprobarNueva, guardando } = props
 
   return (
     <section>
@@ -38,7 +43,15 @@ export function ComparadorVersiones(props: {
           <div className="px-4 py-5">
             <ContenidoEtapa content={aprobada.content} />
           </div>
-          <div className="border-t border-[var(--line)] px-4 py-4">
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--line)] px-4 py-4">
+            <button
+              type="button"
+              onClick={onMantener}
+              disabled={guardando}
+              className="rounded-[7px] border border-[var(--ink)] px-4 py-2 text-[13px] font-semibold text-[var(--ink)] transition-opacity duration-200 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+            >
+              Mantener esta versión
+            </button>
             <button
               type="button"
               onClick={onVerSoloAprobada}

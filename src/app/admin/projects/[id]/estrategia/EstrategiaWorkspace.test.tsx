@@ -82,6 +82,23 @@ describe('EstrategiaWorkspace · borrador nuevo sobre etapa aprobada', () => {
     })
   })
 
+  it('“Mantener esta versión” ratifica la aprobada contra el endpoint de estrategia', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<EstrategiaWorkspace {...props({ conBorrador: true })} etapaActiva="consumidor" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Mantener esta versión' }))
+
+    // A diferencia de “Ver sólo la aprobada”, esto decide: se escribe, y por eso el
+    // conflicto no reaparece cuando se vuelve a la etapa.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/p1/estrategia/consumidor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accion: 'reafirmar' }),
+    })
+  })
+
   it('“Ver sólo la aprobada” deja el documento aprobado y no toca el servidor', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

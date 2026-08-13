@@ -94,8 +94,12 @@ export default async function LandscapeView({ params, searchParams }: {
             id: e.actual.id,
             content: e.actual.content,
             aprobada: !!e.actual.approvedAt,
-            procedencia: procedenciaDeVersion(e.actual, ahora),
-            cuando: haceCuanto(e.actual.createdAt, ahora),
+            // Con `origen`: si la vigente ratifica una anterior —el equipo mantuvo lo
+            // aprobado—, quién escribió y cuándo salen de la copiada. Sin eso, la fila
+            // nueva haría parecer recién escrito algo de hace días.
+            procedencia: procedenciaDeVersion(e.actual, ahora, e.origen),
+            // Misma razón en la cabecera de la columna vigente del comparador.
+            cuando: haceCuanto((e.origen ?? e.actual).createdAt, ahora),
             // Lo que Claude escribió después de la aprobación: no desplaza a lo aprobado,
             // pero el panel lo tiene que poder mostrar y ofrecer al gate humano.
             borradorNuevo: e.borradorNuevo

@@ -81,6 +81,28 @@ export function EstrategiaWorkspace({
     }
   }
 
+  // La otra salida del conflicto: el equipo se queda con lo que ya había aprobado. No es
+  // una acción de vista —eso es `soloAprobada`—: ratifica la vigente, así que el conflicto
+  // no reaparece al volver a la etapa y la etapa deja de esperar en el índice. Lo que
+  // escribió Claude no se borra: queda en el historial.
+  async function mantenerAprobada(etapaKey: EstrategiaKey) {
+    setGuardando(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/estrategia/${etapaKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'reafirmar' }),
+      })
+      if (!res.ok) throw new Error(((await res.json()) as { error?: string }).error ?? 'No se pudo mantener la versión aprobada')
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   const posicion = Math.max(0, ETAPA_ORDER.indexOf(etapaActiva))
   const ubicacion = `Estrategia · etapa ${posicion + 1} de ${ETAPA_ORDER.length}`
   const titulo = etapas.find(e => e.key === etapaActiva)?.label ?? ETAPA_LABEL[etapaActiva]
@@ -109,6 +131,7 @@ export function EstrategiaWorkspace({
             <ComparadorVersiones
               aprobada={{ content: contenido.content, cuando: contenido.cuando }}
               nueva={{ content: borradorNuevo.content, cuando: borradorNuevo.cuando, autor: borradorNuevo.autor }}
+              onMantener={() => mantenerAprobada(etapaActiva)}
               onVerSoloAprobada={() => setSoloAprobada(true)}
               onAprobarNueva={() => aprobarVersion(etapaActiva, borradorNuevo.id)}
               guardando={guardando}

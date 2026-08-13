@@ -96,6 +96,33 @@ describe('LandscapeWorkspace · borrador nuevo sobre etapa aprobada', () => {
     })
   })
 
+  it('“Mantener esta versión” ratifica la aprobada contra el servidor', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<LandscapeWorkspace {...props({ conBorrador: true })} etapaActiva="contexto" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Mantener esta versión' }))
+
+    // A diferencia de “Ver sólo la aprobada”, esto decide: se escribe, y por eso el
+    // conflicto no reaparece cuando se vuelve a la etapa.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/p1/landscape/contexto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accion: 'reafirmar' }),
+    })
+  })
+
+  it('si mantener falla, lo dice y no se come el error', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'No existe el proyecto' }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<LandscapeWorkspace {...props({ conBorrador: true })} etapaActiva="contexto" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Mantener esta versión' }))
+
+    expect(await screen.findByText('No existe el proyecto')).toBeTruthy()
+  })
+
   it('“Ver sólo la aprobada” deja el documento aprobado y no toca el servidor', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
