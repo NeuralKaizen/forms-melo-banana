@@ -105,7 +105,7 @@ async function levantarInstancia() {
 }
 
 // Una sola instancia PGlite por archivo de test, no una por test. Levantar Postgres-en-WASM
-// entero y correr el DDL de las trece tablas en cada `beforeEach` era lo que hacía pelear por
+// entero y correr el DDL de las once tablas en cada `beforeEach` era lo que hacía pelear por
 // CPU y memoria a los forks que vitest corre en paralelo: el costo se paga una vez y entre
 // tests sólo se vacían las tablas. Vitest aísla el registro de módulos por archivo, así que
 // este singleton nunca se comparte entre archivos.
