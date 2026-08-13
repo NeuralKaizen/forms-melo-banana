@@ -1,13 +1,22 @@
+/**
+ * El canario del lenguaje visual del panel.
+ *
+ * **Alcance:** sólo `src/app/admin/` y `src/components/`. No mira `src/lib/`, así que lo que
+ * viva ahí —hoy `src/lib/deck/DeckDocument.tsx`, que sigue en el lenguaje viejo a propósito,
+ * apareado con su espejo en pantalla— queda fuera y no lo va a atajar. Ampliar el alcance es
+ * una decisión, no un descuido: implica rediseñar antes lo que quede adentro.
+ *
+ * La entrevista pública tampoco entra: tiene lenguaje propio, y queda afuera por no estar
+ * entre esas dos raíces (sus pantallas) y por la lista de abajo (sus componentes).
+ */
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 
-/** Archivos del panel: la entrevista pública tiene su propio lenguaje y no entra acá. */
 function archivosDelPanel(dir: string, acc: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
     const p = path.join(dir, e)
     if (statSync(p).isDirectory()) {
-      if (e === 'interview' || e === 'gracias') continue
       archivosDelPanel(p, acc)
     } else if (/\.tsx$/.test(e) && !/\.test\.tsx$/.test(e)) acc.push(p)
   }
