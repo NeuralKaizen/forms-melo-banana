@@ -2,6 +2,69 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md.
 
+## 2026-08-12/13 — Rediseño completo del panel interno (11 tareas, rama sin mergear)
+
+- **Hecho:** rediseño de punta a punta del panel autenticado, sobre `fase3-pipeline-estrategia`
+  (40 commits, 56 archivos, 474 tests). Salió del feedback del usuario: *"los colores, el layout y
+  todo se me hace incómodo"* y *"no es intuitivo ni fácil de navegar por el cluster de
+  información"*. Spec en `specs/2026-08-12-rediseno-panel-interno-design.md`, plan de 11 tareas en
+  `plans/2026-08-12-rediseno-panel-interno.md`, ejecutado con subagentes (implementador + revisor
+  por tarea, ronda de arreglos, re-revisión acotada).
+  - **Lenguaje visual:** el amarillo de la marca deja de ser adorno y pasa a ser superficie (la
+    barra lateral entera). Fuera las tarjetas y las sombras: hairlines `1px solid var(--line)` y
+    `1.5px solid var(--ink)` donde una sección pesa. Escala tipográfica real y tokens
+    (`--banana --ink --line --aprobado --superficie --error --cuerpo --secundario --rotulo
+    --apagado`) en vez de cuatro grises casi iguales.
+  - **Navegación:** de **cinco barras apiladas a una**. La barra amarilla tiene tres estados
+    (ancha en el listado, riel de iniciales adentro de un proyecto, abierta encima al pasar el
+    mouse) y al lado vive el índice: fases como títulos, etapas como renglones, colapso cuando
+    una fase pasa de seis. `ProjectHeader` eliminado.
+  - **El panel es una sala de revisión, no un editor.** La etapa se rinde como documento editorial
+    (rótulo al margen, columna de lectura de 60ch) con la decisión fija al pie. El conflicto
+    "aprobada vs lo que Claude escribió después" pasó de un aviso de 12px a ser la pantalla, con
+    dos columnas y las dos decisiones.
+  - **Vocabulario alineado** con el que usa el equipo: `Grupo`→`Fase`, `GRUPOS_ETAPAS`→`BLOQUES`,
+    etapa = paso de una fase.
+  - **Decisión del usuario:** "Mantener versión" **persiste**. Reafirmar appendea una versión con
+    el contenido aprobado firmada por el equipo; por la regla que el store ya tenía
+    (`borradorNuevo = aprobadaMasNueva && masNueva && !masNueva.approvedAt`) el conflicto se
+    disuelve solo, **sin migración** y sin borrar lo que Claude escribió.
+  - **Suite arreglada:** `makeTestDb()` levantaba una instancia PGlite entera por `beforeEach`.
+    Ahora es una por archivo con `TRUNCATE ... RESTART IDENTITY CASCADE` (tablas leídas de
+    `pg_tables`, así una tabla nueva queda cubierta sola) más `maxWorkers: 2`. De 170-270s con
+    1-15 fallos por corrida, a **~40s y 474/474 estable**.
+
+- **Quedó (deuda con nombre y dirección):**
+  - `src/lib/deck/DeckDocument.tsx` conserva el `--ink` viejo (`#1a1510`) y un gris viejo: el PDF
+    que descarga el estudio usa colores distintos a los del panel. El plan excluyó `lib/deck`
+    explícitamente; son dos líneas.
+  - `DeliverableDocument` y `DeliverablePanel` perdieron `shadow-sm` pero conservan
+    `rounded-2xl` + borde + fondo blanco: siguen leyendo como tarjeta.
+  - La ratificación se lee en la actividad como "guardó" + "aprobó", indistinguible de una
+    escritura común. Pagable sin migrar con `author === 'humano'` + `versionDeOrigen(v) !== null`,
+    que discrimina fuerte porque el MCP fuerza `author: 'claude'`.
+  - `tienePostTaller` sigue hardcodeada en `false` (heredado): la fase Taller nunca se completa.
+  - `estabilizar` quedó exportada en `store.ts` sin consumidor externo.
+
+- **Lecciones que valen para la próxima ejecución:**
+  - **Un test que protege el diseño viejo no es cobertura que haya que preservar.** Dar a la vez
+    "no rompas los tests existentes" y "sacá la caja `bg-[#faf7ee]`" fue una instrucción
+    contradictoria; el test afirmaba sobre la clase CSS que la tarea venía a retirar. Reescribirlo
+    para medir semántica lo dejó **más fuerte**, no más débil.
+  - **Verificaciones que mienten.** Aparecieron tres: `-t "tipograf"` nunca matcheaba el test real
+    (el título lleva tilde) y devolvía 474 skipped con cara de PASS; el canario visual usaba lista
+    blanca y no miraba `PhaseNote.tsx`, que tenía restos; y `poolOptions` en vitest 4 no se aplica.
+    Moraleja: pedir siempre que se **pruebe que el test falla** cuando el defecto está presente.
+  - **Tres corridas limpias no son prueba de un flake dependiente de carga.** Di por bueno un
+    arreglo que sólo había movido el fallo del hook al cuerpo del test. Un implementador se negó
+    a aceptar mi premisa y lo demostró corriendo aislados los archivos rojos.
+  - **Partir las tareas grandes en varios commits salva trabajo:** dos sesiones se cortaron a
+    mitad y lo commiteado sobrevivió.
+
+- **Sigue:** revisión final de rama (en curso) → verificación manual del usuario en el navegador
+  (checklist al final del plan: el clic sobre el botón `»` de la barra, que la entrevista pública
+  no haya cambiado de aspecto, el layout de tres zonas, y móvil) → merge a `main`.
+
 ## 2026-08-11 — Fase 3 implementada + rediseño de la navegación (rama sin mergear)
 - **Hecho:** pipeline de estrategia completo en `fase3-pipeline-estrategia` (14 etapas versionadas, MCP, panel, instrucciones — 10 tareas con revisión por subagentes + revisión final de rama). Tras el feedback de UX: cabecera por 3 grupos ("Entrevistas / Propuesta de valor" con tabs · Landscape · Estrategia), fase Entrega eliminada (era un cascarón), carril de estrategia agrupado desplegable con siguiente/anterior, y `pantallaActual` para que el punto de entrada al proyecto siga el avance fino. Migración 0003 ya aplicada a Neon; demo sembrada en Cafe Lunar.
 - **Quedó:** rama sin mergear a la espera del visto bueno del usuario en el dev server (puerto 3001; el 3000 lo tomó otro proyecto). Minors aparcados con fallo en las revisiones (tablist sobre links, N+1 aceptado, `tienePostTaller` sigue hardcodeada false, breadcrumb con 14 fijo vs no_aplica).
