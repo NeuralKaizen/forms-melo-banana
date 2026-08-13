@@ -1374,6 +1374,99 @@ git commit -m "refactor(ux): barrido de los grises y las tarjetas del lenguaje v
 
 ---
 
+### Task 10: "Mantener versión" decide de verdad
+
+**Origen:** decisión del usuario del 2026-08-12, tomada durante la ejecución. Cuando Claude
+reescribe una etapa ya aprobada, el panel muestra las dos versiones. El botón de conservar la
+aprobada era sólo una acción de vista: cerraba el comparador y el conflicto reaparecía al volver.
+El usuario eligió que **mantenga de verdad**.
+
+**La idea, y por qué no hace falta migración.** El store deriva el conflicto con esta regla, que ya
+existe (`store.ts:377` y `strategy-store.ts:143`):
+
+```ts
+const borradorNuevo = aprobadaMasNueva && masNueva && !masNueva.approvedAt ? masNueva : null
+```
+
+Entonces "mantener" es **appendear una versión nueva con el contenido de la aprobada, ya aprobada y
+firmada por el equipo**: pasa a ser `masNueva`, tiene `approvedAt`, y `borradorNuevo` se vuelve
+`null` solo. Es el idioma append-only que el store ya habla. Lo que Claude escribió **no se borra**:
+queda en el historial.
+
+**Consecuencia aceptada por el usuario:** el historial suma una fila que significa "el equipo
+ratificó esta versión". Cambia lo que cuenta la auditoría del proyecto — a favor: hoy no hay forma
+de distinguir "nadie miró el borrador" de "el equipo lo miró y se quedó con lo anterior".
+
+**Files:**
+- Modify: `src/lib/db/store.ts` + `store.test.ts` — nueva función `reafirmarAprobada`
+- Modify: `src/lib/db/strategy-store.ts` + `strategy-store.test.ts` — su equivalente
+- Modify: `src/app/api/projects/[id]/landscape/[stage]/route.ts` y el de `estrategia` — acción nueva
+- Modify: `src/components/ComparadorVersiones.tsx` + test
+- Modify: los dos workspaces + sus tests
+
+**Interfaces:**
+- Consumes: la forma de `saveLandscapeVersion` / `saveStrategyVersion` que ya existe.
+- Produces: `reafirmarAprobada(db, projectId, stage): Promise<void>` en cada store, y la acción
+  `'reafirmar'` en las dos rutas de API.
+
+- [ ] **Step 1: Escribir los tests de store que fallan**
+
+En `store.test.ts`, con una etapa aprobada y un borrador de Claude encima:
+
+```ts
+it('reafirmar la aprobada disuelve el conflicto sin borrar el borrador de Claude', async () => {
+  // …etapa aprobada + borradorNuevo de Claude ya sembrados…
+  await reafirmarAprobada(db, projectId, 'tendencias')
+  const estado = await landscapeState(db, projectId)
+  const etapa = estado.find(e => e.stage === 'tendencias')!
+  expect(etapa.borradorNuevo).toBeNull()
+  expect(etapa.actual!.content).toEqual(contenidoAprobado)
+  expect(etapa.versiones).toBe(3)          // la aprobada, la de Claude, y la reafirmación
+})
+
+it('reafirmar sin conflicto no agrega nada', async () => {
+  await reafirmarAprobada(db, projectId, 'contexto')
+  expect((await landscapeState(db, projectId)).find(e => e.stage === 'contexto')!.versiones).toBe(1)
+})
+```
+
+- [ ] **Step 2: Correr para verificar que fallan**
+
+Run: `npx vitest run src/lib/db/store.test.ts`
+Expected: FAIL — `reafirmarAprobada` no existe.
+
+- [ ] **Step 3: Implementar en los dos stores**
+
+Appendea una versión con el `content` de la aprobada vigente, `approvedAt` = ahora,
+`author: 'humano'`. **Si no hay `borradorNuevo`, no hace nada** — reafirmar sin conflicto no
+ensucia el historial.
+
+- [ ] **Step 4: Correr los tests de store**
+
+Run: `npx vitest run src/lib/db/store.test.ts src/lib/db/strategy-store.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: La acción en las dos rutas de API**
+
+Igual que `'aprobar'`, con su validación y sus errores. Test de la ruta incluido.
+
+- [ ] **Step 6: Cablear el botón**
+
+`Ver sólo la aprobada` se queda como acción de vista. Se **suma** `Mantener esta versión`, que
+llama a la acción nueva y refresca. **La procedencia se arma desde la versión copiada**, no desde
+la reafirmación: si no, el `createdAt` nuevo hace parecer que el contenido se escribió recién.
+
+- [ ] **Step 7: Suite completa y commit**
+
+Run: `npm test && npx tsc --noEmit`
+
+```bash
+git add -A
+git commit -m "feat(ux): mantener la aprobada la reafirma de verdad, sin borrar lo de Claude"
+```
+
+---
+
 ## Verificación final (manual, con el usuario)
 
 Antes de mergear, en el dev server (puerto 3001; el 3000 lo toma otro proyecto), con Cafe Lunar
