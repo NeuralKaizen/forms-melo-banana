@@ -9,7 +9,7 @@ vi.mock('@/lib/db/client', async () => {
 import { POST } from './[stage]/route'
 import { db } from '@/lib/db/client'
 import { findOrCreateProject } from '@/lib/db/store'
-import { saveStrategyVersion } from '@/lib/db/strategy-store'
+import { saveStrategyVersion, approveStrategyVersion, strategyState } from '@/lib/db/strategy-store'
 
 let contador = 0
 let projectId: string
@@ -46,5 +46,31 @@ describe('POST /api/projects/[id]/estrategia/[stage]', () => {
   it('etapa desconocida devuelve 400', async () => {
     const res = await post(projectId, 'tendencias', { accion: 'guardar', content: {} })
     expect(res.status).toBe(400)
+  })
+
+  it('reafirmar ratifica la vigente y disuelve el conflicto', async () => {
+    const v = await saveStrategyVersion(db, projectId, 'concepto', { content: { concepto: 'a', racional: 'b' }, author: 'claude' })
+    await approveStrategyVersion(db, v.id, { projectId, stage: 'concepto' })
+    await saveStrategyVersion(db, projectId, 'concepto', { content: { concepto: 'c', racional: 'd' }, author: 'claude' })
+
+    const res = await post(projectId, 'concepto', { accion: 'reafirmar', autor: 'Flor' })
+    expect(res.status).toBe(200)
+    expect((await res.json()).reafirmada).toBe(true)
+
+    const etapa = (await strategyState(db, projectId)).find(e => e.stage === 'concepto')!
+    expect(etapa.borradorNuevo).toBeNull()
+    expect(etapa.actual!.content).toEqual({ concepto: 'a', racional: 'b' })
+  })
+
+  it('reafirmar sin conflicto no escribe nada', async () => {
+    const res = await post(projectId, 'concepto', { accion: 'reafirmar' })
+    expect(res.status).toBe(200)
+    expect((await res.json()).reafirmada).toBe(false)
+    expect((await strategyState(db, projectId)).find(e => e.stage === 'concepto')!.versiones).toBe(0)
+  })
+
+  it('reafirmar con un proyecto que no existe devuelve 404', async () => {
+    const res = await post('00000000-0000-4000-8000-000000000000', 'concepto', { accion: 'reafirmar' })
+    expect(res.status).toBe(404)
   })
 })

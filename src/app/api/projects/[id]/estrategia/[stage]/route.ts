@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
-import { saveStrategyVersion, approveStrategyVersion } from '@/lib/db/strategy-store'
+import { saveStrategyVersion, approveStrategyVersion, reafirmarAprobadaEstrategia } from '@/lib/db/strategy-store'
 import { ETAPA_ORDER, type EstrategiaKey } from '@/lib/estrategia/stages'
 import { esUuidValido } from '@/lib/landscape/ids'
 import { ErrorDeValidacion, ErrorNoEncontrado } from '@/lib/db/store'
@@ -47,6 +47,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         // El scope (proyecto + etapa de la URL) va atado al UPDATE: aprobar no confía
         // en que el versionId del body pertenezca a este proyecto y esta etapa, lo verifica.
         return NextResponse.json(await approveStrategyVersion(db, body.versionId, { projectId: id, stage: stage as EstrategiaKey }))
+      }
+      case 'reafirmar': {
+        // La otra salida del conflicto: el equipo se queda con lo que ya había aprobado.
+        // No lleva versionId — no se elige una fila cualquiera, se ratifica la vigente de
+        // esta etapa, que la deriva el store. Como 'guardar', la firma quien decidió.
+        const version = await reafirmarAprobadaEstrategia(
+          db, id, stage as EstrategiaKey,
+          typeof body.autor === 'string' ? body.autor : undefined,
+        )
+        // Sin conflicto no se appendeó nada, y el pedido no falló: no había nada que
+        // ratificar. `reafirmada` lo dice sin obligar a adivinarlo desde un body vacío.
+        return NextResponse.json({ reafirmada: version !== null, version })
       }
       default:
         return NextResponse.json({ error: `Acción desconocida: ${String(body.accion)}` }, { status: 400 })

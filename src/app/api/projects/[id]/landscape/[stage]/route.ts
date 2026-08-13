@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
-import { saveLandscapeVersion, approveLandscapeVersion, selectTendencias, ErrorDeValidacion, ErrorNoEncontrado } from '@/lib/db/store'
+import {
+  saveLandscapeVersion, approveLandscapeVersion, selectTendencias, reafirmarAprobada,
+  ErrorDeValidacion, ErrorNoEncontrado,
+} from '@/lib/db/store'
 import { STAGE_ORDER, type StageKey } from '@/lib/landscape/stages'
 import { esUuidValido } from '@/lib/landscape/ids'
 
@@ -46,6 +49,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         // El scope (proyecto + etapa de la URL) va atado al UPDATE: aprobar no confía
         // en que el versionId del body pertenezca a este proyecto y esta etapa, lo verifica.
         return NextResponse.json(await approveLandscapeVersion(db, body.versionId, { projectId: id, stage: stage as StageKey }))
+      }
+      case 'reafirmar': {
+        // La otra salida del conflicto: el equipo se queda con lo que ya había aprobado.
+        // No lleva versionId — no se elige una fila cualquiera, se ratifica la vigente de
+        // esta etapa, que la deriva el store. Como 'guardar', la firma quien decidió.
+        const version = await reafirmarAprobada(
+          db, id, stage as StageKey,
+          typeof body.autor === 'string' ? body.autor : undefined,
+        )
+        // Sin conflicto no se appendeó nada, y el pedido no falló: no había nada que
+        // ratificar. `reafirmada` lo dice sin obligar a adivinarlo desde un body vacío.
+        return NextResponse.json({ reafirmada: version !== null, version })
       }
       case 'seleccionar-tendencias': {
         if (stage !== 'tendencias')
