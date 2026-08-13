@@ -7,8 +7,12 @@ import {
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
   approveLandscapeVersion, getCurrentVersion, selectTendencias,
-  landscapeState, listLandscapeActivity, summarizeLandscape, ErrorDeValidacion, ErrorNoEncontrado,
+  landscapeState, listLandscapeActivity, summarizeLandscape, reafirmarAprobada,
+  ErrorDeValidacion, ErrorNoEncontrado,
 } from './store'
+import { esperanDecision } from '@/lib/pipeline/indice'
+import { procedenciaDeVersion } from '@/lib/pipeline/procedencia'
+import { haceCuanto } from '@/lib/landscape/stages'
 import { answers, landscapeStages, landscapeVersions, oauthClients, oauthCodes, oauthTokens } from './schema'
 
 type AnswerRow = typeof answers.$inferSelect
@@ -438,6 +442,99 @@ describe('landscape · borrador sobre etapa aprobada', () => {
 
     const porEtapa = Object.fromEntries((await landscapeState(db, p.id)).map(e => [e.stage, e]))
     expect(porEtapa.contexto.borradorNuevo).toBeNull()
+  })
+})
+
+/**
+ * La otra salida del conflicto: el equipo mira el borrador y se queda con lo aprobado.
+ * “Mantener” no borra nada —la tabla es append-only—: appendea una ratificación aprobada
+ * con el contenido de la vigente, y el conflicto se disuelve por la regla de siempre.
+ */
+describe('landscape · mantener la aprobada', () => {
+  const contenidoAprobado = { territorio: 'El café de barrio' }
+
+  /** Una etapa aprobada, y encima un borrador de Claude que nadie decidió todavía. */
+  async function conConflicto() {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const aprobada = await saveLandscapeVersion(db, p.id, 'contexto', {
+      content: contenidoAprobado, author: 'claude',
+    })
+    await approveLandscapeVersion(db, aprobada.id, { projectId: p.id, stage: 'contexto' })
+    const deClaude = await saveLandscapeVersion(db, p.id, 'contexto', {
+      content: { territorio: 'El café como pausa deliberada' }, author: 'claude',
+    })
+    return { db, p, aprobada, deClaude }
+  }
+
+  it('reafirmar la aprobada disuelve el conflicto sin borrar el borrador de Claude', async () => {
+    const { db, p, deClaude } = await conConflicto()
+    await reafirmarAprobada(db, p.id, 'contexto')
+
+    const etapa = (await landscapeState(db, p.id)).find(e => e.stage === 'contexto')!
+    expect(etapa.borradorNuevo).toBeNull()
+    expect(etapa.actual!.content).toEqual(contenidoAprobado)
+    expect(etapa.actual!.approvedAt).toBeTruthy()
+    expect(etapa.aprobada).toBe(true)
+    // La aprobada, la de Claude y la ratificación: nada se borró.
+    expect(etapa.versiones).toBe(3)
+    const historial = await listLandscapeVersions(db, p.id, 'contexto')
+    expect(historial.map(v => v.id)).toContain(deClaude.id)
+  })
+
+  it('reafirmar sin conflicto no agrega nada', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    const v = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    await approveLandscapeVersion(db, v.id, { projectId: p.id, stage: 'contexto' })
+
+    // Ratificar algo que nadie discutió sólo ensuciaría el historial con una fila por clic.
+    expect(await reafirmarAprobada(db, p.id, 'contexto')).toBeNull()
+    expect((await landscapeState(db, p.id)).find(e => e.stage === 'contexto')!.versiones).toBe(1)
+  })
+
+  it('sobre una etapa sin ninguna versión tampoco agrega nada', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Acme')
+    expect(await reafirmarAprobada(db, p.id, 'entrega')).toBeNull()
+    expect((await landscapeState(db, p.id)).find(e => e.stage === 'entrega')!.versiones).toBe(0)
+  })
+
+  it('la etapa reafirmada deja de esperar una decisión del equipo', async () => {
+    const { db, p } = await conConflicto()
+    expect(esperanDecision('landscape', await landscapeState(db, p.id))).toContain('landscape:contexto')
+
+    await reafirmarAprobada(db, p.id, 'contexto')
+
+    expect(esperanDecision('landscape', await landscapeState(db, p.id))).not.toContain('landscape:contexto')
+  })
+
+  it('la procedencia se arma desde la versión copiada, no desde la ratificación', async () => {
+    const { db, p, aprobada } = await conConflicto()
+    await reafirmarAprobada(db, p.id, 'contexto', 'Flor')
+
+    const etapa = (await landscapeState(db, p.id)).find(e => e.stage === 'contexto')!
+    // El contenido lo escribió Claude, antes; la fila nueva la firmó Flor, recién. Sin
+    // `origen`, el documento diría que lo escribió Flor hoy — y el `createdAt` nuevo haría
+    // parecer reciente algo que Claude escribió hace días.
+    expect(etapa.origen!.id).toBe(aprobada.id)
+    expect(procedenciaDeVersion(etapa.actual!, new Date(), etapa.origen))
+      .toBe(`Escrito por Claude · ${haceCuanto(etapa.origen!.createdAt, new Date())} · aprobada`)
+    // La ratificación sola diría otra cosa: por eso la procedencia no se arma con ella.
+    expect(procedenciaDeVersion(etapa.actual!, new Date())).toContain('Escrito por Flor')
+  })
+
+  it('la ratificación queda firmada por quien la decidió, y es humana', async () => {
+    const { db, p } = await conConflicto()
+    const ratificacion = await reafirmarAprobada(db, p.id, 'contexto', 'Flor')
+    expect(ratificacion!.author).toBe('humano')
+    expect(ratificacion!.authorLabel).toBe('Flor')
+  })
+
+  it('un proyecto que no existe tira ErrorNoEncontrado', async () => {
+    const db = await makeTestDb()
+    await expect(reafirmarAprobada(db, '00000000-0000-4000-8000-000000000000', 'contexto'))
+      .rejects.toBeInstanceOf(ErrorNoEncontrado)
   })
 })
 

@@ -28,8 +28,20 @@ export function autorDeVersion(v: VersionDeEtapa): string {
   return v.authorLabel?.trim() || 'el equipo'
 }
 
-/** “Escrito por Claude · hace 2 h · sin aprobar”. */
-export function procedenciaDeVersion(v: VersionDeEtapa, ahora: Date = new Date()): string {
+/**
+ * “Escrito por Claude · hace 2 h · sin aprobar”.
+ *
+ * `origen` es la versión que escribió el contenido, cuando `v` lo copia de una anterior
+ * —lo que pasa cuando el equipo mantiene la aprobada y la ratifica—. Quién escribió y
+ * cuándo salen de ahí: la ratificación se creó recién y la firmó el equipo, pero el
+ * contenido puede ser de Claude y de hace días, y eso es lo que el documento tiene que
+ * decir. Lo único que sale siempre de `v` es si está aprobada o no, porque la aprobación
+ * es de la versión vigente, no de la que la escribió.
+ */
+export function procedenciaDeVersion(
+  v: VersionDeEtapa, ahora: Date = new Date(), origen?: VersionDeEtapa | null,
+): string {
+  const escribio = origen ?? v
   const estado = v.approvedAt ? 'aprobada' : 'sin aprobar'
-  return `Escrito por ${autorDeVersion(v)} · ${haceCuanto(v.createdAt, ahora)} · ${estado}`
+  return `Escrito por ${autorDeVersion(escribio)} · ${haceCuanto(escribio.createdAt, ahora)} · ${estado}`
 }

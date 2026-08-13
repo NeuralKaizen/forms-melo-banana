@@ -41,4 +41,22 @@ describe('procedenciaDeVersion', () => {
     expect(procedenciaDeVersion({ author: 'claude', createdAt: haceDosHoras }, ahora))
       .toContain('sin aprobar')
   })
+
+  /**
+   * Mantener la aprobada ratifica el contenido con una fila nueva. Esa fila la firma el
+   * equipo y se creó recién, pero el contenido no: decirlo al revés haría parecer que
+   * algo de hace días se acaba de escribir.
+   */
+  it('cuando el contenido viene copiado, quién y cuándo salen de la versión copiada', () => {
+    const ratificacion = { author: 'humano', authorLabel: 'Flor', createdAt: ahora, approvedAt: ahora }
+    const copiada = { author: 'claude', createdAt: haceDosHoras, approvedAt: haceDosHoras }
+    expect(procedenciaDeVersion(ratificacion, ahora, copiada))
+      .toBe('Escrito por Claude · hace 2 h · aprobada')
+  })
+
+  it('si está aprobada o no lo dice la versión vigente, no la copiada', () => {
+    const sinAprobar = { author: 'humano', createdAt: ahora, approvedAt: null }
+    const copiada = { author: 'claude', createdAt: haceDosHoras, approvedAt: haceDosHoras }
+    expect(procedenciaDeVersion(sinAprobar, ahora, copiada)).toContain('sin aprobar')
+  })
 })

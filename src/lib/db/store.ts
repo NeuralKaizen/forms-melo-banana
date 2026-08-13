@@ -42,7 +42,7 @@ export function esViolacionDeForeignKey(e: unknown): boolean {
  * atajando el caso. Ver la Ronda 3 en el reporte de la Tarea 7 para la justificación
  * completa de por qué la escritura no usa este mismo chequeo como gate.
  */
-async function existeProyecto(db: AnyDb, projectId: string): Promise<boolean> {
+export async function existeProyecto(db: AnyDb, projectId: string): Promise<boolean> {
   const [row] = await db.select({ id: projects.id }).from(projects).where(eq(projects.id, projectId))
   return Boolean(row)
 }
@@ -337,12 +337,46 @@ export async function selectTendencias(
   return approveLandscapeVersion(db, version.id, { projectId, stage: 'tendencias' })
 }
 
+/**
+ * El mismo contenido, sin importar en qué orden vengan las claves: son objetos que
+ * volvieron de una columna `jsonb`, y ahí el orden no es información.
+ */
+export function mismoContenido(a: unknown, b: unknown): boolean {
+  return estabilizar(a) === estabilizar(b)
+}
+
+function estabilizar(valor: unknown): string {
+  return JSON.stringify(valor, (_clave, v) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1)))
+      : v,
+  )
+}
+
+/**
+ * La versión que escribió por primera vez el contenido que la etapa muestra hoy, cuando
+ * la de arriba lo repite letra por letra. Es exactamente lo que deja `reafirmarAprobada`:
+ * la fila nueva se creó recién, pero el contenido lo escribió otro, antes. El panel arma
+ * la procedencia desde acá —si no, un contenido de hace tres días diría que se escribió
+ * recién—. `null` cuando esa versión es la primera vez que el contenido aparece.
+ *
+ * `deLaEtapa` viene de la más nueva a la más vieja, así que las anteriores a `actual` son
+ * las que le siguen en la lista, y la última de las que repiten es la que lo escribió.
+ */
+export function versionDeOrigen<V extends { content: unknown }>(actual: V | null, deLaEtapa: V[]): V | null {
+  if (!actual) return null
+  const anteriores = deLaEtapa.slice(deLaEtapa.indexOf(actual) + 1)
+  return anteriores.filter(v => mismoContenido(v.content, actual.content)).at(-1) ?? null
+}
+
 export interface StageState {
   stage: StageKey
   status: StageStatus
   versiones: number
   actual: LandscapeVersionRow | null
   aprobada: boolean
+  /** De dónde viene el contenido de `actual`, si no lo escribió `actual`. Ver `versionDeOrigen`. */
+  origen: LandscapeVersionRow | null
   /**
    * La versión más nueva sin aprobar, cuando la etapa ya tiene una aprobada debajo.
    * `null` el resto del tiempo (sin aprobar todavía, el borrador ya es `actual`).
@@ -381,9 +415,43 @@ export async function landscapeState(db: AnyDb, projectId: string): Promise<Stag
       versiones: deLaEtapa.length,
       actual,
       aprobada: status === 'aprobada',
+      origen: versionDeOrigen(actual, deLaEtapa),
       borradorNuevo,
     }
   })
+}
+
+/**
+ * El equipo mira el borrador que llegó después de la aprobación y decide quedarse con lo
+ * que ya había aprobado. No borra nada —la tabla es append-only y lo que escribió Claude
+ * queda en el historial—: appendea una versión con el contenido de la aprobada vigente,
+ * ya sellada y firmada por quien decidió. Esa fila pasa a ser la más nueva, tiene
+ * `approvedAt`, y `borradorNuevo` se vuelve `null` solo, por la misma regla que lo derivó
+ * en `landscapeState`. Por eso no hace falta ninguna columna nueva.
+ *
+ * Sin conflicto no hace nada y devuelve `null`: ratificar algo que nadie discutió sólo
+ * ensuciaría el historial con una fila por cada clic.
+ *
+ * La regla de negocio no se invierte: lo aprobado ya estaba vigente y sigue estándolo.
+ * Lo que cambia es que ahora queda escrito que alguien miró el borrador y eligió lo
+ * anterior — antes no había forma de distinguir eso de que nadie lo hubiera mirado.
+ */
+export async function reafirmarAprobada(
+  db: AnyDb, projectId: string, stage: StageKey, autor?: string,
+): Promise<LandscapeVersionRow | null> {
+  // Igual que en `selectTendencias`: sin este chequeo, un proyecto inexistente sale por
+  // el mismo camino que "no hay nada que reafirmar", y son dos cosas distintas.
+  if (!(await existeProyecto(db, projectId))) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
+
+  const etapa = (await landscapeState(db, projectId)).find(e => e.stage === stage)
+  if (!etapa?.borradorNuevo || !etapa.actual) return null
+
+  const version = await saveLandscapeVersion(db, projectId, stage, {
+    content: etapa.actual.content,
+    author: 'humano',
+    authorLabel: autor,
+  })
+  return approveLandscapeVersion(db, version.id, { projectId, stage })
 }
 
 /**

@@ -3,8 +3,9 @@ import { makeTestDb, type TestDb } from './testdb'
 import { findOrCreateProject, ErrorNoEncontrado } from './store'
 import {
   saveStrategyVersion, listStrategyVersions, approveStrategyVersion,
-  strategyState, summarizeStrategy, setStrategyStageStatus,
+  strategyState, summarizeStrategy, setStrategyStageStatus, reafirmarAprobadaEstrategia,
 } from './strategy-store'
+import { esperanDecision } from '@/lib/pipeline/indice'
 
 let db: TestDb
 let projectId: string
@@ -57,6 +58,61 @@ describe('strategyState / summarizeStrategy', () => {
     const resumen = summarizeStrategy(await strategyState(db, projectId))
     expect(resumen.total).toBe(13)
     expect(resumen.aprobadas).toBe(0)
+  })
+})
+
+/** Espejo del caso de landscape: el equipo se queda con lo aprobado, y queda escrito. */
+describe('reafirmarAprobadaEstrategia', () => {
+  const aprobado = { concepto: 'a', racional: 'b' }
+
+  async function conConflicto() {
+    const v1 = await saveStrategyVersion(db, projectId, 'concepto', { content: aprobado, author: 'claude' })
+    await approveStrategyVersion(db, v1.id, { projectId, stage: 'concepto' })
+    const deClaude = await saveStrategyVersion(db, projectId, 'concepto', {
+      content: { concepto: 'c', racional: 'd' }, author: 'claude',
+    })
+    return { v1, deClaude }
+  }
+
+  it('disuelve el conflicto sin borrar el borrador de Claude', async () => {
+    const { deClaude } = await conConflicto()
+    await reafirmarAprobadaEstrategia(db, projectId, 'concepto', 'Flor')
+
+    const etapa = (await strategyState(db, projectId)).find(e => e.stage === 'concepto')!
+    expect(etapa.borradorNuevo).toBeNull()
+    expect(etapa.actual!.content).toEqual(aprobado)
+    expect(etapa.actual!.approvedAt).toBeTruthy()
+    expect(etapa.versiones).toBe(3)
+    expect((await listStrategyVersions(db, projectId, 'concepto')).map(v => v.id)).toContain(deClaude.id)
+  })
+
+  it('la etapa reafirmada deja de esperar una decisión del equipo', async () => {
+    await conConflicto()
+    expect(esperanDecision('estrategia', await strategyState(db, projectId))).toContain('estrategia:concepto')
+
+    await reafirmarAprobadaEstrategia(db, projectId, 'concepto')
+
+    expect(esperanDecision('estrategia', await strategyState(db, projectId))).not.toContain('estrategia:concepto')
+  })
+
+  it('la procedencia sale de la versión copiada: el origen es la aprobada de antes', async () => {
+    const { v1 } = await conConflicto()
+    await reafirmarAprobadaEstrategia(db, projectId, 'concepto')
+    const etapa = (await strategyState(db, projectId)).find(e => e.stage === 'concepto')!
+    expect(etapa.origen!.id).toBe(v1.id)
+  })
+
+  it('sin conflicto no agrega ninguna fila', async () => {
+    const v1 = await saveStrategyVersion(db, projectId, 'concepto', { content: aprobado, author: 'claude' })
+    await approveStrategyVersion(db, v1.id, { projectId, stage: 'concepto' })
+
+    expect(await reafirmarAprobadaEstrategia(db, projectId, 'concepto')).toBeNull()
+    expect((await strategyState(db, projectId)).find(e => e.stage === 'concepto')!.versiones).toBe(1)
+  })
+
+  it('un proyecto que no existe tira ErrorNoEncontrado', async () => {
+    await expect(reafirmarAprobadaEstrategia(db, '00000000-0000-4000-8000-000000000000', 'concepto'))
+      .rejects.toBeInstanceOf(ErrorNoEncontrado)
   })
 })
 

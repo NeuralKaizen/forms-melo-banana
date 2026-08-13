@@ -3,7 +3,7 @@ import { strategyStages, strategyVersions } from './schema'
 import type { StageStatus } from '@/lib/landscape/stages'
 import type { EstrategiaKey } from '@/lib/estrategia/stages'
 import { ETAPA_ORDER } from '@/lib/estrategia/stages'
-import { type AnyDb, ErrorNoEncontrado, esViolacionDeForeignKey } from './store'
+import { type AnyDb, ErrorNoEncontrado, esViolacionDeForeignKey, existeProyecto, versionDeOrigen } from './store'
 
 // ── Estrategia (fase 3) ──────────────────────────────────────────────────────
 // Espejo 1:1 del store de landscape (fase 2): mismo patrón de estado por etapa +
@@ -108,6 +108,8 @@ export interface StrategyStageState {
   versiones: number
   actual: StrategyVersionRow | null
   aprobada: boolean
+  /** De dónde viene el contenido de `actual`, si no lo escribió `actual`. Ver `versionDeOrigen`. */
+  origen: StrategyVersionRow | null
   /**
    * La versión más nueva sin aprobar, cuando la etapa ya tiene una aprobada debajo.
    * `null` el resto del tiempo (sin aprobar todavía, el borrador ya es `actual`).
@@ -146,9 +148,32 @@ export async function strategyState(db: AnyDb, projectId: string): Promise<Strat
       versiones: deLaEtapa.length,
       actual,
       aprobada: status === 'aprobada',
+      origen: versionDeOrigen(actual, deLaEtapa),
       borradorNuevo,
     }
   })
+}
+
+/**
+ * Espejo de `reafirmarAprobada` del landscape: el equipo se queda con lo que ya había
+ * aprobado. Appendea una versión con el contenido de la aprobada vigente, ya sellada, que
+ * pasa a ser la más nueva y disuelve el conflicto sola. Lo que escribió Claude queda en el
+ * historial. Sin conflicto no hace nada y devuelve `null`.
+ */
+export async function reafirmarAprobadaEstrategia(
+  db: AnyDb, projectId: string, stage: EstrategiaKey, autor?: string,
+): Promise<StrategyVersionRow | null> {
+  if (!(await existeProyecto(db, projectId))) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
+
+  const etapa = (await strategyState(db, projectId)).find(e => e.stage === stage)
+  if (!etapa?.borradorNuevo || !etapa.actual) return null
+
+  const version = await saveStrategyVersion(db, projectId, stage, {
+    content: etapa.actual.content,
+    author: 'humano',
+    authorLabel: autor,
+  })
+  return approveStrategyVersion(db, version.id, { projectId, stage })
 }
 
 /**
