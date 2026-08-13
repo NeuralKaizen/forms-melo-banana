@@ -12,6 +12,7 @@ describe('tokens del panel', () => {
       ['--line', '#EDEAE1'],
       ['--aprobado', '#FFF3B8'],
       ['--superficie', '#F8F6F0'],
+      ['--error', '#ff9c8a'],
     ]) {
       expect(css).toContain(`${token}: ${valor}`)
     }
