@@ -21,8 +21,8 @@ function FaseTrack({ fases, activeKey }: { fases: Fase[]; activeKey: string }) {
           key={g.key}
           className={`h-1.5 flex-1 rounded-full ${
             g.status === 'completa' ? 'bg-[var(--banana)]'
-              : g.key === activeKey ? 'bg-[#d9d0ba]'
-              : 'bg-[#efe9db]'
+              : g.key === activeKey ? 'bg-[var(--apagado)]'
+              : 'bg-[var(--line)]'
           }`}
         />
       ))}
@@ -37,7 +37,7 @@ function ChipEstado({ item }: { item?: AttentionItem }) {
   return (
     <span
       className={`flex-none rounded-full px-2.5 py-1 text-[11px] font-medium ${
-        delEquipo ? 'bg-[var(--banana)] text-ink' : 'bg-[#F3F0E7] text-[#7E7868]'
+        delEquipo ? 'bg-[var(--banana)] text-ink' : 'bg-[var(--line)] text-[var(--secundario)]'
       }`}
     >
       {delEquipo ? 'Nos toca' : 'Esperando'}
@@ -55,13 +55,13 @@ function AttentionRow({ item }: { item: AttentionItem }) {
         className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-[var(--superficie)]"
       >
         <span
-          className={`h-1.5 w-1.5 flex-none rounded-full ${delEquipo ? 'bg-[var(--banana)]' : 'bg-[#d9d0ba]'}`}
+          className={`h-1.5 w-1.5 flex-none rounded-full ${delEquipo ? 'bg-[var(--banana)]' : 'bg-[var(--apagado)]'}`}
           aria-hidden="true"
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-[13.5px] leading-snug text-ink">
+          <span className="block text-[13px] leading-snug text-ink">
             <strong className="font-medium">{item.projectName}</strong>
-            <span className="text-[#c0b8a6]"> · </span>
+            <span className="text-[var(--apagado)]"> · </span>
             <span className="text-[var(--secundario)]">{item.accion}</span>
           </span>
         </span>
@@ -137,7 +137,7 @@ export default async function Admin() {
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-serif text-[19px] text-ink">{p.name}</span>
-                    <span className="mt-0.5 block truncate text-[12.5px] text-[var(--secundario)]">
+                    <span className="mt-0.5 block truncate text-[12px] text-[var(--secundario)]">
                       {p.pantallaFina.label} · {p.actual.detalle}
                     </span>
                   </span>
@@ -146,7 +146,7 @@ export default async function Admin() {
 
                   <FaseTrack fases={p.fases} activeKey={p.actual.key} />
 
-                  <span className="flex-none text-[12.5px] text-[var(--secundario)]">
+                  <span className="flex-none text-[12px] text-[var(--secundario)]">
                     {haceCuanto(p.ultimaActividad, ahora)}
                   </span>
                 </Link>
