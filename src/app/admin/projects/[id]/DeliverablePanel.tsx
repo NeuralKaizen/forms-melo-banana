@@ -61,11 +61,11 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
   const pers = personalidad?.data ?? null
 
   return <div className="space-y-6">
-    <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+    <section className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-bold text-ink">Documento</h2>
-          <p className="mt-0.5 text-[13px] text-[#8a8170]">
+          <p className="mt-0.5 text-[13px] text-[var(--secundario)]">
             {sessionsCount === 0
               ? 'Todavía no hay entrevistas que lo alimenten.'
               : `Se arma con ${sessionsCount} ${sessionsCount === 1 ? 'entrevista' : 'entrevistas'} del proyecto.`}
@@ -74,7 +74,7 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
         <div className="flex flex-wrap items-center gap-2">
           {!!view && (
             <a href={`/api/projects/${projectId}/deck`}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--ink)]/15 bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors duration-200 hover:border-[var(--ink)]/45 hover:bg-[#faf7ee]">
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--ink)]/15 bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors duration-200 hover:border-[var(--ink)]/45 hover:bg-[var(--superficie)]">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" />
               </svg>
@@ -95,8 +95,8 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
       {busy === 'full' && progress && (
         <div className="mt-4 animate-fade" aria-live="polite">
           <div className="flex items-center justify-between text-[13px]">
-            <span className="font-medium text-ink">Generando entregable… <span className="font-normal text-[#8a8170]">{progress.label}</span></span>
-            <span className="tabular-nums text-[#a59c89]">{progress.done}/{STEPS.length}</span>
+            <span className="font-medium text-ink">Generando entregable… <span className="font-normal text-[var(--secundario)]">{progress.label}</span></span>
+            <span className="tabular-nums text-[var(--rotulo)]">{progress.done}/{STEPS.length}</span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#efe9db]">
             <div className="h-full rounded-full bg-[var(--banana)] transition-[width] duration-500 ease-out"
@@ -115,20 +115,20 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
     {view
       ? <DeliverableDocument view={view} busy={busy} onRegenerate={generateOne} />
       : (
-        <section className="rounded-2xl border border-black/5 bg-white p-8 text-center shadow-sm">
-          <p className="text-[15px] text-[#8a8170]">Todavía no hay entregable. Genera el documento cuando las entrevistas estén completas.</p>
+        <section className="p-8 text-center">
+          <p className="text-[15px] text-[var(--secundario)]">Todavía no hay entregable. Genera el documento cuando las entrevistas estén completas.</p>
         </section>
       )}
 
     {!!view && (
-      <details className="rounded-2xl border border-[#e6dfd0] bg-white px-6 py-4 shadow-sm">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-[#6b6155]">
+      <details className="rounded-2xl border border-[#e6dfd0] bg-white px-6 py-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-[var(--secundario)]">
           <span className="flex items-center gap-1.5">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
             Personalidad (insumo interno)
           </span>
           <button onClick={e => { e.preventDefault(); generateOne('personalidad') }} disabled={busy !== null}
-            className="rounded-lg border border-black/10 px-3 py-1 text-xs font-medium text-[#6b6155] transition-colors duration-200 hover:border-[var(--ink)]/30 hover:text-ink disabled:opacity-50">
+            className="rounded-lg border border-black/10 px-3 py-1 text-xs font-medium text-[var(--secundario)] transition-colors duration-200 hover:border-[var(--ink)]/30 hover:text-ink disabled:opacity-50">
             {busy === 'personalidad' ? 'Regenerando…' : 'Regenerar'}
           </button>
         </summary>
@@ -144,7 +144,7 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
               <Linea label="Tensiones" value={pers.tensiones.join(' · ')} />
             </>
           )}
-          {!pers && !personalidad?.meta.error && <p className="text-sm text-[#6b6155]">Sin generar.</p>}
+          {!pers && !personalidad?.meta.error && <p className="text-sm text-[var(--secundario)]">Sin generar.</p>}
         </div>
       </details>
     )}

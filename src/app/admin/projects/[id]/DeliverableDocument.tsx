@@ -17,12 +17,12 @@ function ItemRow({ it }: { it: DeckItem }) {
     <div className="mt-3 flex gap-2.5">
       <span aria-hidden="true" className="shrink-0 text-[var(--banana)]">—</span>
       <div>
-        <p className={`text-[15px] leading-relaxed ${pend ? 'text-[#6b6155]' : 'text-ink'}`}>{it.texto}</p>
+        <p className={`text-[15px] leading-relaxed ${pend ? 'text-[var(--secundario)]' : 'text-ink'}`}>{it.texto}</p>
         {!!it.cita && (
-          <p className="mt-1.5 border-l-2 border-[var(--banana)] pl-2.5 text-sm leading-relaxed text-[#6b6155]">“{it.cita}”</p>
+          <p className="mt-1.5 border-l-2 border-[var(--banana)] pl-2.5 text-sm leading-relaxed text-[var(--secundario)]">“{it.cita}”</p>
         )}
         {!!ORIGEN_LABEL[it.origen] && (
-          <p className="mt-1 text-[10px] tracking-[0.08em] text-[#6b6155]">{ORIGEN_LABEL[it.origen]}</p>
+          <p className="mt-1 text-[10px] tracking-[0.08em] text-[var(--secundario)]">{ORIGEN_LABEL[it.origen]}</p>
         )}
       </div>
     </div>
@@ -77,7 +77,7 @@ function FilaCard({ f, n }: { f: DeckSection['tabla'][number]; n: number }) {
           </div>
           <p className="mt-3 border-t border-[#efe7d6] pt-3 text-[14px] leading-[1.75] text-[#4a4238]">{f.comoSeResuelve}</p>
           {!!ORIGEN_LABEL[f.origen] && (
-            <p className="mt-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#a59c89]">{ORIGEN_LABEL[f.origen]}</p>
+            <p className="mt-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--rotulo)]">{ORIGEN_LABEL[f.origen]}</p>
           )}
         </div>
       </div>
@@ -99,7 +99,7 @@ function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSecti
     <div className="rounded-xl bg-[#fbf8ee] p-5 md:col-span-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <BlockTitle>Cómo lo resolvemos, trabajo por trabajo</BlockTitle>
-        <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#a59c89]">{filas.length} {filas.length === 1 ? 'trabajo' : 'trabajos'}</span>
+        <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--rotulo)]">{filas.length} {filas.length === 1 ? 'trabajo' : 'trabajos'}</span>
       </div>
       <ul className="mt-4 space-y-3">
         {filas.map((f, i) => <FilaCard key={i} f={f} n={i + 1} />)}
@@ -143,7 +143,7 @@ function Section({ sec, busy, onRegenerate }: {
   return (
     <section className="space-y-3">
       <SectionHeader sec={sec} busy={busy} onRegenerate={onRegenerate} />
-      <div className="rounded-2xl border border-[#e6dfd0] bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-[#e6dfd0] bg-white p-6">
         {sec.error
           ? <ErrorBox text={`Esta parte no se pudo generar: ${sec.error}`} />
           : (

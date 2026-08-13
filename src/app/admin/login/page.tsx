@@ -51,7 +51,7 @@ function Login() {
         </h1>
         <form onSubmit={submit} className="mt-8 flex w-full flex-col gap-3 text-left">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-medium text-[#8a8170]">Contraseña del equipo</label>
+            <label className="text-[12px] font-medium text-[var(--secundario)]">Contraseña del equipo</label>
             <input type="password" required autoFocus value={pw} onChange={e => setPw(e.target.value)}
               className="rounded-xl border border-black/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-[var(--banana)] focus:ring-2 focus:ring-[var(--banana)]/40" />
           </div>

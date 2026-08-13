@@ -14,7 +14,7 @@ export default async function Detail({ params }: { params: Promise<{ sessionId: 
   const full = await getSessionWithAnswers(db, sessionId)
   if (!full) return (
     <AdminShell>
-      <p className="pt-16 text-center text-[15px] text-[#8a8170]">No encontrado.</p>
+      <p className="pt-16 text-center text-[15px] text-[var(--secundario)]">No encontrado.</p>
     </AdminShell>
   )
   await ensureNormalized(db, sessionId)
@@ -43,11 +43,11 @@ export default async function Detail({ params }: { params: Promise<{ sessionId: 
           Descargar PDF
         </a>
       </div>
-      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-        <div className="divide-y divide-black/5">
+      <section className="border-t border-[var(--line)] pt-6">
+        <div className="divide-y divide-[var(--line)]">
           {(fresh!.answers as Answer[]).map(a => (
             <div key={a.id} className="py-3 first:pt-0 last:pb-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#8a8170]">{promptOf(a.questionId)}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--secundario)]">{promptOf(a.questionId)}</p>
               <p className="mt-1 text-[15px] text-ink">{(a.normalizedText ?? a.rawText)}{a.imageChoice ? ` (${a.imageChoice})` : ''}</p>
             </div>
           ))}
