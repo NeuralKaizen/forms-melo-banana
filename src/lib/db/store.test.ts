@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { eq, and } from 'drizzle-orm'
-import { makeTestDb } from './testdb'
+import { makeTestDb, makeFreshTestDb } from './testdb'
 import {
   createSession, saveAnswer, getSessionWithAnswers, completeSession, setNormalized,
   normalizeCompanyName, findOrCreateProject, assignSessionToProject,
@@ -293,7 +293,9 @@ describe('landscape · gate de tendencias', () => {
     await expect(selectTendencias(db, p.id, ['t1', 't1', 't2', 't3'])).rejects.toBeInstanceOf(ErrorDeValidacion)
     await expect(selectTendencias(db, p.id, ['t1', 't2', 't3', 'fantasma'])).rejects.toBeInstanceOf(ErrorDeValidacion)
 
-    const sinLongList = await makeTestDb()
+    // Instancia aparte y no la compartida: acá conviven dos bases en el mismo test y la de
+    // arriba tiene que seguir con su long list intacta.
+    const sinLongList = await makeFreshTestDb()
     const p2 = await findOrCreateProject(sinLongList, 'Otra')
     await expect(selectTendencias(sinLongList, p2.id, ['t1', 't2', 't3', 't4'])).rejects.toBeInstanceOf(ErrorDeValidacion)
   })
