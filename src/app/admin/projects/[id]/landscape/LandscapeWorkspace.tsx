@@ -8,6 +8,7 @@ import {
 } from '@/lib/landscape/stages'
 import { EtapaDocumento } from '@/components/EtapaDocumento'
 import { ComparadorVersiones } from '@/components/ComparadorVersiones'
+import { AvisoVersionNueva, CabeceraEtapa, NotaDependencia, PieDeDecision, Vecinas } from '@/components/EtapaPartes'
 
 /** Lo que la página le pasa al panel: ya formateado, sin fechas crudas. */
 export interface ActividadVista {
@@ -27,7 +28,7 @@ type ContenidoEtapaVista = {
   /** Cuándo se escribió. Es la cabecera de su columna en el comparador. */
   cuando: string
   /** Lo que Claude guardó después de la aprobación. Ver `StageState.borradorNuevo`. */
-  borradorNuevo: { id: string; content: unknown; cuando: string } | null
+  borradorNuevo: { id: string; content: unknown; cuando: string; autor: string } | null
 } | null
 
 function FuentePill({ doc, pagina }: { doc: string; pagina?: number }) {
@@ -107,6 +108,7 @@ export function LandscapeWorkspace({
   tendenciasAprobadas,
   contenidoPorEtapa,
   actividad,
+  dependencia,
 }: {
   projectId: string
   /** La etapa que se está mirando. Viene de `?etapa=`, ya validada por la página. */
@@ -117,26 +119,26 @@ export function LandscapeWorkspace({
   tendenciasAprobadas: boolean
   contenidoPorEtapa: Record<string, ContenidoEtapaVista>
   actividad: ActividadVista[]
+  /** Lo que esta fase necesita de otra y todavía no llegó, si hay algo. */
+  dependencia?: string
 }) {
   const router = useRouter()
   const [selected, setSelected] = useState<string[]>(seleccionAprobada)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // El equipo eligió quedarse con lo aprobado. No hay dónde registrarlo: el borrador de
-  // Claude no se descarta —nada se pisa, la tabla es append-only— así que “mantener” no es
-  // una escritura, es no decidir todavía. Vale para esta vista: al volver a la etapa, el
-  // conflicto vuelve a aparecer, que es lo honesto.
-  const [mantenida, setMantenida] = useState(false)
+  // El equipo pidió mirar sólo la versión aprobada. No decide nada —el borrador sigue
+  // guardado y la etapa sigue esperando— así que es estado de vista y se vuelve.
+  const [soloAprobada, setSoloAprobada] = useState(false)
 
   // Navegar ahora es cambiar la URL, no un `setState`: el componente sigue montado entre
-  // etapas, así que lo que era de la etapa anterior —el error, la decisión de mantener—
-  // se limpia al cambiar de etapa o queda pegado. Se ajusta durante el render, no en un
-  // efecto: un efecto pintaría primero la etapa nueva con el estado de la vieja.
+  // etapas, así que lo que era de la etapa anterior —el error, qué versión se estaba
+  // mirando— se limpia al cambiar de etapa o queda pegado. Se ajusta durante el render, no
+  // en un efecto: un efecto pintaría primero la etapa nueva con el estado de la vieja.
   const [etapaPrevia, setEtapaPrevia] = useState<StageKey>(etapaActiva)
   if (etapaPrevia !== etapaActiva) {
     setEtapaPrevia(etapaActiva)
     setError(null)
-    setMantenida(false)
+    setSoloAprobada(false)
   }
 
   // `seleccionAprobada` puede cambiar por fuera de este componente: Claude escribe
@@ -222,22 +224,15 @@ export function LandscapeWorkspace({
   const hayLongList = tendencias.length > 0
   // Lo aprobado manda: mientras haya conflicto se ven las dos versiones enteras, sin que
   // ninguna de las dos se pise, hasta que el equipo elija una.
-  const enConflicto = !!contenido && !!borradorNuevo && !mantenida
-
-  const rotuloUbicacion = (
-    <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[var(--rotulo)]">{ubicacion}</p>
-  )
-  const tituloEtapa = (
-    <h1 className="mt-2 font-serif text-[30px] font-normal tracking-[-.02em] text-[var(--ink)]">{titulo}</h1>
-  )
+  const enConflicto = !!contenido && !!borradorNuevo && !soloAprobada
 
   return (
     <div className="min-w-0">
       {etapaActiva === 'tendencias' ? (
         hayLongList ? (
           <article>
-            {rotuloUbicacion}
-            {tituloEtapa}
+            <CabeceraEtapa ubicacion={ubicacion} titulo={titulo} />
+            {dependencia && <NotaDependencia texto={dependencia} />}
             <p className="mt-3 max-w-[60ch] text-[14px] leading-[1.66] text-[var(--secundario)]">
               Long list propuesta por Claude desde el archivo del estudio. Elegí entre {MIN_TENDENCIAS} y {MAX_TENDENCIAS};
               cada una se desarrolla después en tres diapositivas.
@@ -247,7 +242,7 @@ export function LandscapeWorkspace({
                 la vieja no tendría sentido. Lo que cambia es que hay que volver a decidir. */}
             {borradorNuevo && (
               <p className="mt-4 max-w-[60ch] border-l-[1.5px] border-[var(--ink)] pl-3 text-[13px] leading-[1.66] text-[var(--secundario)]">
-                Claude amplió la long list después de la selección aprobada. Abajo está la lista completa;
+                {borradorNuevo.autor} amplió la long list después de la selección aprobada. Abajo está la lista completa;
                 la selección vigente sigue siendo la anterior hasta que vuelvas a aprobar.
               </p>
             )}
@@ -270,13 +265,14 @@ export function LandscapeWorkspace({
             </div>
 
             {/* Gate humano: bloquea el avance de la etapa. Era una barra negra flotante y
-                ahora es el mismo pie de decisión que cierra cualquier otra etapa. */}
-            <footer className="mt-10 flex flex-col gap-4 border-t-[1.5px] border-[var(--ink)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+                ahora usa el mismo pie que cierra cualquier otra etapa — el marco es el
+                mismo, lo que se decide no. */}
+            <PieDeDecision>
               <p className="text-[13px] text-[var(--secundario)]">
                 <span className="font-semibold tabular-nums text-[var(--ink)]">{selected.length}</span> de {MIN_TENDENCIAS}–{MAX_TENDENCIAS} seleccionadas
                 <span className="text-[var(--rotulo)]"> · decide el equipo, no el agente</span>
                 {tope && <span className="ml-1 text-[var(--ink)]">Llegaste al máximo.</span>}
-                {error && <span className="ml-2 text-[#ff9c8a]">{error}</span>}
+                {error && <span className="ml-2 text-[var(--error)]">{error}</span>}
               </p>
               <button
                 type="button"
@@ -286,54 +282,71 @@ export function LandscapeWorkspace({
               >
                 {guardando ? 'Guardando…' : tendenciasAprobadas ? 'Actualizar selección' : 'Aprobar y desarrollar'}
               </button>
-            </footer>
+            </PieDeDecision>
+
+            <Vecinas anterior={anterior} siguiente={siguiente} />
           </article>
         ) : (
           <article>
-            {rotuloUbicacion}
-            {tituloEtapa}
+            <CabeceraEtapa ubicacion={ubicacion} titulo={titulo} />
+            {dependencia && <NotaDependencia texto={dependencia} />}
             <p className="mt-6 max-w-[60ch] text-[14px] leading-[1.66] text-[var(--secundario)]">
               Todavía no hay long list. Cuando Claude proponga las candidatas desde el archivo del estudio,
               aparecen acá para que el equipo elija entre {MIN_TENDENCIAS} y {MAX_TENDENCIAS}.
             </p>
+            <Vecinas anterior={anterior} siguiente={siguiente} />
           </article>
         )
       ) : enConflicto && contenido && borradorNuevo ? (
         <article>
-          {rotuloUbicacion}
-          {tituloEtapa}
+          <CabeceraEtapa ubicacion={ubicacion} titulo={titulo} />
+          {dependencia && <NotaDependencia texto={dependencia} />}
           <div className="mt-8">
             <ComparadorVersiones
               aprobada={{ content: contenido.content, cuando: contenido.cuando }}
-              nueva={{ content: borradorNuevo.content, cuando: borradorNuevo.cuando }}
-              onMantener={() => setMantenida(true)}
+              nueva={{ content: borradorNuevo.content, cuando: borradorNuevo.cuando, autor: borradorNuevo.autor }}
+              onVerSoloAprobada={() => setSoloAprobada(true)}
               onAprobarNueva={() => aprobarVersion(etapaActiva, borradorNuevo.id)}
               guardando={guardando}
             />
           </div>
-          {error && <p className="mt-3 text-[13px] text-[#ff9c8a]">{error}</p>}
+          {error && <p className="mt-3 text-[13px] text-[var(--error)]">{error}</p>}
+          <Vecinas anterior={anterior} siguiente={siguiente} />
         </article>
       ) : contenido ? (
-        <EtapaDocumento
-          ubicacion={ubicacion}
-          titulo={titulo}
-          content={contenido.content}
-          procedencia={contenido.procedencia}
-          aprobada={contenido.aprobada}
-          anterior={anterior}
-          siguiente={siguiente}
-          onAprobar={() => aprobarVersion(etapaActiva, contenido.id)}
-          guardando={guardando}
-          error={error}
-        />
+        <>
+          {/* Se está mirando sólo la aprobada, pero el borrador sigue ahí: la vuelta al
+              comparador tiene que estar a un clic, no en el historial del navegador. */}
+          {borradorNuevo && soloAprobada && (
+            <AvisoVersionNueva
+              autor={borradorNuevo.autor}
+              cuando={borradorNuevo.cuando}
+              onVer={() => setSoloAprobada(false)}
+            />
+          )}
+          <EtapaDocumento
+            ubicacion={ubicacion}
+            titulo={titulo}
+            content={contenido.content}
+            procedencia={contenido.procedencia}
+            aprobada={contenido.aprobada}
+            dependencia={dependencia}
+            anterior={anterior}
+            siguiente={siguiente}
+            onAprobar={() => aprobarVersion(etapaActiva, contenido.id)}
+            guardando={guardando}
+            error={error}
+          />
+        </>
       ) : (
         <article>
-          {rotuloUbicacion}
-          {tituloEtapa}
+          <CabeceraEtapa ubicacion={ubicacion} titulo={titulo} />
+          {dependencia && <NotaDependencia texto={dependencia} />}
           <p className="mt-6 max-w-[60ch] text-[14px] leading-[1.66] text-[var(--secundario)]">
             Esta etapa todavía no tiene una versión guardada. Cuando el equipo la trabaje en Claude,
             el resultado aparece acá para revisar y aprobar.
           </p>
+          <Vecinas anterior={anterior} siguiente={siguiente} />
         </article>
       )}
 

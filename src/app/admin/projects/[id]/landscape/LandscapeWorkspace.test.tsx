@@ -30,7 +30,7 @@ function props({ conBorrador }: { conBorrador: boolean }) {
         procedencia: 'Escrito por Claude · hace 3 días · aprobada',
         cuando: 'hace 3 días',
         borradorNuevo: conBorrador
-          ? { id: 'v2', content: { hallazgo: 'lo nuevo' }, cuando: 'hace 2 h' }
+          ? { id: 'v2', content: { hallazgo: 'lo nuevo' }, cuando: 'hace 2 h', autor: 'Claude' }
           : null,
       },
     },
@@ -66,12 +66,12 @@ describe('LandscapeWorkspace · borrador nuevo sobre etapa aprobada', () => {
   it('sin borrador nuevo no aparece el comparador', () => {
     render(<LandscapeWorkspace {...props({ conBorrador: false })} etapaActiva="contexto" />)
     expect(screen.getByText('lo aprobado')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Mantener la aprobada' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ver sólo la aprobada' })).toBeNull()
   })
 
   it('con borrador nuevo rinde el comparador en vez del documento simple', () => {
     render(<LandscapeWorkspace {...props({ conBorrador: true })} etapaActiva="contexto" />)
-    expect(screen.getByRole('button', { name: 'Mantener la aprobada' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ver sólo la aprobada' })).toBeTruthy()
   })
 
   it('muestra las dos versiones a la vez y dice que lo aprobado sigue vigente', () => {
@@ -96,27 +96,39 @@ describe('LandscapeWorkspace · borrador nuevo sobre etapa aprobada', () => {
     })
   })
 
-  it('“Mantener la aprobada” deja el documento aprobado y no toca el servidor', () => {
+  it('“Ver sólo la aprobada” deja el documento aprobado y no toca el servidor', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
     render(<LandscapeWorkspace {...props({ conBorrador: true })} etapaActiva="contexto" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Mantener la aprobada' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ver sólo la aprobada' }))
 
     expect(screen.getByText('lo aprobado')).toBeTruthy()
     expect(screen.queryByText('lo nuevo')).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('cambiar de etapa no deja pegada la decisión de mantener', () => {
+  it('mirar sólo la aprobada se vuelve: el borrador sigue a un clic', () => {
+    render(<LandscapeWorkspace {...props({ conBorrador: true })} etapaActiva="contexto" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Ver sólo la aprobada' }))
+
+    // El borrador no se resolvió: la vuelta al comparador tiene que estar en pantalla.
+    expect(screen.getByText(/Claude escribió una versión nueva hace 2 h/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Ver la versión nueva' }))
+
+    expect(screen.getByText('lo aprobado')).toBeTruthy()
+    expect(screen.getByText('lo nuevo')).toBeTruthy()
+  })
+
+  it('cambiar de etapa no deja pegada la vista de una sola versión', () => {
     const { rerender } = render(
       <LandscapeWorkspace {...props({ conBorrador: true })} etapaActiva="contexto" />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Mantener la aprobada' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ver sólo la aprobada' }))
     rerender(<LandscapeWorkspace {...props({ conBorrador: true })} etapaActiva="setup" />)
     rerender(<LandscapeWorkspace {...props({ conBorrador: true })} etapaActiva="contexto" />)
 
-    expect(screen.getByRole('button', { name: 'Mantener la aprobada' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ver sólo la aprobada' })).toBeTruthy()
     expect(screen.getByText('lo nuevo')).toBeTruthy()
   })
 })
@@ -146,6 +158,24 @@ function panelDeTendencias(cuantas: number) {
     />,
   )
 }
+
+describe('LandscapeWorkspace · dependencia de la fase', () => {
+  it('explica lo que la fase espera de otra, arriba del documento', () => {
+    render(
+      <LandscapeWorkspace
+        {...props({ conBorrador: false })}
+        etapaActiva="panorama"
+        dependencia="El panorama de categoría necesita los competidores del taller"
+      />,
+    )
+    expect(screen.getByText('El panorama de categoría necesita los competidores del taller')).toBeTruthy()
+  })
+
+  it('sin dependencia no hay nota', () => {
+    render(<LandscapeWorkspace {...props({ conBorrador: false })} etapaActiva="panorama" />)
+    expect(screen.queryByText(/necesita los competidores/)).toBeNull()
+  })
+})
 
 describe('LandscapeWorkspace · gate de tendencias', () => {
   it('no deja aprobar con menos del mínimo', () => {

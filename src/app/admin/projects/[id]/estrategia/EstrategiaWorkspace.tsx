@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { EstrategiaKey, EtapaEstrategia } from '@/lib/estrategia/stages'
 import { ETAPA_LABEL, ETAPA_ORDER } from '@/lib/estrategia/stages'
 import { EtapaDocumento } from '@/components/EtapaDocumento'
 import { ComparadorVersiones } from '@/components/ComparadorVersiones'
+import { AvisoVersionNueva, CabeceraEtapa, NotaDependencia, Vecinas } from '@/components/EtapaPartes'
 
 /**
  * Espejo de `LandscapeWorkspace`, con dos restas: no hay gate de tendencias (la
@@ -24,61 +24,40 @@ type ContenidoEtapaVista = {
   /** Cuándo se escribió. Es la cabecera de su columna en el comparador. */
   cuando: string
   /** Lo que Claude guardó después de la aprobación. Ver `StrategyStageState.borradorNuevo`. */
-  borradorNuevo: { id: string; content: unknown; cuando: string } | null
+  borradorNuevo: { id: string; content: unknown; cuando: string; autor: string } | null
 } | null
-
-type Vecina = { label: string; href: string } | undefined
-
-/**
- * Anterior y siguiente para las pantallas que no son el documento — el vacío y el
- * conflicto de versiones. `EtapaDocumento` trae los suyos; avanzar de a una etapa tiene
- * que poder hacerse igual cuando todavía no hay nada escrito.
- */
-function Vecinas({ anterior, siguiente }: { anterior: Vecina; siguiente: Vecina }) {
-  if (!anterior && !siguiente) return null
-  const estilo = 'rounded-full border border-[var(--line)] px-3 py-1.5 text-[13px] text-[var(--secundario)] transition-colors duration-200 hover:border-[var(--ink)] hover:text-[var(--ink)] motion-reduce:transition-none'
-  return (
-    <nav aria-label="Etapas vecinas" className="mt-10 flex items-center justify-between border-t border-[var(--line)] pt-5">
-      {anterior
-        ? <Link href={anterior.href} className={estilo}><span aria-hidden="true">‹</span> {anterior.label}</Link>
-        : <span />}
-      {siguiente
-        ? <Link href={siguiente.href} className={estilo}>{siguiente.label} <span aria-hidden="true">›</span></Link>
-        : <span />}
-    </nav>
-  )
-}
 
 export function EstrategiaWorkspace({
   projectId,
   etapaActiva,
   etapas,
   contenidoPorEtapa,
+  dependencia,
 }: {
   projectId: string
   /** La etapa que se está mirando. Viene de `?etapa=`, ya validada por la página. */
   etapaActiva: EstrategiaKey
   etapas: EtapaEstrategia[]
   contenidoPorEtapa: Record<string, ContenidoEtapaVista>
+  /** Lo que esta fase necesita de otra y todavía no llegó, si hay algo. */
+  dependencia?: string
 }) {
   const router = useRouter()
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // El equipo eligió quedarse con lo aprobado. No hay dónde registrarlo: el borrador de
-  // Claude no se descarta —nada se pisa, la tabla es append-only— así que “mantener” no es
-  // una escritura, es no decidir todavía. Vale para esta vista: al volver a la etapa, el
-  // conflicto vuelve a aparecer, que es lo honesto.
-  const [mantenida, setMantenida] = useState(false)
+  // El equipo pidió mirar sólo la versión aprobada. No decide nada —el borrador sigue
+  // guardado y la etapa sigue esperando— así que es estado de vista y se vuelve.
+  const [soloAprobada, setSoloAprobada] = useState(false)
 
   // Navegar ahora es cambiar la URL, no un `setState`: el componente sigue montado entre
-  // etapas, así que lo que era de la etapa anterior —el error, la decisión de mantener—
-  // se limpia al cambiar de etapa o queda pegado. Se ajusta durante el render, no en un
-  // efecto: un efecto pintaría primero la etapa nueva con el estado de la vieja.
+  // etapas, así que lo que era de la etapa anterior —el error, qué versión se estaba
+  // mirando— se limpia al cambiar de etapa o queda pegado. Se ajusta durante el render, no
+  // en un efecto: un efecto pintaría primero la etapa nueva con el estado de la vieja.
   const [etapaPrevia, setEtapaPrevia] = useState<EstrategiaKey>(etapaActiva)
   if (etapaPrevia !== etapaActiva) {
     setEtapaPrevia(etapaActiva)
     setError(null)
-    setMantenida(false)
+    setSoloAprobada(false)
   }
 
   // Aprobar una versión ya guardada: Claude guarda por MCP, el equipo aprueba después
@@ -118,43 +97,55 @@ export function EstrategiaWorkspace({
   const borradorNuevo = contenido?.borradorNuevo ?? null
   // Lo aprobado manda: mientras haya conflicto se ven las dos versiones enteras, sin que
   // ninguna de las dos se pise, hasta que el equipo elija una.
-  const enConflicto = !!contenido && !!borradorNuevo && !mantenida
+  const enConflicto = !!contenido && !!borradorNuevo && !soloAprobada
 
   return (
     <div className="min-w-0">
       {enConflicto && contenido && borradorNuevo ? (
         <article>
-          <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[var(--rotulo)]">{ubicacion}</p>
-          <h1 className="mt-2 font-serif text-[30px] font-normal tracking-[-.02em] text-[var(--ink)]">{titulo}</h1>
+          <CabeceraEtapa ubicacion={ubicacion} titulo={titulo} />
+          {dependencia && <NotaDependencia texto={dependencia} />}
           <div className="mt-8">
             <ComparadorVersiones
               aprobada={{ content: contenido.content, cuando: contenido.cuando }}
-              nueva={{ content: borradorNuevo.content, cuando: borradorNuevo.cuando }}
-              onMantener={() => setMantenida(true)}
+              nueva={{ content: borradorNuevo.content, cuando: borradorNuevo.cuando, autor: borradorNuevo.autor }}
+              onVerSoloAprobada={() => setSoloAprobada(true)}
               onAprobarNueva={() => aprobarVersion(etapaActiva, borradorNuevo.id)}
               guardando={guardando}
             />
           </div>
-          {error && <p className="mt-3 text-[13px] text-[#ff9c8a]">{error}</p>}
+          {error && <p className="mt-3 text-[13px] text-[var(--error)]">{error}</p>}
           <Vecinas anterior={anterior} siguiente={siguiente} />
         </article>
       ) : contenido ? (
-        <EtapaDocumento
-          ubicacion={ubicacion}
-          titulo={titulo}
-          content={contenido.content}
-          procedencia={contenido.procedencia}
-          aprobada={contenido.aprobada}
-          anterior={anterior}
-          siguiente={siguiente}
-          onAprobar={() => aprobarVersion(etapaActiva, contenido.id)}
-          guardando={guardando}
-          error={error}
-        />
+        <>
+          {/* Se está mirando sólo la aprobada, pero el borrador sigue ahí: la vuelta al
+              comparador tiene que estar a un clic, no en el historial del navegador. */}
+          {borradorNuevo && soloAprobada && (
+            <AvisoVersionNueva
+              autor={borradorNuevo.autor}
+              cuando={borradorNuevo.cuando}
+              onVer={() => setSoloAprobada(false)}
+            />
+          )}
+          <EtapaDocumento
+            ubicacion={ubicacion}
+            titulo={titulo}
+            content={contenido.content}
+            procedencia={contenido.procedencia}
+            aprobada={contenido.aprobada}
+            dependencia={dependencia}
+            anterior={anterior}
+            siguiente={siguiente}
+            onAprobar={() => aprobarVersion(etapaActiva, contenido.id)}
+            guardando={guardando}
+            error={error}
+          />
+        </>
       ) : (
         <article>
-          <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[var(--rotulo)]">{ubicacion}</p>
-          <h1 className="mt-2 font-serif text-[30px] font-normal tracking-[-.02em] text-[var(--ink)]">{titulo}</h1>
+          <CabeceraEtapa ubicacion={ubicacion} titulo={titulo} />
+          {dependencia && <NotaDependencia texto={dependencia} />}
           <p className="mt-6 max-w-[60ch] text-[14px] leading-[1.66] text-[var(--secundario)]">
             Esta etapa todavía no tiene una versión guardada. Cuando el equipo la trabaje en Claude,
             el resultado aparece acá para revisar y aprobar.

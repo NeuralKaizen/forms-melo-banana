@@ -2,7 +2,8 @@ import { db } from '@/lib/db/client'
 import { getProjectWithSessions, getDeliverable, landscapeState, summarizeLandscape } from '@/lib/db/store'
 import { strategyState, summarizeStrategy } from '@/lib/db/strategy-store'
 import { deriveFases, derivePantallas, pantallaActual } from '@/lib/pipeline/phases'
-import { construirIndice, esperanDecision } from '@/lib/pipeline/indice'
+import { construirIndice, esperanDecision, resolverEtapaActiva } from '@/lib/pipeline/indice'
+import { procedenciaDeVersion, autorDeVersion } from '@/lib/pipeline/procedencia'
 import { projectSignals } from '@/lib/pipeline/signals'
 import { AdminShell } from '@/components/AdminShell'
 import { ProjectIndex } from '@/components/ProjectIndex'
@@ -11,13 +12,6 @@ import { buildEtapasEstrategia, ETAPA_ORDER, type EstrategiaKey } from '@/lib/es
 import { EstrategiaWorkspace } from './EstrategiaWorkspace'
 
 export const dynamic = 'force-dynamic'
-
-/** Igual que en el landscape: el pie de decisión dice de dónde viene lo que estás mirando. */
-type VersionVista = { author: string; authorLabel: string | null; createdAt: Date; approvedAt: Date | null }
-function procedenciaDe(v: VersionVista, ahora: Date): string {
-  const quien = v.author === 'claude' ? 'Claude' : v.authorLabel ?? 'el equipo'
-  return `Escrito por ${quien} · ${haceCuanto(v.createdAt, ahora)} · ${v.approvedAt ? 'aprobada' : 'sin aprobar'}`
-}
 
 export default async function EstrategiaView({ params, searchParams }: {
   params: Promise<{ id: string }>
@@ -46,10 +40,8 @@ export default async function EstrategiaView({ params, searchParams }: {
   })
 
   // La query manda, pero sólo si nombra una etapa real: una `?etapa=` inventada cae a la
-  // primera sin aprobar en vez de romper la página.
-  const primeraSinAprobar = etapas.find(e => e.status !== 'aprobada')?.key ?? ETAPA_ORDER[0]
-  const etapaActiva: EstrategiaKey =
-    etapa && (ETAPA_ORDER as string[]).includes(etapa) ? (etapa as EstrategiaKey) : primeraSinAprobar
+  // primera que se pueda trabajar en vez de romper la página.
+  const etapaActiva: EstrategiaKey = resolverEtapaActiva(etapa, ETAPA_ORDER, etapas)
 
   const fases = deriveFases(id, señales)
   const pantallas = derivePantallas(id, señales)
@@ -67,6 +59,9 @@ export default async function EstrategiaView({ params, searchParams }: {
     todas: todas === '1',
   })
   const actual = pantallaActual(fases, pantallas)
+  // Lo que la fase necesita de otra y todavía no llegó. Lo rendía `ProjectHeader`; ahora
+  // vive en el área de trabajo, que es donde el equipo se pregunta por qué no puede avanzar.
+  const dependencia = fases.find(f => f.key === 'estrategia')?.dependencia
 
   const ahora = new Date()
   const contenidoPorEtapa = Object.fromEntries(
@@ -77,7 +72,7 @@ export default async function EstrategiaView({ params, searchParams }: {
             id: e.actual.id,
             content: e.actual.content,
             aprobada: !!e.actual.approvedAt,
-            procedencia: procedenciaDe(e.actual, ahora),
+            procedencia: procedenciaDeVersion(e.actual, ahora),
             cuando: haceCuanto(e.actual.createdAt, ahora),
             // Lo que Claude escribió después de la aprobación: no desplaza a lo aprobado,
             // pero el panel lo tiene que poder mostrar y ofrecer al gate humano.
@@ -86,6 +81,7 @@ export default async function EstrategiaView({ params, searchParams }: {
                   id: e.borradorNuevo.id,
                   content: e.borradorNuevo.content,
                   cuando: haceCuanto(e.borradorNuevo.createdAt, ahora),
+                  autor: autorDeVersion(e.borradorNuevo),
                 }
               : null,
           }
@@ -109,6 +105,7 @@ export default async function EstrategiaView({ params, searchParams }: {
         etapaActiva={etapaActiva}
         etapas={etapas}
         contenidoPorEtapa={contenidoPorEtapa}
+        dependencia={dependencia}
       />
     </AdminShell>
   )

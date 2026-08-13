@@ -27,7 +27,7 @@ function props({ conBorrador }: { conBorrador: boolean }) {
         procedencia: 'Escrito por Claude · hace 3 días · aprobada',
         cuando: 'hace 3 días',
         borradorNuevo: conBorrador
-          ? { id: 'v2', content: { hallazgo: 'lo nuevo' }, cuando: 'hace 2 h' }
+          ? { id: 'v2', content: { hallazgo: 'lo nuevo' }, cuando: 'hace 2 h', autor: 'Claude' }
           : null,
       },
     },
@@ -82,27 +82,38 @@ describe('EstrategiaWorkspace · borrador nuevo sobre etapa aprobada', () => {
     })
   })
 
-  it('“Mantener la aprobada” deja el documento aprobado y no toca el servidor', () => {
+  it('“Ver sólo la aprobada” deja el documento aprobado y no toca el servidor', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
     render(<EstrategiaWorkspace {...props({ conBorrador: true })} etapaActiva="consumidor" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Mantener la aprobada' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ver sólo la aprobada' }))
 
     expect(screen.getByText('lo aprobado')).toBeTruthy()
     expect(screen.queryByText('lo nuevo')).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('cambiar de etapa no deja pegada la decisión de mantener', () => {
+  it('mirar sólo la aprobada se vuelve: el borrador sigue a un clic', () => {
+    render(<EstrategiaWorkspace {...props({ conBorrador: true })} etapaActiva="consumidor" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Ver sólo la aprobada' }))
+
+    expect(screen.getByText(/Claude escribió una versión nueva hace 2 h/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Ver la versión nueva' }))
+
+    expect(screen.getByText('lo aprobado')).toBeTruthy()
+    expect(screen.getByText('lo nuevo')).toBeTruthy()
+  })
+
+  it('cambiar de etapa no deja pegada la vista de una sola versión', () => {
     const { rerender } = render(
       <EstrategiaWorkspace {...props({ conBorrador: true })} etapaActiva="consumidor" />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Mantener la aprobada' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ver sólo la aprobada' }))
     rerender(<EstrategiaWorkspace {...props({ conBorrador: true })} etapaActiva="rtbs" />)
     rerender(<EstrategiaWorkspace {...props({ conBorrador: true })} etapaActiva="consumidor" />)
 
-    expect(screen.getByRole('button', { name: 'Mantener la aprobada' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ver sólo la aprobada' })).toBeTruthy()
   })
 })
 
