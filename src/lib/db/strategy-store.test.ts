@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { makeTestDb, type TestDb } from './testdb'
 import { findOrCreateProject, ErrorNoEncontrado } from './store'
 import {
@@ -10,13 +10,22 @@ import { esperanDecision } from '@/lib/pipeline/indice'
 let db: TestDb
 let projectId: string
 
-beforeEach(async () => {
+/**
+ * El montaje va al principio de cada test y no en un `beforeEach`. Es el mismo trabajo, pero
+ * en el cuerpo del test corre con el presupuesto de `testTimeout` (30s) en vez del de
+ * `hookTimeout` (10s). Era el único de los seis archivos de base que montaba dentro de un
+ * hook, y por eso el único que se vencía cuando la máquina estaba cargada: el cold boot de
+ * PGlite mide 2s con la máquina libre y se estira a 12-16s con varios forks levantando
+ * Postgres-en-WASM a la vez.
+ */
+async function montarBase() {
   db = await makeTestDb()
   projectId = (await findOrCreateProject(db, 'Marca Test')).id
-})
+}
 
 describe('saveStrategyVersion', () => {
   it('guarda un borrador y mueve la etapa a en_curso', async () => {
+    await montarBase()
     const v = await saveStrategyVersion(db, projectId, 'concepto', { content: { concepto: 'x', racional: 'y' }, author: 'claude' })
     expect(v.approvedAt).toBeNull()
     const estado = await strategyState(db, projectId)
@@ -24,6 +33,7 @@ describe('saveStrategyVersion', () => {
   })
 
   it('sobre una etapa aprobada no la degrada: queda como borradorNuevo', async () => {
+    await montarBase()
     const v1 = await saveStrategyVersion(db, projectId, 'concepto', { content: { concepto: 'a', racional: 'b' }, author: 'claude' })
     await approveStrategyVersion(db, v1.id, { projectId, stage: 'concepto' })
     await saveStrategyVersion(db, projectId, 'concepto', { content: { concepto: 'c', racional: 'd' }, author: 'claude' })
@@ -35,6 +45,7 @@ describe('saveStrategyVersion', () => {
   })
 
   it('proyecto inexistente tira ErrorNoEncontrado', async () => {
+    await montarBase()
     await expect(saveStrategyVersion(db, '00000000-0000-4000-8000-000000000000', 'concepto', { content: {}, author: 'claude' }))
       .rejects.toBeInstanceOf(ErrorNoEncontrado)
   })
@@ -42,6 +53,7 @@ describe('saveStrategyVersion', () => {
 
 describe('approveStrategyVersion', () => {
   it('con versionId de otra etapa no aprueba nada (scope en el WHERE)', async () => {
+    await montarBase()
     const v = await saveStrategyVersion(db, projectId, 'concepto', { content: { concepto: 'a', racional: 'b' }, author: 'claude' })
     await expect(approveStrategyVersion(db, v.id, { projectId, stage: 'arquetipo' }))
       .rejects.toBeInstanceOf(ErrorNoEncontrado)
@@ -50,10 +62,12 @@ describe('approveStrategyVersion', () => {
 
 describe('strategyState / summarizeStrategy', () => {
   it('devuelve las 14 etapas aunque no haya filas', async () => {
+    await montarBase()
     expect(await strategyState(db, projectId)).toHaveLength(14)
   })
 
   it('no_aplica no cuenta ni en aprobadas ni en total', async () => {
+    await montarBase()
     await setStrategyStageStatus(db, projectId, 'manifiesto', 'no_aplica')
     const resumen = summarizeStrategy(await strategyState(db, projectId))
     expect(resumen.total).toBe(13)
@@ -75,6 +89,7 @@ describe('reafirmarAprobadaEstrategia', () => {
   }
 
   it('disuelve el conflicto sin borrar el borrador de Claude', async () => {
+    await montarBase()
     const { deClaude } = await conConflicto()
     await reafirmarAprobadaEstrategia(db, projectId, 'concepto', 'Flor')
 
@@ -87,6 +102,7 @@ describe('reafirmarAprobadaEstrategia', () => {
   })
 
   it('la etapa reafirmada deja de esperar una decisión del equipo', async () => {
+    await montarBase()
     await conConflicto()
     expect(esperanDecision('estrategia', await strategyState(db, projectId))).toContain('estrategia:concepto')
 
@@ -96,6 +112,7 @@ describe('reafirmarAprobadaEstrategia', () => {
   })
 
   it('la procedencia sale de la versión copiada: el origen es la aprobada de antes', async () => {
+    await montarBase()
     const { v1 } = await conConflicto()
     await reafirmarAprobadaEstrategia(db, projectId, 'concepto')
     const etapa = (await strategyState(db, projectId)).find(e => e.stage === 'concepto')!
@@ -103,6 +120,7 @@ describe('reafirmarAprobadaEstrategia', () => {
   })
 
   it('sin conflicto no agrega ninguna fila', async () => {
+    await montarBase()
     const v1 = await saveStrategyVersion(db, projectId, 'concepto', { content: aprobado, author: 'claude' })
     await approveStrategyVersion(db, v1.id, { projectId, stage: 'concepto' })
 
@@ -111,6 +129,7 @@ describe('reafirmarAprobadaEstrategia', () => {
   })
 
   it('un proyecto que no existe tira ErrorNoEncontrado', async () => {
+    await montarBase()
     await expect(reafirmarAprobadaEstrategia(db, '00000000-0000-4000-8000-000000000000', 'concepto'))
       .rejects.toBeInstanceOf(ErrorNoEncontrado)
   })
@@ -118,6 +137,7 @@ describe('reafirmarAprobadaEstrategia', () => {
 
 describe('listStrategyVersions', () => {
   it('viene de la más nueva a la más vieja', async () => {
+    await montarBase()
     await saveStrategyVersion(db, projectId, 'rtbs', { content: { items: ['1'] }, author: 'claude' })
     const v2 = await saveStrategyVersion(db, projectId, 'rtbs', { content: { items: ['2'] }, author: 'claude' })
     const lista = await listStrategyVersions(db, projectId, 'rtbs')

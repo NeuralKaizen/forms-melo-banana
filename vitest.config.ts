@@ -19,7 +19,7 @@ export default defineConfig({
     // montaje —2s con la máquina libre— se estiraba a 12-16s y se pasaba de los 10s del hook.
     // Con dos no sólo deja de fallar: la suite tarda menos y mucho más parejo que con cuatro,
     // porque lo que sobraba era contención, no trabajo. Va acá arriba y no en
-    // `poolOptions.forks`, que vitest 4 eliminó y aceptaba en silencio sin aplicar nada.
+    // `poolOptions.forks`, que vitest 4 eliminó: lo avisa por consola, pero no lo aplica.
     maxWorkers: 2,
   },
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
