@@ -7,7 +7,7 @@ import {
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
   approveLandscapeVersion, getCurrentVersion, selectTendencias,
-  landscapeState, listLandscapeActivity, summarizeLandscape, reafirmarAprobada,
+  landscapeState, listLandscapeActivity, summarizeLandscape, reafirmarAprobada, versionDeOrigen,
   ErrorDeValidacion, ErrorNoEncontrado,
 } from './store'
 import { esperanDecision } from '@/lib/pipeline/indice'
@@ -442,6 +442,47 @@ describe('landscape · borrador sobre etapa aprobada', () => {
 
     const porEtapa = Object.fromEntries((await landscapeState(db, p.id)).map(e => [e.stage, e]))
     expect(porEtapa.contexto.borradorNuevo).toBeNull()
+  })
+})
+
+/**
+ * No adivina “esto es una ratificación”: contesta cuándo apareció por primera vez este
+ * texto, que es una pregunta con respuesta exacta en la tabla. Va sin base porque es una
+ * función pura, y corre por cada etapa de cada proyecto de la barra lateral.
+ */
+describe('versionDeOrigen', () => {
+  const v = (id: string, content: unknown) => ({ id, content })
+
+  it('devuelve la más vieja que escribió ese contenido, aunque haya otra en el medio', () => {
+    const vieja = v('a', { t: 1 })
+    const media = v('b', { t: 2 })
+    const nueva = v('c', { t: 1 })
+    expect(versionDeOrigen(nueva, [nueva, media, vieja])).toBe(vieja)
+  })
+
+  it('el orden de las claves no cuenta: vienen de una columna jsonb', () => {
+    const vieja = v('a', { x: 1, y: 2 })
+    const nueva = v('b', { y: 2, x: 1 })
+    expect(versionDeOrigen(nueva, [nueva, vieja])).toBe(vieja)
+  })
+
+  it('un contenido que aparece por primera vez no tiene origen', () => {
+    const vieja = v('a', { t: 1 })
+    const nueva = v('b', { t: 2 })
+    expect(versionDeOrigen(nueva, [nueva, vieja])).toBeNull()
+  })
+
+  it('con una sola versión, o con ninguna, no hay nada anterior que buscar', () => {
+    const sola = v('a', { t: 1 })
+    expect(versionDeOrigen(sola, [sola])).toBeNull()
+    expect(versionDeOrigen(null, [])).toBeNull()
+  })
+
+  it('una versión que no está en la lista no se inventa un origen', () => {
+    // La función se exporta: sin el corte, `indexOf` daría -1, el recorrido se llevaría la
+    // lista entera y devolvería como origen algo que ni siquiera es anterior.
+    const ajena = v('x', { t: 1 })
+    expect(versionDeOrigen(ajena, [v('a', { t: 1 }), v('b', { t: 1 })])).toBeNull()
   })
 })
 

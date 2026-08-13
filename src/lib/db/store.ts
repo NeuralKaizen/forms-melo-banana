@@ -340,12 +340,15 @@ export async function selectTendencias(
 /**
  * El mismo contenido, sin importar en qué orden vengan las claves: son objetos que
  * volvieron de una columna `jsonb`, y ahí el orden no es información.
+ *
+ * Para comparar uno contra muchos, estabilizá ese uno con `estabilizar` y compará los
+ * strings: así el documento fijo se serializa una vez y no una por comparación.
  */
 export function mismoContenido(a: unknown, b: unknown): boolean {
   return estabilizar(a) === estabilizar(b)
 }
 
-function estabilizar(valor: unknown): string {
+export function estabilizar(valor: unknown): string {
   return JSON.stringify(valor, (_clave, v) =>
     v && typeof v === 'object' && !Array.isArray(v)
       ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1)))
@@ -362,11 +365,27 @@ function estabilizar(valor: unknown): string {
  *
  * `deLaEtapa` viene de la más nueva a la más vieja, así que las anteriores a `actual` son
  * las que le siguen en la lista, y la última de las que repiten es la que lo escribió.
+ *
+ * Esto corre por cada etapa de cada proyecto de la barra lateral, en cada render del
+ * panel, y lo consumen sólo las dos pantallas de etapa: por eso corta antes de serializar
+ * nada cuando no puede haber origen, y estabiliza el contenido de `actual` una sola vez
+ * en vez de una por comparación.
  */
 export function versionDeOrigen<V extends { content: unknown }>(actual: V | null, deLaEtapa: V[]): V | null {
-  if (!actual) return null
-  const anteriores = deLaEtapa.slice(deLaEtapa.indexOf(actual) + 1)
-  return anteriores.filter(v => mismoContenido(v.content, actual.content)).at(-1) ?? null
+  // Con una sola versión (o ninguna) no hay nada anterior que pueda haberlo escrito.
+  if (!actual || deLaEtapa.length < 2) return null
+  const i = deLaEtapa.indexOf(actual)
+  // La función se exporta: con un `actual` que no esté en la lista, `indexOf` da -1, el
+  // slice se llevaría el array entero y `actual` terminaría comparándose consigo mismo.
+  if (i < 0) return null
+
+  // Desde la más vieja hacia arriba: la primera que coincida es la que lo escribió, y no
+  // hace falta serializar el resto del historial para saberlo.
+  const contenido = estabilizar(actual.content)
+  for (let j = deLaEtapa.length - 1; j > i; j--) {
+    if (estabilizar(deLaEtapa[j].content) === contenido) return deLaEtapa[j]
+  }
+  return null
 }
 
 export interface StageState {
@@ -440,7 +459,7 @@ export async function reafirmarAprobada(
   db: AnyDb, projectId: string, stage: StageKey, autor?: string,
 ): Promise<LandscapeVersionRow | null> {
   // Igual que en `selectTendencias`: sin este chequeo, un proyecto inexistente sale por
-  // el mismo camino que "no hay nada que reafirmar", y son dos cosas distintas.
+  // el mismo camino que “no hay nada que reafirmar”, y son dos cosas distintas.
   if (!(await existeProyecto(db, projectId))) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
 
   const etapa = (await landscapeState(db, projectId)).find(e => e.stage === stage)
