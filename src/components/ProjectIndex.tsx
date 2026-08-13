@@ -4,7 +4,7 @@ import type { EntradaIndice, FaseIndice } from '@/lib/pipeline/indice'
 /**
  * El punto de estado de cada etapa. `aprobada` y `pendiente` no se pueden distinguir sólo
  * por color: `aprobada` lleva un tilde adentro. `pendiente` y `no_aplica` quedan huecas
- * -por forma, contra el relleno de `aprobada`- pero huecas entre sí también se confunden,
+ * —por forma, contra el relleno de `aprobada`— pero huecas entre sí también se confunden,
  * así que se separan por el trazo: `pendiente` es sólida y marcada porque es una etapa que
  * todavía falta trabajar; `no_aplica` es punteada y apagada porque no se va a tocar nunca.
  */

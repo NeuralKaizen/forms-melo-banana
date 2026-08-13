@@ -10,7 +10,7 @@
   --secundario: #5C5648;
   --rotulo: #A8A296;
   --apagado: #B5AF9F;
-  --superficie: #F8F6F0; /* cabecera de la columna "vigente" en el comparador de versiones */
+  --superficie: #F8F6F0; /* cabecera de la columna “vigente” en el comparador de versiones */
   --error: #ff9c8a;      /* lo que falló al guardar o aprobar, al lado de la acción */
 }
 
