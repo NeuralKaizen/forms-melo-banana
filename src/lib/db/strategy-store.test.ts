@@ -139,6 +139,10 @@ describe('listStrategyVersions', () => {
   it('viene de la más nueva a la más vieja', async () => {
     await montarBase()
     await saveStrategyVersion(db, projectId, 'rtbs', { content: { items: ['1'] }, author: 'claude' })
+    // Dos guardados en el mismo milisegundo empatan en created_at, y el desempate por id
+    // es un uuid aleatorio que no conserva orden de creación: el test flakeaba según la
+    // carga de la máquina. La separación real entre versiones es siempre mayor a un tick.
+    await new Promise(r => setTimeout(r, 2))
     const v2 = await saveStrategyVersion(db, projectId, 'rtbs', { content: { items: ['2'] }, author: 'claude' })
     const lista = await listStrategyVersions(db, projectId, 'rtbs')
     expect(lista).toHaveLength(2)

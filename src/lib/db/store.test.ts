@@ -645,6 +645,10 @@ describe('landscape · long list ampliada sobre tendencias ya aprobadas', () => 
     const p = await findOrCreateProject(db, 'Acme')
     await saveLandscapeVersion(db, p.id, 'tendencias', { content: { candidatas: seis }, author: 'claude' })
     await selectTendencias(db, p.id, ['t1', 't3', 't4', 't5'])
+    // Mismo milisegundo = empate en created_at, y el desempate por uuid no conserva orden
+    // de creación: "la más nueva" dejaba de ser la ampliada según la carga de la máquina.
+    // En la vida real Claude nunca amplía en el mismo tick en que el equipo aprueba.
+    await new Promise(r => setTimeout(r, 2))
     await saveLandscapeVersion(db, p.id, 'tendencias', {
       content: { candidatas: [...seis, t7] }, author: 'claude',
     })
