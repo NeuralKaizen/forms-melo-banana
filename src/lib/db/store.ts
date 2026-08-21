@@ -557,5 +557,11 @@ export async function listLandscapeActivity(db: AnyDb, projectId: string, limit 
     }
   }
 
-  return entradas.sort((a, b) => b.cuando.getTime() - a.cuando.getTime()).slice(0, limit)
+  // Desempate cuando guardar y aprobar caen en el mismo milisegundo (pasa cada vez que
+  // se guarda y aprueba en un solo acto, como en selectTendencias): la aprobación sella
+  // algo ya guardado, así que en el empate va arriba, no al azar del sort estable.
+  return entradas.sort((a, b) =>
+    b.cuando.getTime() - a.cuando.getTime()
+    || Number(b.tipo === 'aprobado') - Number(a.tipo === 'aprobado'),
+  ).slice(0, limit)
 }
