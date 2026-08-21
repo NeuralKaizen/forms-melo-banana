@@ -120,6 +120,7 @@ export default async function LandscapeView({ params, searchParams }: {
       activeProjectId={id}
       indice={
         <ProjectIndex
+          projectId={id}
           nombre={project.name}
           subtitulo={`${actual.label} · ${actual.detalle}`}
           fases={indice}

@@ -86,6 +86,7 @@ export default async function EntrevistasView({ params }: { params: Promise<{ id
       activeProjectId={id}
       indice={
         <ProjectIndex
+          projectId={id}
           nombre={project.name}
           subtitulo={`${actual.label} · ${actual.detalle}`}
           fases={indice}

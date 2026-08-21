@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { EntradaIndice, FaseIndice } from '@/lib/pipeline/indice'
+import { CabeceraProyecto } from './CabeceraProyecto'
 
 /**
  * El punto de estado de cada etapa. `aprobada` y `pendiente` no se pueden distinguir sólo
@@ -35,20 +36,19 @@ function Punto({ estado }: { estado: EntradaIndice['estado'] }) {
 }
 
 export function ProjectIndex({
+  projectId,
   nombre,
   subtitulo,
   fases,
 }: {
+  projectId: string
   nombre: string
   subtitulo: string
   fases: FaseIndice[]
 }) {
   return (
     <nav aria-label="Índice del proyecto" className="flex w-[222px] flex-none flex-col border-r border-[var(--line)]">
-      <div className="border-b border-[var(--line)] px-3 py-3">
-        <p className="font-serif text-[16px] font-medium text-[var(--ink)]">{nombre}</p>
-        <p className="text-[11.5px] text-[var(--rotulo)]">{subtitulo}</p>
-      </div>
+      <CabeceraProyecto projectId={projectId} nombre={nombre} subtitulo={subtitulo} />
       {fases.map(fase => (
         <div key={fase.key} className="px-3 py-2.5">
           <div className="flex items-baseline justify-between">

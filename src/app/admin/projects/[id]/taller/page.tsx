@@ -56,6 +56,7 @@ export default async function TallerView({ params }: { params: Promise<{ id: str
       activeProjectId={id}
       indice={
         <ProjectIndex
+          projectId={id}
           nombre={project.name}
           subtitulo={`${actual.label} · ${actual.detalle}`}
           fases={indice}

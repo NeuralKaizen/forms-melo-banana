@@ -5,6 +5,7 @@ import {
   createSession, saveAnswer, getSessionWithAnswers, completeSession, setNormalized,
   normalizeCompanyName, findOrCreateProject, assignSessionToProject,
   listProjects, getProjectWithSessions, saveDeliverable, getDeliverable,
+  renameProject, deleteProject,
   saveLandscapeVersion, setStageStatus, listLandscapeVersions,
   approveLandscapeVersion, getCurrentVersion, selectTendencias,
   landscapeState, listLandscapeActivity, summarizeLandscape, reafirmarAprobada, versionDeOrigen,
@@ -94,6 +95,45 @@ describe('projects & deliverables', () => {
     const pw = await getProjectWithSessions(db, p.id)
     expect(pw!.sessions).toHaveLength(2)
     expect(pw!.name).toBe('Acme')
+  })
+
+  it('renombrar cambia el nombre mostrado y también la clave de agrupación', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Vieja Marca')
+    const renombrado = await renameProject(db, p.id, '  Nueva Marca  ')
+    expect(renombrado.name).toBe('Nueva Marca')
+    // La próxima entrevista que tipee el nombre nuevo cae acá, no en un duplicado.
+    expect((await findOrCreateProject(db, 'nueva marca')).id).toBe(p.id)
+  })
+
+  it('renombrar hacia el nombre de otro proyecto se rechaza como validación', async () => {
+    const db = await makeTestDb()
+    await findOrCreateProject(db, 'Ocupado')
+    const p = await findOrCreateProject(db, 'Libre')
+    await expect(renameProject(db, p.id, ' OCUPADO ')).rejects.toBeInstanceOf(ErrorDeValidacion)
+    await expect(renameProject(db, p.id, '   ')).rejects.toBeInstanceOf(ErrorDeValidacion)
+    await expect(renameProject(db, '00000000-0000-4000-8000-000000000000', 'X')).rejects.toBeInstanceOf(ErrorNoEncontrado)
+  })
+
+  it('borrar el proyecto se lleva entrevistas, respuestas y versiones, y libera el nombre', async () => {
+    const db = await makeTestDb()
+    const p = await findOrCreateProject(db, 'Efímero')
+    const s = await createSession(db, { name: 'Ana', company: 'Efímero' })
+    await assignSessionToProject(db, s.id, p.id)
+    await saveAnswer(db, s.id, { questionId: 'nombre', rawText: 'Ana' })
+    await saveDeliverable(db, p.id, { x: 1 })
+    await saveLandscapeVersion(db, p.id, 'setup', { content: { a: 1 }, author: 'claude' })
+
+    const { sesionesBorradas } = await deleteProject(db, p.id)
+    expect(sesionesBorradas).toBe(1)
+    expect(await getProjectWithSessions(db, p.id)).toBeNull()
+    expect(await getSessionWithAnswers(db, s.id)).toBeNull()
+    // El nombre queda libre: crear de nuevo es un proyecto nuevo, sin historia.
+    const otraVez = await findOrCreateProject(db, 'Efímero')
+    expect(otraVez.id).not.toBe(p.id)
+    expect(await listLandscapeVersions(db, otraVez.id)).toHaveLength(0)
+
+    await expect(deleteProject(db, p.id)).rejects.toBeInstanceOf(ErrorNoEncontrado)
   })
 
   it('saveDeliverable/getDeliverable persisten y hacen upsert', async () => {

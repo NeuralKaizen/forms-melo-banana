@@ -1,5 +1,8 @@
-import { eq, ne, and, asc, desc, sql } from 'drizzle-orm'
-import { sessions, answers, projects, deliverables, landscapeStages, landscapeVersions } from './schema'
+import { eq, ne, and, asc, desc, sql, inArray } from 'drizzle-orm'
+import {
+  sessions, answers, projects, deliverables,
+  landscapeStages, landscapeVersions, strategyStages, strategyVersions,
+} from './schema'
 import type { StageKey, StageStatus, TendenciaCandidata } from '@/lib/landscape/stages'
 import { MIN_TENDENCIAS, MAX_TENDENCIAS, STAGE_ORDER } from '@/lib/landscape/stages'
 
@@ -21,16 +24,24 @@ export class ErrorNoEncontrado extends Error {}
 
 /** Código de Postgres para violación de foreign key (por ejemplo, un project_id que no existe). */
 const CODIGO_FK_VIOLADA = '23503'
+/** Código de Postgres para violación de unique (por ejemplo, dos proyectos con el mismo nombre). */
+const CODIGO_UNIQUE_VIOLADA = '23505'
 
 /**
  * `drizzle-orm` envuelve el error del driver en `DrizzleQueryError`; el código de Postgres
  * viaja en la excepción original, en `cause` (verificado a mano contra PGlite).
  */
-export function esViolacionDeForeignKey(e: unknown): boolean {
+function codigoDePostgres(e: unknown): unknown {
   const causa = e instanceof Error ? (e as { cause?: unknown }).cause : undefined
-  return Boolean(
-    causa && typeof causa === 'object' && 'code' in causa && (causa as { code?: unknown }).code === CODIGO_FK_VIOLADA,
-  )
+  return causa && typeof causa === 'object' && 'code' in causa ? (causa as { code?: unknown }).code : undefined
+}
+
+export function esViolacionDeForeignKey(e: unknown): boolean {
+  return codigoDePostgres(e) === CODIGO_FK_VIOLADA
+}
+
+export function esViolacionDeUnique(e: unknown): boolean {
+  return codigoDePostgres(e) === CODIGO_UNIQUE_VIOLADA
 }
 
 /**
@@ -142,6 +153,59 @@ export async function assignSessionToProject(db: AnyDb, sessionId: string, proje
 export async function getProject(db: AnyDb, projectId: string) {
   const [row] = await db.select().from(projects).where(eq(projects.id, projectId))
   return row ?? null
+}
+
+/**
+ * El cliente cambió el nombre del negocio: cambia el mostrado y también la clave de
+ * agrupación, para que la próxima entrevista que tipee el nombre nuevo caiga acá y no
+ * en un proyecto duplicado. Chocar con la clave de otro proyecto es culpa del pedido
+ * (400), no del servidor: ese otro proyecto ya existe y unirlos es mover entrevistas,
+ * no renombrar.
+ */
+export async function renameProject(db: AnyDb, projectId: string, name: string) {
+  const limpio = (name ?? '').trim()
+  if (!limpio) throw new ErrorDeValidacion('El nombre no puede quedar vacío')
+  let rows: unknown[]
+  try {
+    rows = await db.update(projects)
+      .set({ name: limpio, normalizedName: normalizeCompanyName(limpio) })
+      .where(eq(projects.id, projectId))
+      .returning()
+  } catch (e) {
+    if (esViolacionDeUnique(e)) throw new ErrorDeValidacion(`Ya hay otro proyecto que se llama "${limpio}"`)
+    throw e
+  }
+  if (!rows.length) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
+  return rows[0] as typeof projects.$inferSelect
+}
+
+/**
+ * Borra el proyecto entero: entrevistas con sus respuestas, entregable y todo el
+ * historial de landscape y estrategia. Los hijos van primero para no violar ninguna
+ * foreign key; el driver de Neon por HTTP no da transacciones, así que si algo se corta
+ * a mitad de camino quedan hijos borrados y el proyecto en pie — un estado raro pero
+ * consistente, que un segundo intento de borrado termina de limpiar.
+ */
+export async function deleteProject(db: AnyDb, projectId: string) {
+  const p = await getProject(db, projectId)
+  if (!p) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
+
+  const ss: { id: string }[] = await db.select({ id: sessions.id }).from(sessions)
+    .where(eq(sessions.projectId, projectId))
+  const ids = ss.map(s => s.id)
+
+  if (ids.length) {
+    await db.delete(answers).where(inArray(answers.sessionId, ids))
+    await db.delete(sessions).where(inArray(sessions.id, ids))
+  }
+  await db.delete(deliverables).where(eq(deliverables.projectId, projectId))
+  await db.delete(landscapeVersions).where(eq(landscapeVersions.projectId, projectId))
+  await db.delete(landscapeStages).where(eq(landscapeStages.projectId, projectId))
+  await db.delete(strategyVersions).where(eq(strategyVersions.projectId, projectId))
+  await db.delete(strategyStages).where(eq(strategyStages.projectId, projectId))
+  await db.delete(projects).where(eq(projects.id, projectId))
+
+  return { proyecto: p as typeof projects.$inferSelect, sesionesBorradas: ids.length }
 }
 
 export async function listProjects(db: AnyDb) {

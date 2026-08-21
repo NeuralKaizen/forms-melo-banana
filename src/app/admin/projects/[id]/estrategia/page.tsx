@@ -98,6 +98,7 @@ export default async function EstrategiaView({ params, searchParams }: {
       activeProjectId={id}
       indice={
         <ProjectIndex
+          projectId={id}
           nombre={project.name}
           subtitulo={`${actual.label} · ${actual.detalle}`}
           fases={indice}
