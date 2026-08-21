@@ -8,6 +8,7 @@ El mapa de la documentación de trabajo. Un documento que no está listado aquí
 | `DECISIONES.md` | Decisiones técnicas: qué, por qué, qué se descartó |
 | `specs/` | Specs por feature, fechados |
 | `plans/` | Planes de implementación por feature, fechados |
+| `../PENDIENTE.md` | Handoff vivo en la raíz: qué quedó y qué falta para retomar (hoy: activar Resend, deploy, limpieza de proyectos duplicados). Se borra cuando se vacía |
 
 ## Rediseño del panel interno (2026-08-12)
 
