@@ -2,6 +2,36 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md.
 
+## 2026-08-21 (bis) — Feedback del estudio: proyectos (volver al panel, renombrar, borrar)
+
+- **Hecho:** los tres puntos del feedback sobre proyectos, en `main` (498 tests, tsc limpio).
+  - **La navegación estaba rota de verdad, no solo escondida.** Adentro de un proyecto, el
+    único link a `/admin` era el cuadrado M&B del riel — y el hover que intenta llegarle abre
+    la barra de 230px *encima*, que solo listaba proyectos. Con mouse era imposible volver.
+    Dos salidas ahora: "Todos los proyectos" como primer renglón de la barra abierta, y
+    "← Proyectos" fijo en la cabecera del índice.
+  - **Renombrar proyecto** (el cliente cambió el nombre del negocio): inline en la cabecera del
+    índice. Cambia `name` y también `normalizedName`, para que la próxima entrevista que tipee
+    el nombre nuevo caiga en este proyecto y no en un duplicado. Conflicto de unique → 400 con
+    el motivo visible.
+  - **Borrar proyecto con confirmación fuerte**: modal que exige tipear el nombre exacto y
+    avisa qué se lleva (entrevistas, respuestas, entregable, historial de landscape y
+    estrategia — hijos primero, sin transacción porque neon-http no da; un corte a mitad
+    deja un estado que el segundo intento termina de limpiar). El `scripts/delete-project.ts`
+    viejo quedó desactualizado (no borra las tablas de landscape/estrategia): la ruta nueva es
+    la buena.
+  - **Auth:** `PATCH`/`DELETE` de `/api/projects/[id]` exigen la cookie `admin` — el proxy solo
+    protege páginas, no `/api`, y borrar es irreversible. El resto de las rutas del panel sigue
+    sin chequeo (deuda pre-existente, anotada).
+  - La cabecera nueva es `CabeceraProyecto` (cliente) adentro de `ProjectIndex`, que ahora pide
+    `projectId`; los cinco call sites lo pasan.
+
+- **Quedó:**
+  - Presentar al estudio las alternativas de navegación (lateral actual vs fases como
+    subsecciones vs una tercera): en curso, ver PENDIENTE.md.
+  - Las demás rutas de `/api` del panel siguen abiertas sin cookie (pre-existente).
+  - `scripts/delete-project.ts` podría reescribirse sobre `deleteProject` del store o borrarse.
+
 ## 2026-08-21 — Feedback del estudio: entrevistas en el proyecto correcto, movimiento que persiste, aviso por correo
 
 - **Hecho:** los tres puntos del feedback del estudio sobre entrevistas, en `main` (485 tests).
