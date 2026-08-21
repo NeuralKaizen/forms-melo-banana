@@ -34,10 +34,16 @@ export function RespondentsList({ projectId, respondents, projects }: {
 }) {
   async function reassign(sessionId: string, newProjectId: string) {
     if (!newProjectId || newProjectId === projectId) return
-    await fetch(`/api/sessions/${sessionId}`, {
+    // El reload solo cuando el servidor confirmó la escritura: recargar tras un fallo
+    // silencioso mostraba la lista vieja como si el movimiento hubiera pasado.
+    const res = await fetch(`/api/sessions/${sessionId}`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ projectId: newProjectId }),
-    })
+    }).catch(() => null)
+    if (!res?.ok) {
+      alert('No se pudo mover la entrevista. Probá de nuevo.')
+      return
+    }
     location.reload()
   }
 

@@ -39,6 +39,15 @@ describe('store', () => {
     expect(done.completedAt).toBeTruthy()
   })
 
+  it('completar de nuevo no devuelve fila ni pisa completedAt', async () => {
+    const db = await makeTestDb()
+    const s = await createSession(db, {})
+    const primera = await completeSession(db, s.id)
+    expect(await completeSession(db, s.id)).toBeUndefined()
+    const full = await getSessionWithAnswers(db, s.id)
+    expect(full!.completedAt).toEqual(primera.completedAt)
+  })
+
   it('re-answering the same question updates in place (no duplicate)', async () => {
     const db = await makeTestDb()
     const s = await createSession(db, {})

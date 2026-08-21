@@ -12,6 +12,7 @@ import { ProjectIndex } from '@/components/ProjectIndex'
 import { buildStages } from '@/lib/landscape/stages'
 import { buildEtapasEstrategia } from '@/lib/estrategia/stages'
 import { RespondentsList, type Respondent } from './RespondentsList'
+import { CopiarLinkEntrevista } from './CopiarLinkEntrevista'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,11 +103,14 @@ export default async function EntrevistasView({ params }: { params: Promise<{ id
               Lo que dijo cada persona, en sus palabras. Es la materia prima de todo lo que viene después.
             </p>
           </div>
-          {respondents.length > 0 && (
-            <p className="text-[13px] tabular-nums text-[var(--rotulo)]">
-              {completas} de {respondents.length} completas
-            </p>
-          )}
+          <div className="flex items-center gap-4">
+            {respondents.length > 0 && (
+              <p className="text-[13px] tabular-nums text-[var(--rotulo)]">
+                {completas} de {respondents.length} completas
+              </p>
+            )}
+            <CopiarLinkEntrevista projectId={id} />
+          </div>
         </div>
 
         <div className="mt-8">

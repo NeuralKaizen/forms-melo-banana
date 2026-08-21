@@ -1,4 +1,4 @@
-import { eq, and, asc, desc, sql } from 'drizzle-orm'
+import { eq, ne, and, asc, desc, sql } from 'drizzle-orm'
 import { sessions, answers, projects, deliverables, landscapeStages, landscapeVersions } from './schema'
 import type { StageKey, StageStatus, TendenciaCandidata } from '@/lib/landscape/stages'
 import { MIN_TENDENCIAS, MAX_TENDENCIAS, STAGE_ORDER } from '@/lib/landscape/stages'
@@ -48,10 +48,21 @@ export async function existeProyecto(db: AnyDb, projectId: string): Promise<bool
 }
 
 export async function createSession(db: AnyDb, info: {
-  name?: string; company?: string; role?: string; email?: string
+  name?: string; company?: string; role?: string; email?: string; projectId?: string
 }) {
-  const [row] = await db.insert(sessions).values(info).returning()
-  return row
+  try {
+    const [row] = await db.insert(sessions).values(info).returning()
+    return row
+  } catch (e) {
+    // Un link de entrevista puede apuntar a un proyecto que ya se borró: eso no puede
+    // dejar a la persona sin entrevista. La sesión arranca sin proyecto y el cierre
+    // la asigna por empresa, como si el link no hubiera traído proyecto.
+    if (info.projectId && esViolacionDeForeignKey(e)) {
+      const [row] = await db.insert(sessions).values({ ...info, projectId: undefined }).returning()
+      return row
+    }
+    throw e
+  }
 }
 
 export async function saveAnswer(db: AnyDb, sessionId: string, a: {
@@ -80,10 +91,17 @@ export async function getSessionWithAnswers(db: AnyDb, id: string) {
   return { ...s, answers: a }
 }
 
+/**
+ * Cierra la entrevista una sola vez: la fila vuelve solo en la primera completada, y
+ * `undefined` si ya estaba completa (o no existe). Repetir el cierre no puede tener
+ * efectos —ni pisar `completedAt`, ni volver a asignar proyecto, ni mandar otro
+ * correo—: el entrevistado puede volver a entrar al link y terminar de nuevo.
+ */
 export async function completeSession(db: AnyDb, id: string) {
   const [row] = await db.update(sessions)
     .set({ status: 'completed', completedAt: new Date() })
-    .where(eq(sessions.id, id)).returning()
+    .where(and(eq(sessions.id, id), ne(sessions.status, 'completed')))
+    .returning()
   return row
 }
 
@@ -109,7 +127,21 @@ export async function findOrCreateProject(db: AnyDb, name: string) {
 }
 
 export async function assignSessionToProject(db: AnyDb, sessionId: string, projectId: string) {
-  await db.update(sessions).set({ projectId }).where(eq(sessions.id, sessionId))
+  let rows: unknown[]
+  try {
+    rows = await db.update(sessions).set({ projectId }).where(eq(sessions.id, sessionId)).returning()
+  } catch (e) {
+    if (esViolacionDeForeignKey(e)) throw new ErrorNoEncontrado(`No existe el proyecto ${projectId}`)
+    throw e
+  }
+  // Sin fila no hubo escritura: el "movido" habría sido silencio y la entrevista
+  // seguiría donde estaba, que es exactamente el bug que este 404 hace visible.
+  if (!rows.length) throw new ErrorNoEncontrado(`No existe la sesión ${sessionId}`)
+}
+
+export async function getProject(db: AnyDb, projectId: string) {
+  const [row] = await db.select().from(projects).where(eq(projects.id, projectId))
+  return row ?? null
 }
 
 export async function listProjects(db: AnyDb) {
