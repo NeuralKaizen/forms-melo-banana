@@ -3,7 +3,10 @@ import { strategyStages, strategyVersions } from './schema'
 import type { StageStatus } from '@/lib/landscape/stages'
 import type { EstrategiaKey } from '@/lib/estrategia/stages'
 import { ETAPA_ORDER } from '@/lib/estrategia/stages'
-import { type AnyDb, ErrorNoEncontrado, esViolacionDeForeignKey, existeProyecto, versionDeOrigen } from './store'
+import {
+  type AnyDb, type ActivityEntry,
+  ErrorNoEncontrado, esViolacionDeForeignKey, existeProyecto, versionDeOrigen,
+} from './store'
 
 // ── Estrategia (fase 3) ──────────────────────────────────────────────────────
 // Espejo 1:1 del store de landscape (fase 2): mismo patrón de estado por etapa +
@@ -190,4 +193,39 @@ export function summarizeStrategy(estado: StrategyStageState[]): { aprobadas: nu
     aprobadas: aplicables.filter(e => e.aprobada).length,
     total: aplicables.length,
   }
+}
+
+/**
+ * Espejo de `listLandscapeActivity`: la actividad se deriva de las versiones, sin tabla
+ * propia. Cada versión es un guardado; cada versión sellada, además una aprobación
+ * (siempre humana, y sin `quien` porque la tabla no guarda quién aprobó).
+ */
+export async function listStrategyActivity(db: AnyDb, projectId: string, limit = 8): Promise<ActivityEntry<EstrategiaKey>[]> {
+  const versiones = await listStrategyVersions(db, projectId)
+  const entradas: ActivityEntry<EstrategiaKey>[] = []
+
+  for (const v of versiones) {
+    entradas.push({
+      id: `${v.id}:guardado`,
+      tipo: 'guardado',
+      stage: v.stage as EstrategiaKey,
+      autor: v.author as 'claude' | 'humano',
+      quien: v.authorLabel ?? undefined,
+      cuando: new Date(v.createdAt),
+    })
+    if (v.approvedAt) {
+      entradas.push({
+        id: `${v.id}:aprobado`,
+        tipo: 'aprobado',
+        stage: v.stage as EstrategiaKey,
+        autor: 'humano',
+        cuando: new Date(v.approvedAt),
+      })
+    }
+  }
+
+  return entradas.sort((a, b) =>
+    b.cuando.getTime() - a.cuando.getTime()
+    || Number(b.tipo === 'aprobado') - Number(a.tipo === 'aprobado'),
+  ).slice(0, limit)
 }

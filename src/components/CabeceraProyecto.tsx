@@ -13,10 +13,12 @@ import { useCerrarConEscape } from './BarraProyectos'
  * Borrar exige tipear el nombre exacto: es irreversible y se lleva las entrevistas y
  * todo el historial, así que la fricción es a propósito.
  */
-export function CabeceraProyecto({ projectId, nombre, subtitulo }: {
+export function CabeceraProyecto({ projectId, nombre, subtitulo, portada = false }: {
   projectId: string
   nombre: string
   subtitulo: string
+  /** En la mesa de trabajo la cabecera es el título de la página: más aire y más cuerpo. */
+  portada?: boolean
 }) {
   const router = useRouter()
   const [modo, setModo] = useState<'normal' | 'renombrando' | 'borrando'>('normal')
@@ -60,7 +62,7 @@ export function CabeceraProyecto({ projectId, nombre, subtitulo }: {
   }
 
   return (
-    <div className="border-b border-[var(--line)] px-3 py-3">
+    <div className={portada ? 'border-b border-[var(--line)] pb-6' : 'border-b border-[var(--line)] px-3 py-3'}>
       <Link
         href="/admin"
         className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[.14em] text-[var(--rotulo)] transition-colors duration-200 hover:text-ink"
@@ -100,10 +102,14 @@ export function CabeceraProyecto({ projectId, nombre, subtitulo }: {
           {error && <p className="mt-1.5 text-[11px] leading-snug text-[var(--error)]">{error}</p>}
         </form>
       ) : (
-        <div className="mt-1 flex items-start gap-1.5">
+        <div className={portada ? 'mt-2 flex items-start gap-2' : 'mt-1 flex items-start gap-1.5'}>
           <div className="min-w-0 flex-1">
-            <p className="font-serif text-[16px] font-medium text-[var(--ink)]">{nombre}</p>
-            <p className="text-[11.5px] text-[var(--rotulo)]">{subtitulo}</p>
+            <p className={portada
+              ? 'font-serif text-[30px] font-normal leading-tight tracking-[-.02em] text-[var(--ink)]'
+              : 'font-serif text-[16px] font-medium text-[var(--ink)]'}>
+              {nombre}
+            </p>
+            <p className={portada ? 'mt-1 text-[13px] text-[var(--rotulo)]' : 'text-[11.5px] text-[var(--rotulo)]'}>{subtitulo}</p>
           </div>
           <button
             type="button"

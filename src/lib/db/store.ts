@@ -580,10 +580,11 @@ export function summarizeLandscape(estado: StageState[]): { aprobadas: number; t
   }
 }
 
-export interface ActivityEntry {
+/** Genérica en la clave de etapa: landscape y estrategia derivan la misma forma. */
+export interface ActivityEntry<S extends string = StageKey> {
   id: string
   tipo: 'guardado' | 'aprobado'
-  stage: StageKey
+  stage: S
   autor: 'claude' | 'humano'
   quien?: string
   cuando: Date
