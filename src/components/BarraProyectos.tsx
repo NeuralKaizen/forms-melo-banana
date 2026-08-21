@@ -152,7 +152,21 @@ export function BarraProyectos({ proyectos, activeProjectId }: {
             onMouseLeave={() => setPorHover(false)}
             className="absolute inset-y-0 left-0 z-40 hidden w-[230px] flex-col bg-[var(--banana)] px-3 py-4 shadow-[14px_0_34px_rgba(0,0,0,.22)] md:flex"
           >
-            <p className="px-1 pb-3 text-[10px] font-bold uppercase tracking-[.14em] text-[rgba(21,18,12,.45)]">
+            {/* El espejo del cuadrado M&B del riel. Sin este renglón, la capa abierta
+                tapa el único camino de vuelta a /admin: el hover que la abre es el mismo
+                gesto que intenta llegar al cuadrado. */}
+            <Link
+              href="/admin"
+              onClick={cerrar}
+              className="flex items-center gap-2.5 rounded-[9px] px-1.5 py-1.5 transition-colors duration-200 hover:bg-[rgba(21,18,12,.07)] motion-reduce:transition-none"
+            >
+              <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[9px] bg-[var(--ink)] font-serif text-[11px] leading-none text-[var(--banana)]">
+                M&amp;B
+              </span>
+              <span className="font-serif text-[14px] text-[var(--ink)]">Todos los proyectos</span>
+            </Link>
+
+            <p className="mt-3 px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[.14em] text-[rgba(21,18,12,.45)]">
               Proyectos
             </p>
             <ul className="flex flex-col gap-0.5">
