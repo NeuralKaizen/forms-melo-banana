@@ -2,6 +2,14 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md. Solo decisiones no triviales: si fue obvio o es fácilmente reversible, no va acá.
 
+## 2026-08-21 — El proyecto abre con el trabajo, no con la estructura
+
+**Qué:** la portada del proyecto (`/admin/projects/[id]`) es la mesa de trabajo: decisiones pendientes con link directo, actividad reciente, y el recorrido plegado en tres tarjetas de fase. Ya no redirige a la etapa actual.
+
+**Por qué:** en este flujo Claude escribe por MCP y el equipo decide: la pregunta al entrar no es "¿cómo navego 23 etapas?" sino "¿qué me toca?". El feedback del estudio ("cluster de información, difícil de navegar") pedía menos menú, no otro dibujo del mismo menú. Todas las señales ya existían (`esperanDecision`, `attentionItems`, actividad por versiones): la mesa las asciende de widget a portada.
+
+**Qué se descartó:** las otras dos alternativas presentadas — fases como pestañas (B, sigue disponible como evolución del chrome de etapas) y dos intentos de línea/mapa del recorrido, que o no eran navegables (puntos sin nombre) o convergían con B. También se descartó quitar ya el índice lateral de las pantallas de etapa: la mesa entra como puerta sin romper el hábito, y el chrome de etapas se decide después con el estudio.
+
 ## 2026-08-21 — La empresa tipeada nunca pisa un proyecto ya asignado; el link manda
 
 **Qué:** una sesión con `projectId` (por link `/?p=` o movida a mano desde el panel) conserva ese proyecto para siempre: la auto-asignación por nombre de empresa corre solo sobre sesiones sin proyecto, y el cierre de entrevista es idempotente (solo la primera completada tiene efectos: asignar, avisar por correo).

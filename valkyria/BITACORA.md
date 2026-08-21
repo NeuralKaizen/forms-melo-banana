@@ -2,6 +2,37 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md.
 
+## 2026-08-21 (ter) — La mesa de trabajo: el proyecto abre con el trabajo, no con la estructura
+
+- **Hecho:** de las tres alternativas de navegación presentadas (artifact en PENDIENTE.md), el
+  usuario eligió la C. `/admin/projects/[id]` deja de redirigir a la etapa actual y pasa a ser
+  la **mesa de trabajo** (505 tests, 4 corridas limpias):
+  - **Nos toca**: las decisiones que esperan al equipo con link directo. Dos fuentes que ya
+    existían: `esperanDecision` (etapas con versión sin aprobar, vía el `espera` del índice) y
+    `attentionItems` (lo grueso: "sin entrevistas", "propuesta lista"). La gruesa se calla
+    cuando su fase ya tiene esperas finas (`armarNosToca`).
+  - **Mientras no estabas**: un solo hilo con versiones de landscape + estrategia y entrevistas
+    completadas (`armarMovimientos` + `listStrategyActivity`, espejo nuevo de
+    `listLandscapeActivity`; `ActivityEntry` pasó a genérica en la clave de etapa).
+  - **El recorrido**: la estructura completa plegada en tres tarjetas de fase con avance
+    (`RecorridoPlegable`); tocar una despliega sus etapas como chips con nombre, estado y
+    punto de espera. El índice se construye con `todas: true` para que una espera no quede
+    escondida detrás del colapso "＋ n etapas más".
+  - `CabeceraProyecto` ganó la variante `portada` (nombre 30px, mismo renombrar/borrar/volver).
+    Las pantallas de etapa conservan el índice lateral por ahora: la mesa es la puerta, no
+    reemplaza (todavía) el chrome de las etapas.
+  - **Flakes de milisegundo, cerrados**: los tres tests que guardaban dos versiones en el mismo
+    ms (strategy `viene de la más nueva…` y los dos de `long list ampliada`) ahora separan los
+    guardados con 2ms reales — el desempate por uuid no conserva orden de creación y no hay
+    serial sin migración. La suite corrió 4 veces limpia.
+
+- **Quedó:**
+  - Mostrarle la mesa al estudio; si convence, la iteración siguiente es aligerar el índice
+    lateral de las etapas (o adoptar B como estructura, como sugiere la página de propuestas).
+  - `next build` local falla por entorno (sin `DATABASE_URL` en la máquina; `.env.local` de
+    `vercel link` solo trae el token OIDC). En Vercel construye. Un `vercel env pull` lo
+    arregla local si hace falta.
+
 ## 2026-08-21 (bis) — Feedback del estudio: proyectos (volver al panel, renombrar, borrar)
 
 - **Hecho:** los tres puntos del feedback sobre proyectos, en `main` (498 tests, tsc limpio).
