@@ -2,6 +2,45 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md.
 
+## 2026-08-21 — Feedback del estudio: entrevistas en el proyecto correcto, movimiento que persiste, aviso por correo
+
+- **Hecho:** los tres puntos del feedback del estudio sobre entrevistas, en `main` (485 tests).
+  - **El movimiento ya no se deshace (el bug real).** `/api/sessions/[id]/complete` re-corría la
+    auto-asignación por empresa en *cada* disparo: si el entrevistado volvía al link y terminaba
+    de nuevo, la entrevista volvía sola al proyecto del que el equipo la había movido. Ahora la
+    empresa tipeada asigna **solo cuando la sesión no tiene proyecto**, y `completeSession` es
+    idempotente (`WHERE status != 'completed'` + `returning`): repetir el cierre no pisa
+    `completedAt`, no re-asigna y no re-avisa. De paso, `assignSessionToProject` deja de fallar
+    en silencio (404 si no existen la sesión o el proyecto, con test de que el PATCH lo traduce)
+    y el `location.reload()` del panel solo corre si el servidor confirmó la escritura.
+  - **Link de entrevista por proyecto.** La causa de "cae en el proyecto equivocado" era que el
+    proyecto salía del texto libre que tipea el entrevistado como empresa ("Acme" ≠ "Acme S.A.S."
+    → proyecto duplicado). Ahora cada proyecto tiene botón **"Copiar link de entrevista"**
+    (`/?p=<projectId>`) en su pantalla de entrevistas: la sesión que arranca desde ahí nace ya
+    asignada y la empresa tipeada deja de decidir. Un link roto o de proyecto borrado degrada a
+    sesión sin proyecto (la entrevista nunca se bloquea) y el flujo viejo sin `?p=` sigue igual.
+  - **Aviso por correo al completarse una entrevista.** `src/lib/email/notify.ts`: POST directo a
+    la API de Resend (integración del marketplace de Vercel, sin SDK), disparado solo en la
+    *primera* completada. `NOTIFY_EMAIL_TO` (acepta varios, separados por coma),
+    `NOTIFY_EMAIL_FROM` opcional, link al panel armado con `MCP_PUBLIC_URL`. El correo es efecto,
+    no condición: sin config o con Resend caído, la entrevista se completa igual y queda el log.
+
+- **Quedó:**
+  - **Provisionar Resend**: `vercel integration add resend` quedó esperando el paso de navegador
+    (aceptar términos en el dashboard de Vercel, proyecto `forms-melo-banana`); después de eso,
+    setear `NOTIFY_EMAIL_TO` (y `NOTIFY_EMAIL_FROM` si hay dominio verificado). Sin eso el aviso
+    simplemente no sale.
+  - Las entrevistas viejas mal agrupadas no se re-agrupan solas: se mueven a mano desde el panel
+    (que ahora sí persiste).
+  - El checkbox en mission-control no se marcó desde esta máquina (`~/VALKYRIA/mission-control`
+    no existe acá).
+  - **Un flake hermano sigue vivo:** `strategy-store.test.ts › viene de la más nueva a la más
+    vieja` falla cuando dos versiones caen en el mismo milisegundo — el desempate por id es un
+    uuid aleatorio, que no conserva orden de creación (`listLandscapeVersions` tiene exactamente
+    el mismo agujero). Se arregló el caso gemelo de `listLandscapeActivity` (desempate semántico:
+    en el empate, la aprobación va arriba del guardado), pero ordenar versiones por creación de
+    verdad pide un serial en la tabla, o sea migración: quedó afuera a propósito.
+
 ## 2026-08-12/13 — Rediseño completo del panel interno (11 tareas, rama sin mergear)
 
 - **Hecho:** rediseño de punta a punta del panel autenticado, sobre `fase3-pipeline-estrategia`

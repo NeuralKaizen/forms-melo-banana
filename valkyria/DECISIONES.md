@@ -2,6 +2,14 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md. Solo decisiones no triviales: si fue obvio o es fácilmente reversible, no va acá.
 
+## 2026-08-21 — La empresa tipeada nunca pisa un proyecto ya asignado; el link manda
+
+**Qué:** una sesión con `projectId` (por link `/?p=` o movida a mano desde el panel) conserva ese proyecto para siempre: la auto-asignación por nombre de empresa corre solo sobre sesiones sin proyecto, y el cierre de entrevista es idempotente (solo la primera completada tiene efectos: asignar, avisar por correo).
+
+**Por qué:** el proyecto salía de texto libre del entrevistado, y el cierre re-asignaba en cada disparo — cualquier re-entrada al link deshacía el movimiento manual del equipo. La fuente de verdad correcta es la intención del estudio (el link que mandó, o a dónde movió la entrevista), no la ortografía del entrevistado.
+
+**Qué se descartó:** matching difuso de nombres de empresa contra proyectos existentes (mágico y con falsos positivos entre marcas parecidas), y un campo "proyecto" visible en el formulario del entrevistado (el entrevistado no tiene por qué conocer la taxonomía interna del estudio). También un flag "asignada a mano" en la fila: con la regla "solo asignar cuando no hay proyecto" alcanza y no hay migración.
+
 ## 2026-08-10 — CSRF del consentimiento OAuth: verificación de Origin, no token sincronizador
 
 **Qué:** el POST de `/api/oauth/authorize` rechaza con 403 cualquier pedido cuyo header `Origin` falte o no coincida en host con la URL propia. Se comparan hosts y no origins completos porque detrás del proxy de Vercel el protocolo de `req.url` no es de fiar.
