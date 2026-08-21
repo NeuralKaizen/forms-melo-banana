@@ -46,7 +46,16 @@ Detalle completo de lo hecho: `valkyria/BITACORA.md` (entrada 2026-08-21).
 - Avisarle al estudio que de ahora en más manden el link copiado desde el proyecto, no la
   URL pelada.
 
-### 4. Deuda técnica anotada (no urgente)
+### 4. Decidir el modelo de navegación con el estudio
+
+Los tres arreglos del feedback de proyectos ya están en `main` (volver al panel, renombrar,
+borrar con confirmación). Queda la decisión de diseño: hay una página con las tres
+alternativas de navegación (A índice lateral actual, B fases como subsecciones, C la línea
+del recorrido), con maquetas interactivas y recomendación, lista para compartirles:
+<https://claude.ai/code/artifact/65c504b9-2aaf-4ff9-bcba-a515e53256c4>
+(privada hasta que se comparta desde el menú de la página). Cuando elijan, se implementa.
+
+### 5. Deuda técnica anotada (no urgente)
 
 - Flake pre-existente: `strategy-store.test.ts › viene de la más nueva a la más vieja`
   falla si dos versiones caen en el mismo milisegundo (el desempate por uuid no conserva
