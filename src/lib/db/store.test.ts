@@ -434,6 +434,9 @@ describe('landscape · borrador sobre etapa aprobada', () => {
     const db = await makeTestDb()
     const p = await findOrCreateProject(db, 'Acme')
     await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
+    // 2ms reales entre guardados: el desempate por uuid no conserva orden de creación
+    // (misma razón que en `conLongListAmpliada`).
+    await new Promise(r => setTimeout(r, 2))
     const v2 = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
 
     const [etapa] = (await landscapeState(db, p.id)).filter(e => e.stage === 'contexto')
