@@ -10,6 +10,12 @@ El mapa de la documentación de trabajo. Un documento que no está listado aquí
 | `plans/` | Planes de implementación por feature, fechados |
 | `../PENDIENTE.md` | Handoff vivo en la raíz: qué quedó y qué falta para retomar (hoy: activar Resend, deploy, limpieza de proyectos duplicados). Se borra cuando se vacía |
 
+## Propuesta de valor: edición interna (2026-08-22)
+
+| Documento | Qué contiene |
+|---|---|
+| `plans/2026-08-22-propuesta-valor-edicion.md` | Edición del entregable en plataforma, 4 variables de comparación, sin síntesis, personalidad a Estrategia |
+
 ## Rediseño del panel interno (2026-08-12)
 
 | Documento | Qué contiene |

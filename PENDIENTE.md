@@ -57,7 +57,14 @@ implementó la C: `/admin/projects/[id]` ya no redirige — abre la **mesa de tr
 - Decidir la iteración siguiente sobre el chrome de las etapas: hoy conservan el índice
   lateral; las opciones son aligerarlo o adoptar B (fases como pestañas) como estructura.
 
-### 5. Deuda técnica anotada (no urgente)
+### 5. Exportación a PowerPoint del entregable
+
+El entregable ya se edita adentro de la plataforma (botón "Editar" por sección en
+Propuesta de valor) — ese contenido editado es el insumo. Falta: **el usuario pasa la
+plantilla de PowerPoint** del estudio, y con ella se construye la exportación. A propósito
+no se adelantó nada del pipeline de PPT sin la plantilla real.
+
+### 6. Deuda técnica anotada (no urgente)
 
 - Flake pre-existente: `strategy-store.test.ts › viene de la más nueva a la más vieja`
   falla si dos versiones caen en el mismo milisegundo (el desempate por uuid no conserva

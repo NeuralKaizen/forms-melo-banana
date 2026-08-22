@@ -2,6 +2,38 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md.
 
+## 2026-08-22 — Propuesta de valor: edición interna, 4 variables, sin síntesis, personalidad a Estrategia
+
+- **Hecho:** los cuatro pedidos del usuario sobre la Propuesta de valor, según
+  `plans/2026-08-22-propuesta-valor-edicion.md` (519 tests, 3 corridas limpias, tsc ok).
+  - **Editor interno del entregable** (el insumo de la exportación a PowerPoint que viene):
+    cada sección del documento gana "Editar" y se voltea a formulario — párrafos, listas de
+    ítems con agregar/quitar, los 4 ejes, referentes y las filas del canvas. Guarda por
+    `PATCH /api/projects/[id]/deliverable` con **los mismos validadores que se le exigen al
+    modelo** y la cookie de admin (helper `esAdminRequest` compartido con la ruta de
+    proyectos). `PartMeta.editedAt` fecha la edición sin pisar `generatedAt`; regenerar una
+    parte editada pide confirmación porque la pisa. Ítems nuevos nacen `origen: 'equipo'`;
+    citas y orígenes existentes se conservan (la cita es literal de la entrevista).
+  - **Cuatro variables de comparación**: el prompt de competencia pide EXACTAMENTE 4 ejes y
+    el validador lo exige (con el reintento de `callJson` como red). El editor siempre
+    ofrece 4 filas, complete lo que complete un entregable viejo de 2.
+  - **Sin síntesis**: fuera el bloque final de la sección 3 y la `formula` que lo armaba
+    (schema, prompt, validador). Los entregables guardados con formula la conservan en su
+    JSON; nadie la lee. El error de propuestaValor ausente sigue visible vía `tablaError`.
+  - **Personalidad a Estrategia**: se sigue generando (alimenta a problema y perfil), pero
+    su salida se guarda como **borrador de Claude en la etapa `personalidad` de Estrategia**
+    (`sincronizarPersonalidadEnEstrategia`, idempotente por contenido para no ensuciar el
+    historial en cada regeneración). Entra sola al circuito borrador→aprobar y a "Nos toca"
+    de la mesa. El bloque "insumo interno" desapareció de la pantalla Propuesta.
+  - Otro flake de empate de milisegundo cazado y cerrado con la separación de 2ms
+    (`borrador sobre etapa aprobada`).
+
+- **Quedó:**
+  - **La plantilla de PowerPoint**: cuando el usuario la pase, construir la exportación del
+    entregable editado sobre ella (a propósito fuera de este plan).
+  - Los steps del entregable conservan sus `as any` pre-existentes (28 hallazgos de lint
+    viejos, sin cambio).
+
 ## 2026-08-21 (ter) — La mesa de trabajo: el proyecto abre con el trabajo, no con la estructura
 
 - **Hecho:** de las tres alternativas de navegación presentadas (artifact en PENDIENTE.md), el
