@@ -46,16 +46,14 @@ Detalle completo de lo hecho: `valkyria/BITACORA.md` (entrada 2026-08-21).
 - Avisarle al estudio que de ahora en más manden el link copiado desde el proyecto, no la
   URL pelada.
 
-### 4. La mesa de trabajo: mostrarla y decidir la iteración siguiente
+### 4. Navegación: presentar las tres opciones y decidir el chrome de etapas
 
-De las tres alternativas de navegación (página de propuestas:
-<https://claude.ai/code/artifact/65c504b9-2aaf-4ff9-bcba-a515e53256c4>) se eligió e
-implementó la C: `/admin/projects/[id]` ya no redirige — abre la **mesa de trabajo**
-(Nos toca / Mientras no estabas / El recorrido plegable). Queda:
-
-- Mostrársela al estudio junto con los arreglos (volver al panel, renombrar, borrar).
-- Decidir la iteración siguiente sobre el chrome de las etapas: hoy conservan el índice
-  lateral; las opciones son aligerarlo o adoptar B (fases como pestañas) como estructura.
+Las tres opciones de layout quedaron guardadas en
+**`valkyria/propuestas/2026-08-22-navegacion-proyectos/`** (página autocontenida que se
+abre con doble clic + README con el estado real y el follow-up). La C —mesa de trabajo—
+ya está implementada como portada; A sigue en las pantallas de etapa; B no se aplicó.
+Queda: armar/mostrar la propuesta con esa carpeta, decidir el chrome de las etapas
+(A / A aligerada / B) y recién ahí implementar. **Sin cambios nuevos hasta esa decisión.**
 
 ### 5. Exportación a PowerPoint del entregable
 

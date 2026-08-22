@@ -1,0 +1,570 @@
+<title>Tres maneras de recorrer un proyecto</title>
+<style>
+  :root {
+    --fondo: #ffffff;
+    --tinta: #15120C;
+    --cuerpo: #2C281F;
+    --secundario: #5C5648;
+    --rotulo: #A8A296;
+    --linea: #EDEAE1;
+    --superficie: #F8F6F0;
+    --banana: #FFD400;
+    --banana-suave: #FFF3B8;
+    --tarjeta: #ffffff;
+  }
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --fondo: #14110b;
+      --tinta: #f4efe2;
+      --cuerpo: #e4ddca;
+      --secundario: #b0a892;
+      --rotulo: #7d7663;
+      --linea: #2e2919;
+      --superficie: #1d1911;
+      --banana: #FFD400;
+      --banana-suave: #3a330f;
+      --tarjeta: #191510;
+    }
+  }
+  :root[data-theme="dark"] {
+    --fondo: #14110b;
+    --tinta: #f4efe2;
+    --cuerpo: #e4ddca;
+    --secundario: #b0a892;
+    --rotulo: #7d7663;
+    --linea: #2e2919;
+    --superficie: #1d1911;
+    --banana: #FFD400;
+    --banana-suave: #3a330f;
+    --tarjeta: #191510;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--cuerpo);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  .pagina { max-width: 960px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  .serif { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--rotulo); margin: 0 0 14px;
+  }
+  h1 {
+    font-family: Georgia, "Iowan Old Style", serif; font-weight: 500;
+    font-size: clamp(30px, 5vw, 44px); line-height: 1.12; letter-spacing: -.015em;
+    color: var(--tinta); margin: 0 0 18px; text-wrap: balance; max-width: 20ch;
+  }
+  h1 .marca { box-shadow: inset 0 -0.3em 0 var(--banana); }
+  :root:not([data-theme="light"]) h1 .marca { }
+  .intro { max-width: 62ch; font-size: 17px; color: var(--cuerpo); margin: 0; }
+  .intro + .intro { margin-top: 12px; }
+  .intro strong { color: var(--tinta); font-weight: 600; }
+
+  .criterios {
+    margin: 44px 0 0; padding: 20px 0 24px;
+    border-top: 1.5px solid var(--tinta); border-bottom: 1px solid var(--linea);
+  }
+  .criterios h2 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--tinta); margin: 0 0 14px; }
+  .criterios ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 28px; margin: 0; padding: 0; list-style: none; }
+  .criterios li { font-size: 14.5px; color: var(--secundario); padding-left: 18px; position: relative; }
+  .criterios li::before { content: ""; position: absolute; left: 0; top: .55em; width: 8px; height: 8px; border-radius: 50%; background: var(--banana); }
+  .criterios li strong { color: var(--tinta); font-weight: 600; }
+
+  .propuesta { margin-top: 72px; }
+  .propuesta > header { display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--linea); padding-bottom: 14px; }
+  .letra {
+    font-family: Georgia, serif; font-size: 15px; flex: none;
+    display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+    background: var(--tinta); color: var(--banana); align-self: center;
+  }
+  .propuesta h2 { font-family: Georgia, "Iowan Old Style", serif; font-weight: 500; font-size: 26px; color: var(--tinta); margin: 0; letter-spacing: -.01em; }
+  .propuesta .tesis { margin-left: auto; font-size: 13px; color: var(--rotulo); text-align: right; max-width: 34ch; }
+  .propuesta > p.nota { max-width: 66ch; font-size: 15.5px; margin: 18px 0 0; }
+  .propuesta > p.nota strong { color: var(--tinta); font-weight: 600; }
+
+  /* ── Los mockups: son "capturas" del producto, siempre en su luz real ── */
+  .mock {
+    margin-top: 24px; border: 1px solid var(--linea); border-radius: 14px; overflow: hidden;
+    background: #fff; color: #2C281F; font-size: 12px; line-height: 1.45;
+    box-shadow: 0 1px 0 rgba(21,18,12,.04);
+  }
+  .mock, .mock * { font-family: system-ui, -apple-system, sans-serif; }
+  .mock .ms { font-family: Georgia, serif; }
+  .mock-barra { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #EDEAE1; background: #F8F6F0; }
+  .mock-barra span { width: 9px; height: 9px; border-radius: 50%; background: #DDD8CB; }
+  .mock-barra em { font-style: normal; font-size: 10.5px; color: #A8A296; margin-left: 6px; }
+  .mock-cuerpo { display: flex; min-height: 300px; }
+  .m-ink { color: #15120C; }
+  .m-sec { color: #5C5648; }
+  .m-rot { color: #A8A296; }
+
+  /* A — lateral */
+  .riel { width: 44px; flex: none; background: #FFD400; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 10px 0; }
+  .riel .cubo { width: 26px; height: 26px; border-radius: 7px; background: rgba(21,18,12,.12); display: grid; place-items: center; font-size: 9px; color: #15120C; }
+  .riel .cubo.logo { background: #15120C; color: #FFD400; }
+  .riel .cubo.activo { background: #15120C; color: #fff; }
+  .indice { width: 168px; flex: none; border-right: 1px solid #EDEAE1; }
+  .indice .cab { padding: 9px 10px; border-bottom: 1px solid #EDEAE1; }
+  .indice .volver { font-size: 8.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #A8A296; }
+  .indice .nom { font-size: 13px; color: #15120C; margin-top: 2px; }
+  .indice .fase { padding: 8px 10px 4px; }
+  .indice .fase-t { display: flex; justify-content: space-between; font-size: 8.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #15120C; }
+  .indice .fase-t i { font-style: normal; color: #B5AF9F; font-weight: 400; letter-spacing: 0; }
+  .indice .et { display: flex; align-items: center; gap: 6px; padding: 3.5px 8px; font-size: 11px; color: #2C281F; }
+  .indice .et .pt { width: 6px; height: 6px; border-radius: 50%; border: 1px solid #B5AF9F; flex: none; }
+  .indice .et .pt.ok { border: 0; background: #FFD400; }
+  .indice .et.actual { background: #15120C; color: #fff; font-weight: 600; margin: 0 0; }
+  .indice .et.actual .pt { border-color: #fff; background: #fff; }
+  .contenido { flex: 1; padding: 16px 18px; min-width: 0; }
+  .contenido .eti { font-size: 8.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #A8A296; }
+  .contenido h4 { font-family: Georgia, serif; font-weight: 500; font-size: 19px; color: #15120C; margin: 4px 0 8px; }
+  .parrafo { height: 7px; border-radius: 4px; background: #EFECE3; margin-top: 7px; }
+  .parrafo.c80 { width: 80%; } .parrafo.c60 { width: 60%; } .parrafo.c90 { width: 90%; }
+
+  /* B — subsecciones */
+  .cab-proy { padding: 12px 18px 0; border-bottom: 1px solid #EDEAE1; }
+  .cab-proy .fila { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .cab-proy h4 { font-family: Georgia, serif; font-size: 18px; font-weight: 500; color: #15120C; margin: 0; }
+  .tabs { display: flex; gap: 2px; margin-left: auto; }
+  .tab {
+    appearance: none; border: 0; background: none; cursor: pointer;
+    font-size: 11.5px; font-weight: 600; color: #5C5648; padding: 6px 10px 9px;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab[aria-selected="true"] { color: #15120C; border-bottom-color: #FFD400; }
+  .tab .n { font-weight: 400; color: #A8A296; font-size: 10px; }
+  .sub-etapas { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid #EDEAE1; background: #F8F6F0; }
+  .chip { font-size: 10.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid #E0DCD0; color: #5C5648; background: #fff; }
+  .chip.ok { background: #FFF3B8; border-color: #FFF3B8; color: #6d5a10; }
+  .chip.actual { background: #15120C; border-color: #15120C; color: #fff; }
+
+  /* C — la mesa de trabajo */
+  .mesa { padding: 12px 18px 16px; }
+  .mesa-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .mesa-cab h4 { font-family: Georgia, serif; font-size: 16px; font-weight: 500; color: #15120C; margin: 0; }
+  .mesa-cab .donde { font-size: 10.5px; color: #A8A296; }
+  .zona { font-size: 8.5px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: #A8A296; margin: 16px 0 2px; }
+  .zona:first-of-type { margin-top: 14px; }
+  .toca { display: flex; align-items: center; gap: 9px; padding: 9px 0; border-top: 1px solid #EDEAE1; }
+  .toca .pto { width: 8px; height: 8px; border-radius: 50%; background: #FFD400; flex: none; }
+  .toca .q { min-width: 0; flex: 1; }
+  .toca .q b { display: block; font-size: 12.5px; font-weight: 600; color: #15120C; }
+  .toca .q span { font-size: 10.5px; color: #A8A296; }
+  .toca .accion {
+    appearance: none; cursor: pointer; flex: none;
+    background: #15120C; color: #fff; border: 0; border-radius: 8px;
+    font-size: 10.5px; font-weight: 700; padding: 5px 11px;
+  }
+  .mov { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-top: 1px solid #F4F1E8; font-size: 11.5px; color: #5C5648; }
+  .mov:first-of-type { border-top: 1px solid #EDEAE1; }
+  .mov time { flex: none; width: 52px; font-size: 10px; color: #B5AF9F; font-variant-numeric: tabular-nums; }
+  .mov b { color: #15120C; font-weight: 600; }
+  .mov a { margin-left: auto; flex: none; font-size: 10.5px; color: #A8A296; text-decoration: underline; cursor: pointer; }
+  .fases-tira { display: flex; gap: 8px; margin-top: 6px; }
+  .fase-card {
+    appearance: none; cursor: pointer; text-align: left; min-width: 0;
+    background: none; border: 1px solid #EDEAE1; border-radius: 10px; padding: 8px 10px 9px;
+  }
+  .fase-card[aria-expanded="true"] { border-color: #15120C; }
+  .fase-card .f-l { display: flex; justify-content: space-between; gap: 8px; font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #15120C; white-space: nowrap; }
+  .fase-card .f-l i { font-style: normal; color: #A8A296; font-weight: 400; letter-spacing: 0; }
+  .fase-card .f-b { position: relative; height: 4px; border-radius: 2px; background: #EDEAE1; margin-top: 6px; overflow: hidden; }
+  .fase-card .f-b span { position: absolute; inset: 0 auto 0 0; background: #FFD400; }
+  .etapas-abiertas { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .paso { display: flex; justify-content: space-between; align-items: center; padding: 0 18px 12px; }
+  .paso button {
+    appearance: none; cursor: pointer; background: none;
+    border: 1px solid rgba(21,18,12,.2); border-radius: 9px; padding: 4px 12px;
+    font-size: 11px; font-weight: 600; color: #15120C;
+  }
+
+  .interactivo { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 11.5px; color: var(--rotulo); }
+  .interactivo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--banana); }
+
+  .balance { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-top: 22px; }
+  @media (max-width: 640px) { .balance { grid-template-columns: 1fr; gap: 18px; } }
+  .balance h3 { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 8px; color: var(--tinta); }
+  .balance ul { margin: 0; padding: 0; list-style: none; }
+  .balance li { font-size: 14px; color: var(--secundario); padding: 7px 0 7px 0; border-top: 1px solid var(--linea); }
+  .balance li strong { color: var(--tinta); font-weight: 600; }
+
+  .tabla-wrap { overflow-x: auto; margin-top: 26px; }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-top: 1px solid var(--linea); vertical-align: top; }
+  thead th { border-top: 1.5px solid var(--tinta); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta); }
+  td:first-child, th:first-child { padding-left: 0; color: var(--secundario); font-size: 13px; }
+  td { color: var(--cuerpo); }
+  td b { color: var(--tinta); font-weight: 600; }
+
+  .reco { margin-top: 72px; border-top: 1.5px solid var(--tinta); padding-top: 24px; }
+  .reco h2 { font-family: Georgia, serif; font-weight: 500; font-size: 26px; color: var(--tinta); margin: 0 0 14px; }
+  .reco p { max-width: 66ch; font-size: 15.5px; margin: 0 0 12px; }
+  .reco strong { color: var(--tinta); font-weight: 600; }
+
+  h2.seccion { font-family: Georgia, serif; font-weight: 500; font-size: 26px; color: var(--tinta); margin: 72px 0 6px; }
+  p.baja { color: var(--secundario); font-size: 14.5px; margin: 0; max-width: 62ch; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .nodo, .tab { transition: transform .15s ease, color .15s ease, border-color .15s ease; }
+  }
+</style>
+
+<div class="pagina">
+  <p class="eyebrow">Mellow &amp; Banana · Panel interno · Agosto 2026</p>
+  <h1>Tres maneras de <span class="marca">recorrer</span> un proyecto</h1>
+  <p class="intro">El feedback del equipo fue claro: adentro de un proyecto es fácil perderse, y volver al listado
+  general era directamente imposible (eso ya está corregido). Antes de seguir puliendo la navegación actual,
+  vale decidir <strong>qué modelo de navegación</strong> queremos: acá van la actual y dos alternativas, con el
+  mismo proyecto de ejemplo en las tres.</p>
+  <p class="intro">Los recuadros son maquetas en miniatura del panel real — en la B y la C se puede hacer clic.</p>
+
+  <section class="criterios" aria-label="Criterios de comparación">
+    <h2>Con qué vara comparamos</h2>
+    <ul>
+      <li><strong>Orientación</strong> — ¿siempre sé dónde estoy y qué falta?</li>
+      <li><strong>Espacio para leer</strong> — el trabajo son documentos largos; ¿cuánto ancho les queda?</li>
+      <li><strong>Costo de moverse</strong> — ¿cuántos clics hay entre dos etapas cualesquiera?</li>
+      <li><strong>Cuánto cambia</strong> — ¿qué tanto hay que reconstruir de lo que ya existe?</li>
+    </ul>
+  </section>
+
+  <!-- ══════════ A ══════════ -->
+  <section class="propuesta" aria-labelledby="tit-a">
+    <header>
+      <span class="letra ms">A</span>
+      <h2 id="tit-a">El índice lateral <span style="font-size:14px; color:var(--rotulo);">(lo que hay hoy)</span></h2>
+      <p class="tesis">Todo el mapa a la vista, todo el tiempo. El proyecto como tabla de contenidos.</p>
+    </header>
+
+    <div class="mock" role="img" aria-label="Maqueta de la navegación actual: riel de proyectos, índice lateral con todas las etapas, y el documento a la derecha">
+      <div class="mock-barra"><span></span><span></span><span></span><em>panel.mellowbanana.co/admin/projects/cafe-lunar</em></div>
+      <div class="mock-cuerpo">
+        <div class="riel">
+          <div class="cubo logo ms">M&amp;B</div>
+          <div class="cubo ms activo">CL</div>
+          <div class="cubo ms">GO</div>
+          <div class="cubo ms">CH</div>
+        </div>
+        <div class="indice">
+          <div class="cab">
+            <div class="volver">‹ Proyectos</div>
+            <div class="nom ms">Café Lunar</div>
+          </div>
+          <div class="fase">
+            <div class="fase-t">Entrevistas / Propuesta <i>3/3</i></div>
+            <div class="et"><span class="pt ok"></span>Entrevistas</div>
+            <div class="et"><span class="pt ok"></span>Propuesta de valor</div>
+          </div>
+          <div class="fase">
+            <div class="fase-t">Landscape <i>2/6</i></div>
+            <div class="et"><span class="pt ok"></span>Setup</div>
+            <div class="et"><span class="pt ok"></span>Contexto del sector</div>
+            <div class="et actual"><span class="pt"></span>Tendencias</div>
+            <div class="et"><span class="pt"></span>Panorama de categoría</div>
+          </div>
+          <div class="fase">
+            <div class="fase-t">Estrategia <i>0/14</i></div>
+            <div class="et"><span class="pt"></span>Diagnóstico</div>
+            <div class="et m-rot">＋ 13 etapas más</div>
+          </div>
+        </div>
+        <div class="contenido">
+          <div class="eti">Landscape / Tendencias</div>
+          <h4>Long list de tendencias</h4>
+          <div class="parrafo c90"></div>
+          <div class="parrafo"></div>
+          <div class="parrafo c80"></div>
+          <div class="parrafo c60"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="balance">
+      <div>
+        <h3>Qué gana</h3>
+        <ul>
+          <li><strong>Orientación total:</strong> las 20+ etapas y su estado, siempre visibles. El conteo (4/6) dice cuánto falta sin entrar a nada.</li>
+          <li>Cualquier etapa está a <strong>un clic</strong>, sin pasos intermedios.</li>
+          <li><strong>Cero costo:</strong> ya está construido y recién corregido.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Qué pierde</h3>
+        <ul>
+          <li>Dos columnas fijas antes del contenido: el documento respira menos — y el feedback original habló justamente de <strong>“cluster de información”</strong>.</li>
+          <li>El mapa completo pesa igual cuando el proyecto está arrancando (una fase con 14 renglones grises).</li>
+          <li>En móvil el índice se esconde detrás de un botón: la orientación desaparece.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ B ══════════ -->
+  <section class="propuesta" aria-labelledby="tit-b">
+    <header>
+      <span class="letra ms">B</span>
+      <h2 id="tit-b">Fases como subsecciones</h2>
+      <p class="tesis">El proyecto se abre en tres pestañas junto al nombre. Una fase a la vez, a todo lo ancho.</p>
+    </header>
+    <p class="nota">Al entrar al proyecto, al lado del nombre aparecen <strong>las tres fases</strong>. La fase abierta
+    muestra sus etapas como una fila de chips; el resto desaparece hasta que se lo llama. Es el modelo
+    mental de siempre (pestañas), y el documento recupera todo el ancho.</p>
+
+    <div class="mock">
+      <div class="mock-barra"><span></span><span></span><span></span><em>panel.mellowbanana.co/admin/projects/cafe-lunar</em></div>
+      <div class="cab-proy">
+        <div class="fila">
+          <span class="m-rot" style="font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">‹ Proyectos</span>
+          <h4>Café Lunar</h4>
+          <div class="tabs" role="tablist" aria-label="Fases del proyecto (maqueta)">
+            <button class="tab" role="tab" id="tab-entrevistas" aria-selected="false">Entrevistas / Propuesta <span class="n">3/3</span></button>
+            <button class="tab" role="tab" id="tab-landscape" aria-selected="true">Landscape <span class="n">2/6</span></button>
+            <button class="tab" role="tab" id="tab-estrategia" aria-selected="false">Estrategia <span class="n">0/14</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="sub-etapas" id="b-chips"></div>
+      <div class="contenido" style="min-height:170px;">
+        <div class="eti" id="b-eti">Landscape / Tendencias</div>
+        <h4 id="b-titulo">Long list de tendencias</h4>
+        <div class="parrafo c90"></div>
+        <div class="parrafo"></div>
+        <div class="parrafo c80"></div>
+      </div>
+    </div>
+    <p class="interactivo">Maqueta viva: probá cambiar de pestaña y de chip.</p>
+
+    <div class="balance">
+      <div>
+        <h3>Qué gana</h3>
+        <ul>
+          <li><strong>Simplicidad:</strong> pestañas es el patrón que nadie necesita aprender. Tres opciones, no veintitrés.</li>
+          <li>El documento recupera <strong>~220px de ancho</strong> en cada pantalla.</li>
+          <li>Escala bien a móvil: las pestañas y los chips ya son horizontales.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Qué pierde</h3>
+        <ul>
+          <li>El estado de las <strong>otras</strong> fases queda reducido al numerito de la pestaña.</li>
+          <li>Estrategia tiene 14 etapas en 4 bloques: una sola fila de chips se queda corta — necesita dos filas o un desplegable por bloque.</li>
+          <li>Cruzar de una etapa de Landscape a una de Estrategia pasa a costar dos clics.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ C ══════════ -->
+  <section class="propuesta" aria-labelledby="tit-c">
+    <header>
+      <span class="letra ms">C</span>
+      <h2 id="tit-c">La mesa de trabajo</h2>
+      <p class="tesis">El proyecto no te recibe con su estructura: te recibe con el trabajo. Navegar es responder.</p>
+    </header>
+    <p class="nota">A y B son dos maneras de dibujar el mismo menú. Esta cambia la pregunta: el equipo no entra a
+    un proyecto a pasear por 23 etapas — entra a ver <strong>qué le toca</strong>. Entonces el proyecto abre con eso:
+    primero <strong>las decisiones que esperan</strong> (elegir tendencias, revisar un borrador que Claude dejó),
+    con su botón directo; después <strong>qué se movió mientras no estabas</strong>; y al pie, el recorrido reducido
+    a <strong>tres tarjetas de fase</strong> que, al tocarlas, despliegan sus etapas con nombre — la estructura sigue
+    entera, pero pasa de ser el mueble principal a ser el cajón que abrís cuando lo necesitás. No es un
+    diseño nuevo de menú: es menos menú. Y todas las señales que lo alimentan ya existen en el panel
+    (la cola de “nos toca”, los borradores nuevos, la actividad).</p>
+
+    <div class="mock">
+      <div class="mock-barra"><span></span><span></span><span></span><em>panel.mellowbanana.co/admin/projects/cafe-lunar</em></div>
+
+      <div class="mesa">
+        <div class="mesa-cab">
+          <span><span class="m-rot" style="font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">‹ Proyectos&nbsp;&nbsp;</span><h4 style="display:inline;" class="ms">Café Lunar</h4></span>
+          <span class="donde">Landscape · 2 de 6 aprobadas</span>
+        </div>
+
+        <p class="zona">Nos toca</p>
+        <div class="toca">
+          <span class="pto" aria-hidden="true"></span>
+          <span class="q">
+            <b>Elegir las tendencias que siguen</b>
+            <span>4 o 5 de la long list de 12 · Landscape / Tendencias</span>
+          </span>
+          <button type="button" class="accion">Decidir</button>
+        </div>
+        <div class="toca">
+          <span class="pto" aria-hidden="true"></span>
+          <span class="q">
+            <b>Claude dejó un borrador nuevo sobre una etapa ya aprobada</b>
+            <span>Landscape / Contexto del sector · mantener o reemplazar</span>
+          </span>
+          <button type="button" class="accion">Revisar</button>
+        </div>
+
+        <p class="zona">Mientras no estabas</p>
+        <div class="mov"><time>hace 2 h</time><span><b>Claude</b> guardó una versión nueva de <b>Panorama de categoría</b></span><a>leer</a></div>
+        <div class="mov"><time>ayer</time><span><b>Flor</b> aprobó <b>Setup</b></span></div>
+        <div class="mov"><time>ayer</time><span>llegó la entrevista de <b>Ana Restrepo</b> (completa)</span><a>leer</a></div>
+
+        <p class="zona">El recorrido</p>
+        <div class="fases-tira" id="c-tira"></div>
+        <div class="etapas-abiertas" id="c-abiertas" hidden></div>
+      </div>
+    </div>
+    <p class="interactivo">Maqueta viva: tocá una tarjeta de fase para desplegar sus etapas con nombre.</p>
+
+    <div class="balance">
+      <div>
+        <h3>Qué gana</h3>
+        <ul>
+          <li><strong>Responde la pregunta real al entrar</strong> — “¿qué me toca?” — con la decisión a un clic del botón, no enterrada en una estructura de 23 renglones.</li>
+          <li><strong>Nada se pierde de vista:</strong> los borradores que Claude deja sobre etapas cerradas hoy hay que salir a buscarlos; acá te reciben.</li>
+          <li>Es <strong>barata de construir bien</strong>: la cola de “nos toca”, los borradores nuevos y la actividad ya existen en el código — esto los asciende de widget a portada.</li>
+          <li>Escala a móvil sin diseño extra: todo apila.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Qué pierde</h3>
+        <ul>
+          <li>Ir a leer una etapa arbitraria cuesta <strong>dos clics</strong> (fase → etapa), siempre con nombre.</li>
+          <li>Cambia el hábito: el proyecto deja de verse como tabla de contenidos — hay que confiar en que las señales estén bien afinadas.</li>
+          <li>Un proyecto sin nada pendiente abre con la mesa vacía: ese estado hay que diseñarlo (probablemente: el recorrido sube y ocupa el lugar).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ comparación ══════════ -->
+  <h2 class="seccion">Las tres, lado a lado</h2>
+  <p class="baja">Ninguna es objetivamente superior: cambian qué privilegian.</p>
+  <div class="tabla-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>A · Índice lateral</th><th>B · Subsecciones</th><th>C · La línea</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Modelo</td><td>Menú junto al documento</td><td>Menú sobre el documento</td><td><b>El trabajo primero</b>; la estructura, plegada</td></tr>
+        <tr><td>Al entrar al proyecto ves</td><td>El mapa completo de etapas</td><td>La fase donde está parado</td><td><b>Lo que te toca decidir</b> y qué cambió</td></tr>
+        <tr><td>Espacio para leer</td><td>El menor (dos columnas)</td><td><b>Todo el ancho</b></td><td><b>Todo el ancho</b></td></tr>
+        <tr><td>Ir a cualquier etapa</td><td><b>1 clic</b></td><td>1–2 clics</td><td>2 clics (fase → etapa); lo pendiente, <b>1 clic directo</b></td></tr>
+        <tr><td>Móvil</td><td>Índice escondido</td><td><b>Natural</b> (todo horizontal)</td><td><b>Natural</b> (todo apila)</td></tr>
+        <tr><td>Costo de construir</td><td><b>Cero</b> (ya está)</td><td>Medio</td><td>Medio: <b>las señales ya existen</b> en el código</td></tr>
+        <tr><td>Personalidad</td><td>Editorial, denso</td><td>Familiar, neutro</td><td><b>Propia</b>: un panel que trabaja para el equipo</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <section class="reco">
+    <h2>Nuestra lectura</h2>
+    <p>A y B responden la misma pregunta con distinto mueble: cómo browsear la estructura. <strong>C responde
+    otra pregunta — para qué abriste el proyecto</strong> — y resulta que en este flujo (Claude escribe, el
+    equipo decide) esa es la pregunta de todos los días. No es más lindo ni más raro: es <strong>menos
+    navegación</strong>, porque lo que hay que hacer viene a buscarte.</p>
+    <p>Nuestra lectura: <strong>B es la respuesta segura al feedback</strong> — patrón conocido, documento ancho,
+    móvil casi gratis. <strong>C es la más funcional al flujo real</strong> y no compite con B: la mesa puede ser
+    la portada del proyecto y B su navegación cuando querés ir a leer algo puntual. Si hubiera que
+    elegir un camino, sería ese: <strong>B como estructura + la mesa como página de entrada</strong>, empezando
+    por B (que resuelve el feedback ya) y sumando la mesa después.</p>
+    <p>A, con la vuelta al panel ya corregida, sigue siendo válida: si las otras dos no convencen,
+    quedarse no es perder — pero no responde al “cluster de información” del feedback.</p>
+    <p style="color:var(--secundario); font-size:14px;">Sugerencia práctica: mostrarles B y C con esta página, y decidir con el mouse encima, no en abstracto.</p>
+  </section>
+</div>
+
+<script>
+  // ── B: pestañas y chips ──
+  const FASES = {
+    'tab-entrevistas': {
+      eti: 'Entrevistas / Propuesta de valor',
+      etapas: [
+        { n: 'Entrevistas', e: 'ok' }, { n: 'Propuesta de valor', e: 'ok' }, { n: 'Taller', e: 'ok' },
+      ],
+    },
+    'tab-landscape': {
+      eti: 'Landscape',
+      etapas: [
+        { n: 'Setup', e: 'ok' }, { n: 'Contexto del sector', e: 'ok' }, { n: 'Tendencias', e: 'actual' },
+        { n: 'Panorama de categoría', e: '' }, { n: 'Diagnóstico', e: '' }, { n: 'Entrega', e: '' },
+      ],
+    },
+    'tab-estrategia': {
+      eti: 'Estrategia',
+      etapas: [
+        { n: 'Diagnóstico', e: '' }, { n: 'Consumidor', e: '' }, { n: 'RTBs', e: '' },
+        { n: 'Concepto estratégico', e: '' }, { n: 'Beneficios', e: '' }, { n: '＋ 9 más', e: '' },
+      ],
+    },
+  }
+  const chips = document.getElementById('b-chips')
+  const bEti = document.getElementById('b-eti')
+  const bTitulo = document.getElementById('b-titulo')
+
+  function pintarFase(tabId, etapaActiva) {
+    const fase = FASES[tabId]
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.id === tabId)))
+    chips.innerHTML = ''
+    fase.etapas.forEach(et => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = et.n
+      const activa = etapaActiva ? et.n === etapaActiva : et.e === 'actual'
+      b.className = 'chip' + (activa ? ' actual' : et.e === 'ok' ? ' ok' : '')
+      b.style.cursor = 'pointer'
+      b.addEventListener('click', () => pintarFase(tabId, et.n))
+      chips.appendChild(b)
+    })
+    const activa = etapaActiva ?? (fase.etapas.find(e => e.e === 'actual') ?? fase.etapas[0]).n
+    bEti.textContent = fase.eti + ' / ' + activa
+    bTitulo.textContent = activa
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => pintarFase(t.id)))
+  pintarFase('tab-landscape')
+
+  // ── C: la línea ──
+  const TRAMOS = [
+    { label: 'Entrevistas / Propuesta', etapas: ['Entrevistas', 'Propuesta de valor', 'Taller'], ok: 3 },
+    { label: 'Landscape', etapas: ['Setup', 'Contexto del sector', 'Tendencias', 'Panorama de categoría', 'Diagnóstico', 'Entrega'], ok: 2 },
+    // Las 14 de verdad: que se vea el problema de densidad que la opción C tiene que resolver.
+    { label: 'Estrategia', etapas: ['Diagnóstico', 'Consumidor', 'RTBs', 'Concepto estratégico', 'Beneficios', 'Arquetipo', 'Personalidad', 'Valores', 'Territorio', 'Brand Ideal', 'Brand ingredients', 'Tagline / CCI', 'Manifiesto', 'Cuadros finales'], ok: 0 },
+  ]
+  // La tira del recorrido: tres tarjetas de fase; tocar una despliega sus etapas con nombre.
+  const ACTUAL = { ti: 1, i: 2 } // Tendencias
+  const tira = document.getElementById('c-tira')
+  const abiertas = document.getElementById('c-abiertas')
+  let faseAbierta = -1
+
+  function pintarTira() {
+    tira.innerHTML = ''
+    abiertas.innerHTML = ''
+    abiertas.hidden = faseAbierta < 0
+
+    TRAMOS.forEach((t, ti) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'fase-card'
+      b.style.flex = String(Math.max(t.etapas.length, 4))
+      b.setAttribute('aria-expanded', String(ti === faseAbierta))
+      b.innerHTML =
+        '<span class="f-l"><span>' + t.label + '</span><i>' + t.ok + '/' + t.etapas.length + '</i></span>' +
+        '<span class="f-b"><span style="width:' + (t.ok / t.etapas.length * 100) + '%"></span></span>'
+      b.addEventListener('click', () => { faseAbierta = faseAbierta === ti ? -1 : ti; pintarTira() })
+      tira.appendChild(b)
+    })
+
+    if (faseAbierta >= 0) {
+      TRAMOS[faseAbierta].etapas.forEach((n, i) => {
+        const ch = document.createElement('button')
+        ch.type = 'button'
+        ch.textContent = n
+        const esActual = faseAbierta === ACTUAL.ti && i === ACTUAL.i
+        ch.className = 'chip' + (esActual ? ' actual' : i < TRAMOS[faseAbierta].ok ? ' ok' : '')
+        ch.style.cursor = 'pointer'
+        abiertas.appendChild(ch)
+      })
+    }
+  }
+  pintarTira()
+</script>

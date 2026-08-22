@@ -8,7 +8,14 @@ El mapa de la documentación de trabajo. Un documento que no está listado aquí
 | `DECISIONES.md` | Decisiones técnicas: qué, por qué, qué se descartó |
 | `specs/` | Specs por feature, fechados |
 | `plans/` | Planes de implementación por feature, fechados |
+| `propuestas/` | Material de propuesta para mostrar (páginas, maquetas), con README de estado y follow-up |
 | `../PENDIENTE.md` | Handoff vivo en la raíz: qué quedó y qué falta para retomar (hoy: activar Resend, deploy, limpieza de proyectos duplicados). Se borra cuando se vacía |
+
+## Navegación de proyectos: propuesta de layouts (2026-08-22)
+
+| Documento | Qué contiene |
+|---|---|
+| `propuestas/2026-08-22-navegacion-proyectos/` | Las tres opciones de layout (A índice lateral, B subsecciones, C mesa de trabajo) con la página de presentación autocontenida y el handoff de estado/follow-up |
 
 ## Propuesta de valor: edición interna (2026-08-22)
 
