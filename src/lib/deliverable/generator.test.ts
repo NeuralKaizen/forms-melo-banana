@@ -11,10 +11,11 @@ function fakeClient(opts: { failCompetencia?: boolean } = {}) {
     if (/DECLARACIÓN DEL PROBLEMA/.test(prompt)) return '{"problemaMundo":"m","problemaMarca":"x","problemaConsumidor":[],"comoLoHacemos":[],"porQueRelevante":[]}'
     if (/PANORAMA DE LA CATEGORÍA/.test(prompt)) {
       if (opts.failCompetencia) return 'no json'
-      return '{"competidores":[],"otrosReferentes":[],"ejes":[{"nombre":"a","extremoIzquierdo":"i","extremoDerecho":"d","origen":"equipo"},{"nombre":"b","extremoIzquierdo":"i","extremoDerecho":"d","origen":"equipo"}],"posicionActual":{"texto":"a","origen":"equipo"},"posicionIdeal":{"texto":"b","origen":"equipo"}}'
+      const eje = (n: string) => `{"nombre":"${n}","extremoIzquierdo":"i","extremoDerecho":"d","origen":"equipo"}`
+      return `{"competidores":[],"otrosReferentes":[],"ejes":[${[eje('a'), eje('b'), eje('c'), eje('d')].join(',')}],"posicionActual":{"texto":"a","origen":"equipo"},"posicionIdeal":{"texto":"b","origen":"equipo"}}`
     }
     if (/PERFIL DE USUARIO/.test(prompt)) return '{"jobs":[],"gains":[],"pains":[]}'
-    if (/PROPUESTA DE VALOR/.test(prompt)) return '{"formula":{"marca":"M","verbo":"v","razonDeSer":"r","beneficioCentral":"b"},"filas":[]}'
+    if (/PROPUESTA DE VALOR/.test(prompt)) return '{"filas":[]}'
     return '{}'
   }
   return { messages: { create: async (a: any) => ({ content: [{ type: 'text', text: byStep(a.messages.at(-1).content) }] }) } } as any

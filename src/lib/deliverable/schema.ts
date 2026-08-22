@@ -55,13 +55,10 @@ export interface FilaValor {
   origen: Origen
 }
 
+// Sin síntesis final (se eliminó junto con la `formula` que la armaba): la propuesta de
+// valor es la tabla de jobs. Los entregables viejos guardados con `formula` la conservan
+// en su JSON; simplemente ya nadie la lee.
 export interface PropuestaValor {
-  formula: {
-    marca: string
-    verbo: string
-    razonDeSer: string
-    beneficioCentral: string
-  }
   filas: FilaValor[]
 }
 

@@ -141,17 +141,13 @@ export function buildDeckView(input: {
       ]
     : [bloqueError('Jobs to be done, Gains y Pains', errPerfil ?? 'Esta parte no se generó.')]
 
-  const f = pv?.formula
-  const sintesis = f ? `En ${f.marca}, ${f.verbo} ${f.razonDeSer}. Somos ${f.beneficioCentral}.` : undefined
-  const bloqueSintesis: DeckBlock = pv
-    ? parrafo('Síntesis', sintesis)
-    : bloqueError('Síntesis', errPropuestaValor ?? 'Esta parte no se generó.')
-
+  // Sin bloque de síntesis: la propuesta de valor es la tabla. Si su insumo falló, el
+  // motivo viaja en `tablaError`, así que no se pierde señal al no haber otro bloque.
   const s3 = seccion(
     3,
     'Perfil de usuario y Propuesta de Valor',
     err3,
-    [...bloquesPerfil, bloqueSintesis],
+    bloquesPerfil,
     pv?.filas ?? [],
     pv ? null : (errPropuestaValor ?? 'Esta parte no se generó.'),
   )

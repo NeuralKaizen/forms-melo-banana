@@ -33,7 +33,6 @@ const COMPLETO: Deliverable = {
     pains: [item('Cafeterías impersonales')],
   }),
   propuestaValor: ok({
-    formula: { marca: 'Cafe Lunar', verbo: 'creamos', razonDeSer: 'un lugar para quedarse', beneficioCentral: 'el café del barrio con alma' },
     filas: [{ job: 'Quedarme a conversar', solucion: 'Mesas comunales', comoSeResuelve: 'Diseñamos el local para la charla', origen: 'cliente' as const }],
   }),
 }
@@ -103,10 +102,10 @@ describe('buildDeckView', () => {
     expect(ejes.items[0]).toEqual({ texto: 'cercanía: de frío a cálido', origen: 'equipo', cita: null })
   })
 
-  it('compone la fórmula de la propuesta de valor como párrafo', () => {
+  it('la sección 3 no tiene bloque de síntesis: la propuesta de valor es la tabla', () => {
     const v = buildDeckView({ projectName: 'X', deliverable: COMPLETO, corpus: CORPUS, now: NOW })
-    const sintesis = v.secciones[2].blocks.find(b => b.titulo === 'Síntesis')!
-    expect(sintesis.parrafo).toBe('En Cafe Lunar, creamos un lugar para quedarse. Somos el café del barrio con alma.')
+    expect(v.secciones[2].blocks.find(b => b.titulo === 'Síntesis')).toBeUndefined()
+    expect(v.secciones[2].blocks.map(b => b.titulo)).toEqual(['Jobs to be done', 'Gains', 'Pains'])
   })
 
   it('expone la tabla JTBD en la sección 3', () => {
@@ -177,16 +176,13 @@ describe('buildDeckView', () => {
     const pains = s3.blocks.find(b => b.titulo === 'Pains')!
     expect(pains.items).toEqual([{ texto: 'Cafeterías impersonales', origen: 'cliente', cita: null }])
 
-    // La parte que sí falló (propuestaValor) se marca visiblemente, sin ocultar el resto.
-    const sintesis = s3.blocks.find(b => b.titulo === 'Síntesis')!
-    expect(sintesis.error).toContain('402')
-    expect(sintesis.parrafo).toBeNull()
-
+    // La parte que sí falló (propuestaValor) se marca visiblemente en la tabla,
+    // el único lugar donde vive desde que no hay síntesis.
     expect(s3.tabla).toEqual([])
     expect(s3.tablaError).toContain('402')
   })
 
-  it('si sólo falla perfil, la síntesis y la tabla JTBD sobreviven en la sección 3', () => {
+  it('si sólo falla perfil, la tabla JTBD sobrevive en la sección 3', () => {
     const soloPerfilRoto: Deliverable = {
       ...COMPLETO,
       perfil: fail('Error: 500 timeout'),
@@ -203,11 +199,7 @@ describe('buildDeckView', () => {
     const bloqueFallido = s3.blocks.find(b => !!b.error)!
     expect(bloqueFallido.error).toContain('500')
 
-    // La síntesis y la tabla, que vienen de propuestaValor, sobreviven intactas.
-    const sintesis = s3.blocks.find(b => b.titulo === 'Síntesis')!
-    expect(sintesis.error ?? null).toBeNull()
-    expect(sintesis.parrafo).toBe('En Cafe Lunar, creamos un lugar para quedarse. Somos el café del barrio con alma.')
-
+    // La tabla, que viene de propuestaValor, sobrevive intacta.
     expect(s3.tablaError ?? null).toBeNull()
     expect(s3.tabla).toHaveLength(1)
     expect(s3.tabla[0].job).toBe('Quedarme a conversar')

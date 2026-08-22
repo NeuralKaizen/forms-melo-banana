@@ -5,9 +5,9 @@ import type { RespondentInput } from '../schema'
 const R: RespondentInput[] = [{ respondentName: 'Ana', role: 'Fundadora', answers: [{ questionId: 'estrategia', text: 'competimos con Platzi' }] }]
 
 describe('paso competencia', () => {
-  it('el prompt pide competidores, 2 ejes y posición actual/ideal, marcando aportes del equipo', () => {
+  it('el prompt pide competidores, 4 ejes y posición actual/ideal, marcando aportes del equipo', () => {
     const p = buildCompetenciaPrompt(R)
-    expect(p).toMatch(/competidor/i); expect(p).toMatch(/eje/i)
+    expect(p).toMatch(/competidor/i); expect(p).toMatch(/EXACTAMENTE 4 ejes/)
     expect(p).toMatch(/posición.*ideal/i); expect(p).toMatch(/equipo/i)
   })
   // Regresión: el prompt decía `Item[]` sin describir el tipo, y el modelo devolvía
@@ -20,18 +20,31 @@ describe('paso competencia', () => {
     expect(p).toContain('"cita"')
   })
 
-  it('validateCompetencia acepta forma correcta con 2 ejes', () => {
+  const CUATRO_EJES = [
+    { nombre: 'accesibilidad', extremoIzquierdo: 'accesible', extremoDerecho: 'poco accesible', origen: 'equipo' },
+    { nombre: 'credibilidad', extremoIzquierdo: 'menor', extremoDerecho: 'mayor', origen: 'equipo' },
+    { nombre: 'precio', extremoIzquierdo: 'económico', extremoDerecho: 'premium', origen: 'equipo' },
+    { nombre: 'cercanía', extremoIzquierdo: 'distante', extremoDerecho: 'cercana', origen: 'equipo' },
+  ]
+
+  it('validateCompetencia acepta forma correcta con 4 ejes', () => {
     const ok = {
       competidores: [{ texto: 'Platzi', origen: 'cliente' }],
       otrosReferentes: [{ marca: 'Lovable', tipo: 'referente de marca', origen: 'equipo' }],
-      ejes: [
-        { nombre: 'accesibilidad', extremoIzquierdo: 'accesible', extremoDerecho: 'poco accesible', origen: 'equipo' },
-        { nombre: 'credibilidad', extremoIzquierdo: 'menor', extremoDerecho: 'mayor', origen: 'equipo' },
-      ],
+      ejes: CUATRO_EJES,
       posicionActual: { texto: 'centro-izq', origen: 'equipo' },
       posicionIdeal: { texto: 'arriba-der', origen: 'equipo' },
     }
-    expect(validateCompetencia(ok).ejes).toHaveLength(2)
+    expect(validateCompetencia(ok).ejes).toHaveLength(4)
+  })
+
+  it('validateCompetencia rechaza cualquier cantidad de ejes que no sea 4', () => {
+    const base = {
+      competidores: [], otrosReferentes: [],
+      posicionActual: { texto: 'a', origen: 'equipo' }, posicionIdeal: { texto: 'b', origen: 'equipo' },
+    }
+    expect(() => validateCompetencia({ ...base, ejes: CUATRO_EJES.slice(0, 2) })).toThrow(/4/)
+    expect(() => validateCompetencia({ ...base, ejes: [...CUATRO_EJES, CUATRO_EJES[0]] })).toThrow(/4/)
   })
   it('validateCompetencia rechaza referente sin tipo', () => {
     expect(() => validateCompetencia({ competidores: [], otrosReferentes: [{ marca: 'X' }], ejes: [],

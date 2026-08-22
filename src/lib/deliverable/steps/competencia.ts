@@ -11,7 +11,7 @@ const GUIA = [
   '- otrosReferentes: marcas de fuera de la categoría que inspiran, etiquetadas por para qué',
   '  sirven ("referente de marca" / "de comunicación" / "visual"). El formulario casi nunca',
   '  las trae: si faltan, proponelas marcadas como "equipo".',
-  '- ejes: EXACTAMENTE 2 ejes de comparación. Casi nunca vienen en el formulario: proponelos',
+  '- ejes: EXACTAMENTE 4 ejes de comparación. Casi nunca vienen en el formulario: proponelos',
   '  a partir de lo que el cliente valora, marcados como "equipo".',
   '- posicionActual y posicionIdeal: dónde está hoy la marca y a dónde debería moverse (un Item).',
   '  La posición ideal suele ser aporte del equipo.',
@@ -27,7 +27,7 @@ export function buildCompetenciaPrompt(respondents: RespondentInput[]): string {
     '{"competidores": Item[], "otrosReferentes": [{"marca": string, "tipo": string, "origen": Origen}],',
     ' "ejes": [{"nombre": string, "extremoIzquierdo": string, "extremoDerecho": string, "origen": Origen}],',
     ' "posicionActual": Item, "posicionIdeal": Item}',
-    'Origen es "cliente"|"equipo"|"pendiente". "ejes" debe tener 2 elementos.',
+    'Origen es "cliente"|"equipo"|"pendiente". "ejes" debe tener 4 elementos.',
   ].join('\n')
 }
 
@@ -45,6 +45,9 @@ export function validateCompetencia(o: unknown): Competencia {
       || typeof e?.extremoDerecho !== 'string' || !ORIGENES.includes(e?.origen)) throw new Error('Eje inválido')
     return { nombre: e.nombre, extremoIzquierdo: e.extremoIzquierdo, extremoDerecho: e.extremoDerecho, origen: e.origen }
   })
+  // El documento compara con cuatro variables, ni más ni menos: rechazar acá hace que
+  // callJson reintente con el reclamo, en vez de imprimir un mapa a medias.
+  if (ejes.length !== 4) throw new Error(`"ejes" debe tener exactamente 4 elementos, llegaron ${ejes.length}`)
   return {
     competidores: validarItems(c?.competidores), otrosReferentes, ejes,
     posicionActual: validarItem(c?.posicionActual), posicionIdeal: validarItem(c?.posicionIdeal),
