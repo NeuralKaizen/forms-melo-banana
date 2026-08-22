@@ -68,7 +68,7 @@ export default async function PropuestaView({ params }: { params: Promise<{ id: 
       <DeliverablePanel
         projectId={id}
         view={deckView}
-        personalidad={deliverable?.personalidad ?? null}
+        deliverable={deliverable}
         sessionsCount={rawSessions.length}
       />
     </AdminShell>

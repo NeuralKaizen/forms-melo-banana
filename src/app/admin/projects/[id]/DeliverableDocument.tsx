@@ -1,6 +1,9 @@
+'use client'
+import { useState } from 'react'
 import type { DeckView, DeckSection, DeckBlock, DeckItem } from '@/lib/deck/view-model'
-import type { PartKey } from '@/lib/deliverable/schema'
+import type { Deliverable, PartKey } from '@/lib/deliverable/schema'
 import { partsOfSection, type SectionNumber } from './section-parts'
+import { EditorSeccion } from './EditorEntregable'
 
 const ORIGEN_LABEL: Partial<Record<DeckItem['origen'], string>> = {
   equipo: 'propuesta del equipo',
@@ -108,10 +111,13 @@ function Tabla({ filas, error }: { filas: DeckSection['tabla']; error: DeckSecti
   )
 }
 
-function SectionHeader({ sec, busy, onRegenerate }: {
+function SectionHeader({ sec, busy, editable, onRegenerate, onEditar }: {
   sec: DeckSection
   busy: PartKey | 'full' | null
+  /** Hay contenido generado en esta sección: editar tiene sobre qué trabajar. */
+  editable: boolean
   onRegenerate: (part: PartKey) => void
+  onEditar: () => void
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-[var(--banana)] px-6 py-5">
@@ -122,6 +128,12 @@ function SectionHeader({ sec, busy, onRegenerate }: {
       <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-xl font-medium leading-tight text-ink">{sec.titulo}</h2>
         <div className="flex flex-wrap gap-2">
+          {editable && (
+            <button onClick={onEditar} disabled={busy !== null}
+              className="rounded-lg bg-[var(--ink)] px-3 py-1 text-xs font-medium text-white transition-opacity duration-200 disabled:opacity-45">
+              Editar
+            </button>
+          )}
           {partsOfSection(sec.numero as SectionNumber).map(({ key, label }) => (
             <button key={key} onClick={() => onRegenerate(key)} disabled={busy !== null}
               className="rounded-lg border border-[var(--ink)]/25 bg-[var(--ink)]/0 px-3 py-1 text-xs font-medium text-ink transition-colors duration-200 hover:border-[var(--ink)]/60 hover:bg-[var(--ink)]/5 disabled:opacity-45">
@@ -134,41 +146,72 @@ function SectionHeader({ sec, busy, onRegenerate }: {
   )
 }
 
-function Section({ sec, busy, onRegenerate }: {
+function Section({ sec, busy, editando, deliverable, projectId, onRegenerate, onEditar, onCerrarEditor }: {
   sec: DeckSection
   busy: PartKey | 'full' | null
+  editando: boolean
+  deliverable: Deliverable | null
+  projectId: string
   onRegenerate: (part: PartKey) => void
+  onEditar: () => void
+  onCerrarEditor: () => void
 }) {
   const impar = sec.blocks.length % 2 === 1
+  const editable = !!deliverable && partsOfSection(sec.numero as SectionNumber).some(({ key }) => deliverable[key]?.data)
   return (
     <section className="space-y-3">
-      <SectionHeader sec={sec} busy={busy} onRegenerate={onRegenerate} />
-      <div className="rounded-2xl border border-[#e6dfd0] bg-white p-6">
-        {sec.error
-          ? <ErrorBox text={`Esta parte no se pudo generar: ${sec.error}`} />
-          : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-x-8">
-              {sec.blocks.map((b, i) => (
-                <Block key={i} b={b} wide={impar && i === sec.blocks.length - 1} />
-              ))}
-              <Tabla filas={sec.tabla} error={sec.tablaError} />
-            </div>
-          )}
-      </div>
+      <SectionHeader sec={sec} busy={busy} editable={editable} onRegenerate={onRegenerate} onEditar={onEditar} />
+      {editando && deliverable ? (
+        <EditorSeccion
+          numero={sec.numero as SectionNumber}
+          deliverable={deliverable}
+          projectId={projectId}
+          onCerrar={onCerrarEditor}
+        />
+      ) : (
+        <div className="rounded-2xl border border-[#e6dfd0] bg-white p-6">
+          {sec.error
+            ? <ErrorBox text={`Esta parte no se pudo generar: ${sec.error}`} />
+            : (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-x-8">
+                {sec.blocks.map((b, i) => (
+                  <Block key={i} b={b} wide={impar && i === sec.blocks.length - 1} />
+                ))}
+                <Tabla filas={sec.tabla} error={sec.tablaError} />
+              </div>
+            )}
+        </div>
+      )}
     </section>
   )
 }
 
 /** Espejo HTML de DeckDocument (el PDF del taller): las 3 secciones numeradas del entregable. */
-export function DeliverableDocument({ view, busy, onRegenerate }: {
+export function DeliverableDocument({ view, busy, deliverable, projectId, onRegenerate }: {
   view: DeckView
   busy: PartKey | 'full' | null
+  /** El contenido crudo, para editarlo: el view es su proyección de lectura. */
+  deliverable: Deliverable | null
+  projectId: string
   onRegenerate: (part: PartKey) => void
 }) {
+  // El editor abierto vive acá y no en cada sección: una sola sección se edita a la vez,
+  // y regenerar mientras se edita cerraría el formulario abajo del usuario.
+  const [editando, setEditando] = useState<SectionNumber | null>(null)
   return (
     <div className="space-y-6">
       {view.secciones.map(sec => (
-        <Section key={sec.numero} sec={sec} busy={busy} onRegenerate={onRegenerate} />
+        <Section
+          key={sec.numero}
+          sec={sec}
+          busy={busy}
+          editando={editando === sec.numero}
+          deliverable={deliverable}
+          projectId={projectId}
+          onRegenerate={onRegenerate}
+          onEditar={() => setEditando(sec.numero as SectionNumber)}
+          onCerrarEditor={() => setEditando(null)}
+        />
       ))}
     </div>
   )

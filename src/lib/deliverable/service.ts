@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { getProjectWithSessions, getSessionWithAnswers, saveDeliverable, getDeliverable } from '@/lib/db/store'
 import { ensureNormalized } from '@/lib/normalize/service'
 import { generateDeliverable } from './generator'
+import { sincronizarPersonalidadEnEstrategia } from './sync-estrategia'
 import type { Deliverable, PartKey, RespondentInput } from './schema'
 
 export async function generateProjectDeliverable(projectId: string, opts: { part?: PartKey } = {}): Promise<Deliverable> {
@@ -35,5 +36,16 @@ export async function generateProjectDeliverable(projectId: string, opts: { part
   const content = await generateDeliverable(client, respondents,
     opts.part ? { only: opts.part, prev: prev ?? {} } : { prev: prev ?? {} })
   await saveDeliverable(db, projectId, content)
+
+  // La personalidad generada vive en Estrategia (borrador de Claude en su etapa), no en
+  // la pantalla de Propuesta. Es un efecto del guardado, nunca su condición: si falla,
+  // el entregable ya quedó guardado y el error va al log.
+  if (content.personalidad?.data) {
+    try {
+      await sincronizarPersonalidadEnEstrategia(db, projectId, content.personalidad.data)
+    } catch (e) {
+      console.error('sync de personalidad a estrategia falló:', e)
+    }
+  }
   return content
 }

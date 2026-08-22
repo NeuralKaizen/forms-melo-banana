@@ -67,6 +67,8 @@ export type PartKey = 'personalidad' | 'problema' | 'competencia' | 'perfil' | '
 export interface PartMeta {
   generatedAt: string
   error?: string | null
+  /** Cuándo el equipo editó la parte a mano por última vez. Regenerar la pisa (con aviso). */
+  editedAt?: string | null
 }
 
 export interface Part<T> {

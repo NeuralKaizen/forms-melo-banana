@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import type { PartKey, Part, Personalidad } from '@/lib/deliverable/schema'
+import type { Deliverable, PartKey } from '@/lib/deliverable/schema'
 import type { DeckView } from '@/lib/deck/view-model'
 import { DeliverableDocument } from './DeliverableDocument'
 
@@ -15,14 +15,11 @@ const STEPS: { key: PartKey; label: string }[] = [
   { key: 'propuestaValor', label: 'Propuesta de valor' },
 ]
 
-function Linea({ label, value }: { label: string; value: string }) {
-  return <p className="text-[15px] leading-relaxed text-ink"><strong className="font-medium">{label}:</strong> {value || '—'}</p>
-}
-
-export function DeliverablePanel({ projectId, view, personalidad, sessionsCount }: {
+export function DeliverablePanel({ projectId, view, deliverable, sessionsCount }: {
   projectId: string
   view: DeckView | null
-  personalidad: Part<Personalidad> | null
+  /** El contenido crudo del entregable: el editor trabaja sobre esto, no sobre el view. */
+  deliverable: Deliverable | null
   /** Cuántas entrevistas alimentan el documento. La lista vive en la fase Entrevistas. */
   sessionsCount: number
 }) {
@@ -35,8 +32,17 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'error')
   }
 
+  // Regenerar pisa lo que el equipo corrigió a mano: eso no puede pasar en silencio.
+  const editadas = (parts: PartKey[]) => parts.filter(p => deliverable?.[p]?.meta?.editedAt)
+  function confirmaPisarEdiciones(parts: PartKey[]): boolean {
+    const conEdicion = editadas(parts)
+    if (!conEdicion.length) return true
+    return confirm('Hay ediciones hechas a mano en esta parte del documento. Regenerar las reemplaza por lo que escriba el modelo. ¿Seguir?')
+  }
+
   // Regeneración de UNA parte (botón chico de la sección).
   async function generateOne(part: PartKey) {
+    if (!confirmaPisarEdiciones([part])) return
     setBusy(part); setError(null)
     try { await postPart(part); location.reload() }
     catch (e) { setError(String(e)); setBusy(null) }
@@ -45,6 +51,7 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
   // Generar / Regenerar TODO: los 5 pasos en cadena con barra de progreso. Si uno falla,
   // lo ya generado queda guardado y el documento lo muestra con sus botones de reintento.
   async function generateAll() {
+    if (!confirmaPisarEdiciones(STEPS.map(s => s.key))) return
     setBusy('full'); setError(null); setProgress({ done: 0, label: STEPS[0].label })
     try {
       for (let i = 0; i < STEPS.length; i++) {
@@ -57,8 +64,6 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
       location.reload()
     }
   }
-
-  const pers = personalidad?.data ?? null
 
   return <div className="space-y-6">
     <section className="p-6">
@@ -113,40 +118,14 @@ export function DeliverablePanel({ projectId, view, personalidad, sessionsCount 
     )}
 
     {view
-      ? <DeliverableDocument view={view} busy={busy} onRegenerate={generateOne} />
+      ? <DeliverableDocument view={view} busy={busy} deliverable={deliverable} projectId={projectId} onRegenerate={generateOne} />
       : (
         <section className="p-8 text-center">
           <p className="text-[15px] text-[var(--secundario)]">Todavía no hay entregable. Genera el documento cuando las entrevistas estén completas.</p>
         </section>
       )}
 
-    {!!view && (
-      <details className="rounded-2xl border border-[#e6dfd0] bg-white px-6 py-4">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-[var(--secundario)]">
-          <span className="flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-            Personalidad (insumo interno)
-          </span>
-          <button onClick={e => { e.preventDefault(); generateOne('personalidad') }} disabled={busy !== null}
-            className="rounded-lg border border-black/10 px-3 py-1 text-xs font-medium text-[var(--secundario)] transition-colors duration-200 hover:border-[var(--ink)]/30 hover:text-ink disabled:opacity-50">
-            {busy === 'personalidad' ? 'Regenerando…' : 'Regenerar'}
-          </button>
-        </summary>
-        <div className="mt-4 space-y-2">
-          {personalidad?.meta.error && (
-            <p className="rounded-xl border border-[#f0d0d0] bg-[#fff4f4] px-4 py-3 text-sm text-[#8a3a3a]">{personalidad.meta.error}</p>
-          )}
-          {pers && (
-            <>
-              <Linea label="Arquetipo" value={pers.arquetipo} />
-              <Linea label="Atributos" value={pers.atributos.join(', ')} />
-              <Linea label="Qué NO quiere ser" value={pers.queNoQuiereSer.join(', ')} />
-              <Linea label="Tensiones" value={pers.tensiones.join(' · ')} />
-            </>
-          )}
-          {!pers && !personalidad?.meta.error && <p className="text-sm text-[var(--secundario)]">Sin generar.</p>}
-        </div>
-      </details>
-    )}
+    {/* La personalidad generada ya no se muestra acá: vive como borrador de Claude en la
+        etapa Personalidad de Estrategia, con su circuito de aprobación. */}
   </div>
 }

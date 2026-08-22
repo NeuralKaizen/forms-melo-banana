@@ -27,7 +27,7 @@ describe('DeliverableDocument', () => {
   // tres reescrituras distintas de este archivo. El PDF usa ldquo/rdquo.
   it('las citas van entre comillas tipográficas', () => {
     const html = renderToStaticMarkup(
-      <DeliverableDocument view={view} busy={null} onRegenerate={() => {}} />,
+      <DeliverableDocument view={view} busy={null} deliverable={null} projectId="p1" onRegenerate={() => {}} />,
     )
     expect(html).toContain('“la cita textual”')
   })
