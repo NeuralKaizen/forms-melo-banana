@@ -460,6 +460,9 @@ describe('landscape · borrador sobre etapa aprobada', () => {
     const p = await findOrCreateProject(db, 'Acme')
     const aprobada = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 1 }, author: 'claude' })
     await approveLandscapeVersion(db, aprobada.id, { projectId: p.id, stage: 'contexto' })
+    // 2ms reales entre guardados: el desempate por uuid no conserva orden de creación
+    // (misma razón que en `conLongListAmpliada`).
+    await new Promise(r => setTimeout(r, 2))
     const nueva = await saveLandscapeVersion(db, p.id, 'contexto', { content: { v: 2 }, author: 'claude' })
 
     const [etapa] = (await landscapeState(db, p.id)).filter(e => e.stage === 'contexto')
@@ -554,6 +557,9 @@ describe('landscape · mantener la aprobada', () => {
       content: contenidoAprobado, author: 'claude',
     })
     await approveLandscapeVersion(db, aprobada.id, { projectId: p.id, stage: 'contexto' })
+    // 2ms reales entre guardados: el desempate por uuid no conserva orden de creación
+    // (misma razón que en `conLongListAmpliada`).
+    await new Promise(r => setTimeout(r, 2))
     const deClaude = await saveLandscapeVersion(db, p.id, 'contexto', {
       content: { territorio: 'El café como pausa deliberada' }, author: 'claude',
     })

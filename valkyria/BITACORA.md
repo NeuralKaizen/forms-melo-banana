@@ -27,6 +27,13 @@ Entradas nuevas arriba. Formato: ver CONVENCION.md.
     reintroducir el `wrap={false}` pone dos de los tres tests en rojo.
   - Ya era la segunda vez del mismo bug en el repo (la primera, en `src/lib/deck`, dejó ahí
     los comentarios y el test canario). La regla quedó escrita en DECISIONES.
+  - **Dos empates de milisegundo más, cerrados de paso**: verificando la suite antes de
+    pushear aparecieron `reafirmar la aprobada disuelve el conflicto…` y `un borrador
+    posterior no desplaza a la aprobada…` fallando de a ratos. Misma familia de siempre
+    (`orderBy(desc(createdAt), desc(id))` y el uuid que no conserva orden de creación): son
+    dos hermanos que la barrida de `ab706cb` no alcanzó. Reproducido con carga de CPU (1 de
+    5 corridas sin el arreglo), y 11 corridas verdes seguidas con la separación de 2ms
+    puesta, 5 de ellas bajo la misma carga.
 
 - **Quedó:**
   - **Los asteriscos de Markdown crudos en el PDF** (`**Ventana de diferenciación:**`): no es
