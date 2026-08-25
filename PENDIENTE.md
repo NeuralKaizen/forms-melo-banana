@@ -46,14 +46,14 @@ Detalle completo de lo hecho: `valkyria/BITACORA.md` (entrada 2026-08-21).
 - Avisarle al estudio que de ahora en más manden el link copiado desde el proyecto, no la
   URL pelada.
 
-### 4. Navegación: presentar las tres opciones y decidir el chrome de etapas
+### 4. Navegación: revisar las opciones de diseño con Mellow & Banana
 
-Las tres opciones de layout quedaron guardadas en
+Pendiente a propósito (2026-08-25): las tres opciones de layout están guardadas en
 **`valkyria/propuestas/2026-08-22-navegacion-proyectos/`** (página autocontenida que se
 abre con doble clic + README con el estado real y el follow-up). La C —mesa de trabajo—
-ya está implementada como portada; A sigue en las pantallas de etapa; B no se aplicó.
-Queda: armar/mostrar la propuesta con esa carpeta, decidir el chrome de las etapas
-(A / A aligerada / B) y recién ahí implementar. **Sin cambios nuevos hasta esa decisión.**
+ya está en producción como portada; A sigue en las pantallas de etapa; B no se aplicó.
+Queda: **revisarlo con Mellow** usando esa carpeta, decidir el chrome de las etapas
+(A / A aligerada / B) y recién ahí implementar. Sin cambios nuevos hasta esa decisión.
 
 ### 5. Exportación a PowerPoint del entregable
 
