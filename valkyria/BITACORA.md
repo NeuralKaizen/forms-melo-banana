@@ -2,6 +2,41 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md.
 
+## 2026-08-25 — El PDF del brief se descargaba roto: texto encimado y media portada en blanco
+
+- **Hecho:** el estudio avisó que el brief de Grupo Heroica salía mal. Confirmado sobre el PDF
+  que mandaron (9 páginas): texto superpuesto, un espacio enorme en la portada y páginas a
+  medio llenar. Los tres síntomas eran **un solo bug** (520 tests, tsc ok).
+  - **Causa:** cada pregunta+respuesta iba en un `<View wrap={false}>`, que le prohíbe a
+    react-pdf partir el bloque. Con respuestas cortas funcionaba; con las respuestas
+    normalizadas de Heroica —de varios párrafos, más altas que una página entera— falla de
+    dos formas. Si el bloque no entra en lo que queda de página, react-pdf lo empuja entero a
+    la siguiente: ese es el hueco de la portada. Si no entra ni en una página completa, no lo
+    puede empujar a ningún lado y lo dibuja desbordado, y el bloque siguiente se pinta encima:
+    esa es la superposición. Medido: había texto en `y=1047` sobre una A4 de 842 pt.
+  - **Arreglo:** fuera el `wrap={false}` de preguntas y respuestas; la protección de huérfanos
+    que buscaba queda en `minPresenceAhead` (56 pt para el título de sección, 34 pt para la
+    pregunta). Sobrevive solo en la fila de chips del proyectivo, de alto acotado. De paso,
+    las páginas 2+ arrancaban pegadas al borde: la página gana `paddingTop` y la franja
+    amarilla pasa a fija, en todas las hojas.
+  - **Cómo se testea la maquetación:** `src/lib/pdf/inspect.ts` lee los content streams del
+    PDF de salida (siguiendo `/Kids`, porque el orden de los objetos no es el de las páginas)
+    y devuelve dónde cayó cada línea — react-pdf no expone el layout resuelto. Sobre eso,
+    `BriefDocument.layout.test.tsx` exige que nada se dibuje fuera de la caja de contenido y
+    que ninguna página intermedia quede casi vacía. Verificado que son guardas reales:
+    reintroducir el `wrap={false}` pone dos de los tres tests en rojo.
+  - Ya era la segunda vez del mismo bug en el repo (la primera, en `src/lib/deck`, dejó ahí
+    los comentarios y el test canario). La regla quedó escrita en DECISIONES.
+
+- **Quedó:**
+  - **Los asteriscos de Markdown crudos en el PDF** (`**Ventana de diferenciación:**`): no es
+    maquetación, viene del texto que devuelve la normalización. Falta decidir si se limpian
+    los `**` o se renderiza la negrita de verdad.
+  - **El checkbox de mission-control no se marcó**: `~/VALKYRIA/mission-control/` solo tiene
+    `intel-comercioexterior`; no existe el plan de este proyecto. Hay que crearlo o corregir
+    la ruta que declara CLAUDE.md.
+  - Sigue pendiente lo de siempre: la plantilla de PowerPoint y activar Resend (`PENDIENTE.md`).
+
 ## 2026-08-22 — Propuesta de valor: edición interna, 4 variables, sin síntesis, personalidad a Estrategia
 
 - **Hecho:** los cuatro pedidos del usuario sobre la Propuesta de valor, según
