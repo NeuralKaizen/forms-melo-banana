@@ -2,6 +2,27 @@
 
 Entradas nuevas arriba. Formato: ver CONVENCION.md. Solo decisiones no triviales: si fue obvio o es fácilmente reversible, no va acá.
 
+## 2026-08-25 — `wrap={false}` solo sobre contenido de alto acotado, nunca sobre texto del LLM
+
+**Qué:** en los documentos de react-pdf, `wrap={false}` queda reservado para bloques cuyo alto
+conocemos y es chico (una fila de chips, una cabecera). Todo lo que sea texto libre —respuestas
+de entrevista normalizadas, salidas del modelo— va partible, y la protección contra huérfanos se
+hace con `minPresenceAhead`, que reserva puntos por delante en vez de prohibir el corte.
+
+**Por qué:** `wrap={false}` no es una preferencia de maquetación, es una restricción dura. Cuando
+el bloque no entra en el espacio restante, react-pdf lo empuja entero y deja un hueco; cuando no
+entra ni en una página completa, no tiene a dónde empujarlo y lo dibuja desbordado, con lo que
+sigue encima. Ninguno de los dos casos aparece con el contenido de ejemplo: aparecen recién con
+una respuesta real larga, ya en manos del cliente. Es la segunda vez que el mismo bug se cobra un
+entregable (antes en el deck, ahora en el brief), así que la regla se escribe en vez de
+redescubrirse.
+
+**Qué se descartó:** mantener el `wrap={false}` y recortar o paginar las respuestas a mano —el
+texto es del entrevistado y no nos toca decidir dónde se corta. También quedó descartado testear
+esto sólo contando páginas: se verificó empíricamente en el deck que el conteo no discrimina el
+bug. La maquetación se mide leyendo la posición real de cada línea en el PDF de salida
+(`src/lib/pdf/inspect.ts`), que es la única forma de ver el layout que react-pdf no expone.
+
 ## 2026-08-21 — El proyecto abre con el trabajo, no con la estructura
 
 **Qué:** la portada del proyecto (`/admin/projects/[id]`) es la mesa de trabajo: decisiones pendientes con link directo, actividad reciente, y el recorrido plegado en tres tarjetas de fase. Ya no redirige a la etapa actual.
